@@ -1,0 +1,192 @@
+// SPDX-FileCopyrightText: © 2020 Lev Livnev <lev@liv.nev.org.uk>
+// SPDX-FileCopyrightText: © 2021 Dai Foundation <www.daifoundation.org>
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+pragma solidity ^0.8.16;
+
+interface VatLike {
+    function live() external view returns (uint256);
+    function frob(bytes32, address, address, address, int256, int256) external;
+    function hope(address) external;
+}
+
+interface JugLike {
+    function drip(bytes32) external returns (uint256);
+}
+
+interface TokenLike {
+    function totalSupply() external view returns (uint256);
+    function approve(address, uint256) external;
+    function transfer(address, uint256) external;
+}
+
+interface GemJoinLike {
+    function gem() external view returns (TokenLike);
+    function ilk() external view returns (bytes32);
+    function vat() external view returns (address);
+    function join(address, uint256) external;
+}
+
+interface NstJoinLike {
+    function nst() external view returns (TokenLike);
+    function vat() external view returns (address);
+    function exit(address, uint256) external;
+    function join(address, uint256) external;
+}
+
+contract AllocatorVault {
+
+    // --- storage variables ---
+
+    mapping(address => uint256) public wards;
+    mapping(address => uint256) public can;
+    JugLike public jug;
+
+    // --- constants ---
+
+    uint256 constant RAY = 10 ** 27;
+
+    // --- immutables ---
+
+    VatLike     immutable public vat;
+    bytes32     immutable public ilk;
+    GemJoinLike immutable public gemJoin;
+    NstJoinLike immutable public nstJoin;
+    TokenLike   immutable public nst;
+
+    // --- events ---
+
+    event Rely(address indexed usr);
+    event Deny(address indexed usr);
+    event Hope(address indexed usr);
+    event Nope(address indexed usr);
+    event File(bytes32 indexed what, address data);
+    event Draw(address indexed funnel, address indexed to, uint256 wad);
+    event Take(address indexed funnel, address indexed to, uint256 wad);
+    event Wipe(address indexed funnel, uint256 wad);
+
+    // --- modifiers ---
+
+    modifier auth() {
+        require(wards[msg.sender] == 1, "AllocatorVault/not-authorized");
+        _;
+    }
+
+    modifier funnel {
+        require(can[msg.sender] == 1, "AllocatorVault/only-funnel");
+        _;
+    }
+
+    // --- constructor ---
+
+    constructor(address vat_, address gemJoin_, address nstJoin_) {
+        vat = VatLike(vat_);
+
+        gemJoin = GemJoinLike(gemJoin_);
+        nstJoin = NstJoinLike(nstJoin_);
+
+        require(vat_ == gemJoin.vat() && vat_ == nstJoin.vat(), "AllocatorVault/vat-not-match");
+
+        ilk = GemJoinLike(gemJoin_).ilk();
+        nst = NstJoinLike(nstJoin_).nst();
+
+        VatLike(vat_).hope(nstJoin_);
+        nst.approve(nstJoin_, type(uint256).max);
+
+        wards[msg.sender] = 1;
+        emit Rely(msg.sender);
+    }
+
+    // --- math ---
+
+    function _divup(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        unchecked {
+            z = x != 0 ? ((x - 1) / y) + 1 : 0;
+        }
+    }
+
+    // --- administration ---
+
+    function init() external auth {
+        TokenLike gem = gemJoin.gem();
+        uint256 supply = gem.totalSupply();
+        require(supply <= uint256(type(int256).max), "AllocatorVault/overflow");
+
+        gem.approve(address(gemJoin), supply);
+        gemJoin.join(address(this), supply);
+        vat.frob(ilk, address(this), address(this), address(0), int256(supply), 0);
+    }
+
+    function rely(address usr) external auth {
+        wards[usr] = 1;
+        emit Rely(usr);
+    }
+
+    function deny(address usr) external auth {
+        wards[usr] = 0;
+        emit Deny(usr);
+    }
+
+    function hope(address usr) external auth {
+        require(vat.live() == 1, "AllocatorVault/no-hope-during-shutdown");
+        can[usr] = 1;
+        emit Hope(usr);
+    }
+
+    function nope(address usr) external auth {
+        require(vat.live() == 1, "AllocatorVault/no-nope-during-shutdown");
+        can[usr] = 0;
+        emit Nope(usr);
+    }
+
+    function file(bytes32 what, address data) external auth {
+        if (what == "jug") {
+            jug = JugLike(data);
+        } else revert("AllocatorVault/unrecognised-param");
+        emit File(what, data);
+    }
+
+    // --- funnels execution ---
+
+    function draw(address to, uint256 wad) public funnel {
+        uint256 rate = jug.drip(ilk);
+        uint256 dart = _divup(wad * RAY, rate);
+        require(dart <= uint256(type(int256).max), "AllocatorVault/overflow");
+        vat.frob(ilk, address(this), address(0), address(this), 0, int256(dart));
+        nstJoin.exit(to, wad);
+        emit Draw(msg.sender, to, wad);
+    }
+
+    function draw(uint256 wad) external {
+        draw(address(this), wad);
+    }
+
+    function take(address to, uint256 wad) external funnel {
+        nst.transfer(to, wad);
+        emit Take(msg.sender, to, wad);
+    }
+
+    function wipe(uint256 wad) external funnel {
+        nstJoin.join(address(this), wad);
+        uint256 rate = jug.drip(ilk);
+        uint256 dart = wad * RAY / rate;
+        require(dart <= uint256(type(int256).max), "AllocatorVault/overflow");
+        vat.frob(ilk, address(this), address(this), address(this), 0, -int256(dart));
+        emit Wipe(msg.sender, wad);
+    }
+
+    // TODO: evaluate if quit function is necessary and how it should be
+}
