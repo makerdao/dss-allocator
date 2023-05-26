@@ -52,7 +52,6 @@ contract AllocatorVault {
     // --- storage variables ---
 
     mapping(address => uint256) public wards;
-    mapping(address => uint256) public can;
     JugLike public jug;
 
     // --- constants ---
@@ -71,8 +70,6 @@ contract AllocatorVault {
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
-    event Hope(address indexed usr);
-    event Nope(address indexed usr);
     event File(bytes32 indexed what, address data);
     event Draw(address indexed funnel, address indexed to, uint256 wad);
     event Take(address indexed funnel, address indexed to, uint256 wad);
@@ -82,11 +79,6 @@ contract AllocatorVault {
 
     modifier auth() {
         require(wards[msg.sender] == 1, "AllocatorVault/not-authorized");
-        _;
-    }
-
-    modifier funnel {
-        require(can[msg.sender] == 1, "AllocatorVault/only-funnel");
         _;
     }
 
@@ -140,18 +132,6 @@ contract AllocatorVault {
         emit Deny(usr);
     }
 
-    function hope(address usr) external auth {
-        require(vat.live() == 1, "AllocatorVault/no-hope-during-shutdown");
-        can[usr] = 1;
-        emit Hope(usr);
-    }
-
-    function nope(address usr) external auth {
-        require(vat.live() == 1, "AllocatorVault/no-nope-during-shutdown");
-        can[usr] = 0;
-        emit Nope(usr);
-    }
-
     function file(bytes32 what, address data) external auth {
         if (what == "jug") {
             jug = JugLike(data);
@@ -161,7 +141,7 @@ contract AllocatorVault {
 
     // --- funnels execution ---
 
-    function draw(address to, uint256 wad) public funnel {
+    function draw(address to, uint256 wad) public auth {
         uint256 rate = jug.drip(ilk);
         uint256 dart = _divup(wad * RAY, rate);
         require(dart <= uint256(type(int256).max), "AllocatorVault/overflow");
@@ -174,12 +154,12 @@ contract AllocatorVault {
         draw(address(this), wad);
     }
 
-    function take(address to, uint256 wad) external funnel {
+    function take(address to, uint256 wad) external auth {
         nst.transfer(to, wad);
         emit Take(msg.sender, to, wad);
     }
 
-    function wipe(uint256 wad) external funnel {
+    function wipe(uint256 wad) external auth {
         nstJoin.join(address(this), wad);
         uint256 rate = jug.drip(ilk);
         uint256 dart = wad * RAY / rate;
