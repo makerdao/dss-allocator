@@ -4,7 +4,7 @@ pragma solidity ^0.8.16;
 
 import "forge-std/Script.sol";
 
-contract AllocatorVaultScript is Script {
+contract AllocatorBufferScript is Script {
     function setUp() public {}
 
     function run() public {

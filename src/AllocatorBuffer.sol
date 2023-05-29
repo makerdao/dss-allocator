@@ -47,7 +47,7 @@ interface NstJoinLike {
     function join(address, uint256) external;
 }
 
-contract AllocatorVault {
+contract AllocatorBuffer {
 
     // --- storage variables ---
 
@@ -78,7 +78,7 @@ contract AllocatorVault {
     // --- modifiers ---
 
     modifier auth() {
-        require(wards[msg.sender] == 1, "AllocatorVault/not-authorized");
+        require(wards[msg.sender] == 1, "AllocatorBuffer/not-authorized");
         _;
     }
 
@@ -90,7 +90,7 @@ contract AllocatorVault {
         gemJoin = GemJoinLike(gemJoin_);
         nstJoin = NstJoinLike(nstJoin_);
 
-        require(vat_ == gemJoin.vat() && vat_ == nstJoin.vat(), "AllocatorVault/vat-not-match");
+        require(vat_ == gemJoin.vat() && vat_ == nstJoin.vat(), "AllocatorBuffer/vat-not-match");
 
         ilk = GemJoinLike(gemJoin_).ilk();
         nst = NstJoinLike(nstJoin_).nst();
@@ -115,7 +115,7 @@ contract AllocatorVault {
     function init() external auth {
         TokenLike gem = gemJoin.gem();
         uint256 supply = gem.totalSupply();
-        require(supply <= uint256(type(int256).max), "AllocatorVault/overflow");
+        require(supply <= uint256(type(int256).max), "AllocatorBuffer/overflow");
 
         gem.approve(address(gemJoin), supply);
         gemJoin.join(address(this), supply);
@@ -135,7 +135,7 @@ contract AllocatorVault {
     function file(bytes32 what, address data) external auth {
         if (what == "jug") {
             jug = JugLike(data);
-        } else revert("AllocatorVault/unrecognised-param");
+        } else revert("AllocatorBuffer/unrecognised-param");
         emit File(what, data);
     }
 
@@ -144,7 +144,7 @@ contract AllocatorVault {
     function draw(address to, uint256 wad) public auth {
         uint256 rate = jug.drip(ilk);
         uint256 dart = _divup(wad * RAY, rate);
-        require(dart <= uint256(type(int256).max), "AllocatorVault/overflow");
+        require(dart <= uint256(type(int256).max), "AllocatorBuffer/overflow");
         vat.frob(ilk, address(this), address(0), address(this), 0, int256(dart));
         nstJoin.exit(to, wad);
         emit Draw(msg.sender, to, wad);
@@ -163,7 +163,7 @@ contract AllocatorVault {
         nstJoin.join(address(this), wad);
         uint256 rate = jug.drip(ilk);
         uint256 dart = wad * RAY / rate;
-        require(dart <= uint256(type(int256).max), "AllocatorVault/overflow");
+        require(dart <= uint256(type(int256).max), "AllocatorBuffer/overflow");
         vat.frob(ilk, address(this), address(this), address(this), 0, -int256(dart));
         emit Wipe(msg.sender, wad);
     }

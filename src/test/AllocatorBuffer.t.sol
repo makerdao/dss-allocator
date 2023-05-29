@@ -3,10 +3,10 @@
 pragma solidity ^0.8.16;
 
 import "forge-std/Test.sol";
-import "../AllocatorVault.sol";
+import "../AllocatorBuffer.sol";
 
-contract AllocatorVaultTest is Test {
-    AllocatorVault public vault;
+contract AllocatorBufferTest is Test {
+    AllocatorBuffer public buffer;
 
     function setUp() public {
     }
