@@ -135,7 +135,7 @@ contract AllocatorBuffer {
     function file(bytes32 what, address data) external auth {
         if (what == "jug") {
             jug = JugLike(data);
-        } else revert("AllocatorBuffer/unrecognised-param");
+        } else revert("AllocatorBuffer/file-unrecognized-param");
         emit File(what, data);
     }
 
