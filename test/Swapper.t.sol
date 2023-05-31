@@ -52,7 +52,8 @@ contract SwapperTest is Test {
     address constant USDC               = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address constant UNIV3_ROUTER       = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
 
-    address constant KEEPER = address(0xb0b);
+    address constant FACILITATOR = address(0xb0b);
+    address constant KEEPER      = address(0x1337);
 
     function setUp() public {
         swapper = new Swapper(DAI, USDC, UNIV3_ROUTER);
@@ -68,26 +69,22 @@ contract SwapperTest is Test {
         swapper.file("maxIn",  10_000 ether);
         swapper.file("maxOut", 10_000 ether);
         swapper.file("want", 99 ether / 100);
-        swapper.kiss(KEEPER);
+        swapper.kiss(FACILITATOR);
+        vm.prank(FACILITATOR); swapper.permit(KEEPER);
     }
 
     function testSwapper() public {
-
-        vm.startPrank(KEEPER); 
-        
-        uint256 gemOut = swapper.swapIn(10_000 ether);
+        vm.prank(KEEPER); uint256 gemOut = swapper.swapIn(10_000 ether);
         console2.log("gemOut:", gemOut * 10**12);
         Swapper.Load[] memory cargo = new Swapper.Load[](1);
         cargo[0].box = address(box);
         cargo[0].wad = gemOut;
-        swapper.push(cargo);
+        vm.prank(FACILITATOR); swapper.push(cargo);
         uint256 withdrawId = box.initiateWithdraw(USDC, address(swapper), gemOut);
         box.completeWithdraw(withdrawId);
-        swapper.pull(cargo);
-        uint256 daiOut = swapper.swapOut(gemOut);
+        vm.prank(FACILITATOR); swapper.pull(cargo);
+        vm.prank(KEEPER); uint256 daiOut = swapper.swapOut(gemOut);
         console2.log("daiOut:", daiOut);
-
-        vm.stopPrank();
     }
 
 }
