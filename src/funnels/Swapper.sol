@@ -48,15 +48,14 @@ contract Swapper {
     mapping (address => uint256) public keepers;  // whitelisted keepers
     mapping (address => uint256) public boxes;    // whitelisted conduits
     
-    VatLike public vat;
     address public buffer;     // Allocation buffer for this Swapper
-    PipLike public pip;        // Reference price oracle in DAI/USDC
+    PipLike public pip;        // Reference price oracle in NST/USDC
     uint256 public hop;        // [seconds] swap cooldown
-    uint256 public maxIn;      // [WAD] max amount swapped from dai to gem every hop
-    uint256 public maxOut;     // [WAD] max amount swapped from gem to dai every hop
-    uint256 public zzz;        // [Timestamp]   Last swap
-    uint256 public fee;        // [BPS]         UniV3 pool fee
-    uint256 public want;       // [WAD]         Relative multiplier of the reference price to insist on in the swap.
+    uint256 public maxIn;      // [WAD]       Max amount swapped from nst to gem every hop
+    uint256 public maxOut;     // [WAD]       Max amount swapped from gem to nst every hop
+    uint256 public zzz;        // [Timestamp] Last swap
+    uint256 public fee;        // [BPS]       UniV3 pool fee
+    uint256 public want;       // [WAD]       Relative multiplier of the reference price to insist on in the swap.
 
     event Rely  (address indexed usr);
     event Deny  (address indexed usr);
@@ -72,16 +71,16 @@ contract Swapper {
 
     struct Load {
         address box;
-        uint256 wad; // [WAD]
+        uint256 wad;
     }
 
-    constructor(address _vat, address _dai, address _gem, address _uniV3Router) {
+    constructor(address _vat, address _nst, address _gem, address _uniV3Router) {
         vat = VatLike(_vat);
-        dai = _dai;
+        nst = _nst;
         gem = _gem;
         uniV3Router = _uniV3Router;
 
-        GemLike(dai).approve(uniV3Router, type(uint256).max);
+        GemLike(nst).approve(uniV3Router, type(uint256).max);
         GemLike(gem).approve(uniV3Router, type(uint256).max);
 
         wards[msg.sender] = 1;
@@ -93,7 +92,7 @@ contract Swapper {
         _;
     }
 
-    // permissionned to whitelisted facilitator
+    // permissionned to whitelisted facilitators
     modifier toll { 
         require(buds[msg.sender] == 1, "Swapper/non-facilitator"); 
         _;
@@ -105,8 +104,9 @@ contract Swapper {
         _;
     }
     
+    VatLike public immutable vat;
     address public immutable uniV3Router;
-    address public immutable dai;
+    address public immutable nst;
     address public immutable gem;
 
     function rely(address usr)   external auth { wards[usr]   = 1; emit Rely(usr); }
@@ -133,7 +133,7 @@ contract Swapper {
     }
 
     function file(bytes32 what, address data) external auth {
-        if (what == "pip") pip = PipLike(data);
+        if      (what == "pip")       pip = PipLike(data);
         else if (what == "buffer") buffer = data;
         else revert("Swapper/file-unrecognized-param");
         emit File(what, data);
@@ -148,19 +148,19 @@ contract Swapper {
 
         BufferLike(buffer).take(address(this), wad);
 
-        bytes memory path = abi.encodePacked(dai, uint24(fee), gem);
+        bytes memory path = abi.encodePacked(nst, uint24(fee), gem);
         SwapRouterLike.ExactInputParams memory params = SwapRouterLike.ExactInputParams({
             path:             path,
             recipient:        address(this),
             deadline:         block.timestamp,
             amountIn:         wad,
-            // Q: can we assume pip giving DAI price in USDC (or equivalently, in USD with USDC = 1$) ?
+            // Q: can we assume pip giving NST price in USDC (or equivalently, in USD with USDC = 1$) ?
             // Q: do we want to move the decimal conversion to the pip instead of here?
             amountOutMinimum: uint256(pip.read()) * wad * want / 10**48 // 10**48 = WAD * WAD * 10**12
         });
         out = SwapRouterLike(uniV3Router).exactInput(params);
 
-        emit Swap(msg.sender, dai, gem, wad, out);
+        emit Swap(msg.sender, nst, gem, wad, out);
     }
 
     function push(Load[] calldata to) external toll {
@@ -190,7 +190,7 @@ contract Swapper {
     }
 
     function swapOut(uint256 wad) external returns (uint256 out) {
-        // After ES, we allow to permissionlessly swap all the gem back to dai
+        // After ES, we allow to permissionlessly swap all the gem back to nst
         if(vat.live() == 1) {
             require(keepers[msg.sender] == 1, "Swapper/non-keeper"); 
             require(block.timestamp >= zzz + hop, "Swapper/too-soon");
@@ -199,29 +199,29 @@ contract Swapper {
 
         require(wad <= maxOut, "Swapper/exceeds-max-out");
         
-        bytes memory path = abi.encodePacked(gem, uint24(fee), dai);
+        bytes memory path = abi.encodePacked(gem, uint24(fee), nst);
         SwapRouterLike.ExactInputParams memory params = SwapRouterLike.ExactInputParams({
             path:             path,
             recipient:        address(this),
             deadline:         block.timestamp,
             amountIn:         wad,
-            // Q: can we assume pip giving DAI price in USDC (or equivalently, in USD with USDC = 1$) ?
+            // Q: can we assume pip giving NST price in USDC (or equivalently, in USD with USDC = 1$) ?
             // Q: do we want to move the decimal conversion to the pip instead of here?
             amountOutMinimum: wad * want / uint256(pip.read()) * 10**12
         });
         out = SwapRouterLike(uniV3Router).exactInput(params);
 
-        GemLike(dai).transfer(buffer, out);
+        GemLike(nst).transfer(buffer, out);
         BufferLike(buffer).wipe(out);
 
-        emit Swap(msg.sender, gem, dai, wad, out);
+        emit Swap(msg.sender, gem, nst, wad, out);
     }
 
-    // After ES, we allow to permissionlessly bring all the dai back to the buffer
+    // After ES, we allow to permissionlessly bring all the nst back to the buffer
     function quit() external {
         require(vat.live() == 0, "Swapper/vat-still-live");
-        uint256 wad = GemLike(dai).balanceOf(address(this));
-        GemLike(dai).transfer(buffer, wad);
+        uint256 wad = GemLike(nst).balanceOf(address(this));
+        GemLike(nst).transfer(buffer, wad);
         emit Quit(msg.sender, wad);
     } 
 }
