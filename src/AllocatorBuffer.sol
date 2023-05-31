@@ -56,7 +56,8 @@ contract AllocatorBuffer {
 
     // --- constants ---
 
-    uint256 constant RAY = 10 ** 27;
+    uint256 constant WAD = 10**18;
+    uint256 constant RAY = 10**27;
 
     // --- immutables ---
 
@@ -115,7 +116,7 @@ contract AllocatorBuffer {
     function init() external auth {
         TokenLike gem = gemJoin.gem();
         uint256 supply = gem.totalSupply();
-        require(supply <= uint256(type(int256).max), "AllocatorBuffer/overflow");
+        require(supply == 10**6 * WAD, "AllocatorBuffer/supply-not-one-million-wad");
 
         gem.approve(address(gemJoin), supply);
         gemJoin.join(address(this), supply);

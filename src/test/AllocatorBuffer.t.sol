@@ -203,12 +203,12 @@ contract AllocatorBufferTest is DssTest {
         ilk     = "TEST-ILK";
         vat     = new VatMock();
         jug     = new JugMock(vat);
-        gem     = new GemMock(100 * 10**18);
+        gem     = new GemMock(1_000_000 * 10**18);
         gemJoin = new GemJoinMock(vat, ilk, gem);
         nst     = new GemMock(0);
         nstJoin = new NstJoinMock(vat, nst);
         buffer  = new AllocatorBuffer(address(vat), address(gemJoin), address(nstJoin));
-        gem.transfer(address(buffer), 100 * 10**18);
+        gem.transfer(address(buffer), 1_000_000 * 10**18);
 
         // Add some existing DAI assigned to nstJoin to avoid a particular error
         stdstore.target(address(vat)).sig("dai(address)").with_key(address(nstJoin)).depth(0).checked_write(100_000 * 10**45);
