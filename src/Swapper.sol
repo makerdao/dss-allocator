@@ -55,7 +55,7 @@ contract Swapper {
     uint256 public maxIn;      // [WAD] max amount swapped from dai to gem every hop
     uint256 public maxOut;     // [WAD] max amount swapped from gem to dai every hop
     uint256 public zzz;        // [Timestamp]   Last swap
-    uint256 public fee;        // [BPS] UniV3 pool fee
+    uint256 public fee;        // [BPS]         UniV3 pool fee
     uint256 public want;       // [WAD]         Relative multiplier of the reference price to insist on in the swap.
 
     event Rely  (address indexed usr);
@@ -67,7 +67,7 @@ contract Swapper {
     event File  (bytes32 indexed what, uint256 data);
     event File  (bytes32 indexed what, address data);
     event File  (bytes32 indexed what, address data, uint256 val);
-    event Swap  (address indexed keeper, address indexed from, address indexed to, uint256 wad, uint256 out);
+    event Swap  (address indexed kpr, address indexed from, address indexed to, uint256 wad, uint256 out);
     event Quit  (address indexed usr, uint256 wad);
 
     struct Load {
@@ -154,7 +154,7 @@ contract Swapper {
             recipient:        address(this),
             deadline:         block.timestamp,
             amountIn:         wad,
-            // Q: can we assume pip giving DAI price in USDC (or equivalently, USD with USDC = 1$) ?
+            // Q: can we assume pip giving DAI price in USDC (or equivalently, in USD with USDC = 1$) ?
             // Q: do we want to move the decimal conversion to the pip instead of here?
             amountOutMinimum: uint256(pip.read()) * wad * want / 10**48 // 10**48 = WAD * WAD * 10**12
         });
@@ -175,7 +175,7 @@ contract Swapper {
     }
 
     function pull(Load[] calldata from) external {
-        // After ES, we want to allow permissionlessly bring all the gem back
+        // After ES, we allow to permissionlessly bring all the gem back
         require(buds[msg.sender] == 1 || vat.live() == 0, "Swapper/non-keeper"); 
 
         for(uint256 i; i < from.length;) {
@@ -190,7 +190,7 @@ contract Swapper {
     }
 
     function swapOut(uint256 wad) external returns (uint256 out) {
-        // After ES, we want to allow permissionlessly swap all the gem back to dai and send that dai back to the buffer
+        // After ES, we allow to permissionlessly swap all the gem back to dai
         if(vat.live() == 1) {
             require(keepers[msg.sender] == 1, "Swapper/non-keeper"); 
             require(block.timestamp >= zzz + hop, "Swapper/too-soon");
@@ -217,7 +217,7 @@ contract Swapper {
         emit Swap(msg.sender, gem, dai, wad, out);
     }
 
-    // After ES, we want to allow permissionlessly bring all the dai back to the buffer
+    // After ES, we allow to permissionlessly bring all the dai back to the buffer
     function quit() external {
         require(vat.live() == 0, "Swapper/vat-still-live");
         uint256 wad = GemLike(dai).balanceOf(address(this));
