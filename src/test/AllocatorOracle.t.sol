@@ -3,7 +3,7 @@
 pragma solidity ^0.8.16;
 
 import "dss-test/DssTest.sol";
-import "../src/AllocatorOracle.sol";
+import "../AllocatorOracle.sol";
 
 contract AllocatorOracleTest is DssTest {
     AllocatorOracle public oracle;
