@@ -39,8 +39,9 @@ interface SwapRouterLike {
 // Assume one Swapper per SubDAO
 contract Swapper {
     mapping (address => uint256) public wards;
-    mapping (address => uint256) public buds;   // whitelisted keepers
-    mapping (address => uint256) public boxes;  // whitelisted conduits
+    mapping (address => uint256) public buds;     // whitelisted facilitators
+    mapping (address => uint256) public keepers;  // whitelisted keepers
+    mapping (address => uint256) public boxes;    // whitelisted conduits
     
     address public buffer;     // Allocation buffer for this Swapper
     PipLike public pip;        // Reference price oracle in DAI/USDC
@@ -57,6 +58,8 @@ contract Swapper {
     event Deny  (address indexed usr);
     event Kissed(address indexed usr);
     event Dissed(address indexed usr);
+    event Permit(address indexed usr);
+    event Forbid(address indexed usr);
     event File  (bytes32 indexed what, uint256 data);
     event File  (bytes32 indexed what, address data);
     event File  (bytes32 indexed what, address data, uint256 val);
@@ -84,9 +87,15 @@ contract Swapper {
         _;
     }
 
-    // permissionned to whitelisted keepers
+    // permissionned to whitelisted facilitator
     modifier toll { 
-        require(buds[msg.sender] == 1, "Swapper/non-keeper"); 
+        require(buds[msg.sender] == 1, "Swapper/non-facilitator"); 
+        _;
+    }
+
+    // permissionned to whitelisted keepers
+    modifier keeper { 
+        require(keepers[msg.sender] == 1, "Swapper/non-keeper"); 
         _;
     }
     
@@ -94,10 +103,12 @@ contract Swapper {
     address public immutable dai;
     address public immutable gem;
 
-    function rely(address usr) external auth { wards[usr] = 1; emit Rely(usr); }
-    function deny(address usr) external auth { wards[usr] = 0; emit Deny(usr); }
-    function kiss(address usr) external auth { buds[usr]  = 1; emit Kissed(usr); }
-    function diss(address usr) external auth { buds[usr]  = 0; emit Dissed(usr); }
+    function rely(address usr)   external auth { wards[usr]   = 1; emit Rely(usr); }
+    function deny(address usr)   external auth { wards[usr]   = 0; emit Deny(usr); }
+    function kiss(address usr)   external auth { buds[usr]    = 1; emit Kissed(usr); }
+    function diss(address usr)   external auth { buds[usr]    = 0; emit Dissed(usr); }
+    function permit(address usr) external toll { keepers[usr] = 1; emit Permit(usr); }
+    function forbid(address usr) external toll { keepers[usr] = 0; emit Forbid(usr); }
 
     function file(bytes32 what, uint256 data) external auth {
         if      (what == "maxIn")  maxIn  = data;
@@ -122,7 +133,7 @@ contract Swapper {
         emit File(what, data);
     }
 
-    function swapIn(uint256 wad) external toll returns (uint256 out) {
+    function swapIn(uint256 wad) external keeper returns (uint256 out) {
 
         require(block.timestamp >= zzz + hop, "Swapper/too-soon");
         zzz = block.timestamp;
@@ -170,7 +181,7 @@ contract Swapper {
         }
     }
 
-    function swapOut(uint256 wad) external toll returns (uint256 out) {
+    function swapOut(uint256 wad) external keeper returns (uint256 out) {
 
         require(block.timestamp >= zzz + hop, "Swapper/too-soon");
         zzz = block.timestamp;
