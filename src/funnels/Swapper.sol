@@ -57,6 +57,8 @@ contract Swapper {
     uint256 public fee;        // [BPS]       UniV3 pool fee
     uint256 public want;       // [WAD]       Relative multiplier of the reference price to insist on in the swap.
 
+    uint256[] internal weights;   // Bit vector tightly packing (address(box), uint96(percentage)) tuple entries such that the sum of all percentages = 1 WAD (100%)
+
     event Rely  (address indexed usr);
     event Deny  (address indexed usr);
     event Kissed(address indexed usr);
@@ -69,13 +71,12 @@ contract Swapper {
     event Swap  (address indexed kpr, address indexed from, address indexed to, uint256 wad, uint256 out);
     event Quit  (address indexed usr, uint256 wad);
 
-    struct Load {
+    struct Weight {
         address box;
-        uint256 wad;
+        uint96 wad; // percentage in WAD such that 1 WAD = 100%
     }
 
-    constructor(address _vat, address _nst, address _gem, address _uniV3Router) {
-        vat = VatLike(_vat);
+    constructor(address _nst, address _gem, address _uniV3Router) {
         nst = _nst;
         gem = _gem;
         uniV3Router = _uniV3Router;
@@ -103,8 +104,9 @@ contract Swapper {
         require(keepers[msg.sender] == 1, "Swapper/non-keeper"); 
         _;
     }
-    
-    VatLike public immutable vat;
+
+    uint256 internal constant WAD = 10 ** 18;
+
     address public immutable uniV3Router;
     address public immutable nst;
     address public immutable gem;
@@ -139,8 +141,31 @@ contract Swapper {
         emit File(what, data);
     }
 
+    function setWeights(Weight[] memory newWeights) external toll {
+        uint256 cumPct;
+        uint256[] memory arr = new uint256[](newWeights.length);
+        for(uint256 i; i < newWeights.length;) {
+            (address _box, uint256 _pct) = (newWeights[i].box, uint256(newWeights[i].wad));
+            require(boxes[_box] == 1, "Swapper/invalid-destination");
+            require(_pct <= WAD, "Swapper/not-wad-percentage");
+            arr[i] = (uint256(uint160(_box)) << 96) | _pct;
+            cumPct += _pct;
+            unchecked { ++i; }
+        }
+        require(cumPct == WAD, "Swapper/total-weight-not-wad");
+        weights = arr;
+    }
+
+    function getWeightAt(uint256 i) public view returns (address from, uint256 percent) {
+        uint256 weight = weights[i];
+        (from, percent) = (address(uint160(weight >> 96)), weight & (2**96 - 1)); // TODO: check that this tuple assignment results in only one SLOAD
+    }
+
+    function getWeightsLength() external view returns (uint256 len) {
+        len = weights.length;
+    }
+
     function swapIn(uint256 wad) external keeper returns (uint256 out) {
-        require(vat.live() == 1, "Swapper/vat-not-live");
         require(block.timestamp >= zzz + hop, "Swapper/too-soon");
         zzz = block.timestamp;
 
@@ -160,45 +185,43 @@ contract Swapper {
         });
         out = SwapRouterLike(uniV3Router).exactInput(params);
 
+        uint256 pending = out;
+        uint256 len = weights.length;
+        for(uint256 i; i < len;) {
+            (address _to, uint256 _percent) = getWeightAt(i);
+            uint256 _amt = (i == len - 1) ? pending : out * _percent / WAD;
+
+            require(GemLike(gem).transfer(_to, _amt));
+            BoxLike(_to).deposit(gem, _amt);
+
+            pending -= _amt;
+            unchecked { ++i; }
+        }
+
         emit Swap(msg.sender, nst, gem, wad, out);
     }
 
-    function push(Load[] calldata to) external toll {
-        require(vat.live() == 1, "Swapper/vat-not-live");
-        for(uint256 i; i < to.length;) {
-            (address _to, uint256 _wad) = (to[i].box,  to[i].wad);
-            require(boxes[_to] == 1, "Swapper/invalid-destination");
-            require(GemLike(gem).transfer(_to, _wad));
-            BoxLike(_to).deposit(gem, _wad);
-            unchecked { ++i; }
-        }
-    }
+    function swapOut(uint256 wad) external keeper returns (uint256 out) {
 
-    function pull(Load[] calldata from) external {
-        // After ES, we allow to permissionlessly bring all the gem back
-        require(buds[msg.sender] == 1 || vat.live() == 0, "Swapper/non-keeper"); 
-
-        for(uint256 i; i < from.length;) {
-            (address _from, uint256 _wad) = (from[i].box,  from[i].wad);
-            // require(boxes[_from] == 1, "Swapper/invalid-source");
-
-            // We assume the swapper was set as operator when calling box.initiateWithdrawal() and has
-            // subsequently been granted a gem allowance by the box in box.completeWithdrawal()
-            require(GemLike(gem).transferFrom(_from, address(this), _wad));
-            unchecked { ++i; }
-        }
-    }
-
-    function swapOut(uint256 wad) external returns (uint256 out) {
-        // After ES, we allow to permissionlessly swap all the gem back to nst
-        if(vat.live() == 1) {
-            require(keepers[msg.sender] == 1, "Swapper/non-keeper"); 
-            require(block.timestamp >= zzz + hop, "Swapper/too-soon");
-            zzz = block.timestamp;
-        }
+        require(block.timestamp >= zzz + hop, "Swapper/too-soon");
+        zzz = block.timestamp;
 
         require(wad <= maxOut, "Swapper/exceeds-max-out");
         
+        uint256 pending = wad;
+        uint256 len = weights.length;
+        for(uint256 i; i < len;) {
+            (address _from, uint256 _percent) = getWeightAt(i);
+            uint256 _amt = (i == len - 1) ? pending : wad * _percent / WAD;
+
+            // We assume the swapper was set as operator when calling box.initiateWithdrawal() and has
+            // subsequently been granted a gem allowance by the box in box.completeWithdrawal()
+            require(GemLike(gem).transferFrom(_from, address(this), _amt));
+
+            pending -= _amt;
+            unchecked { ++i; }
+        }
+
         bytes memory path = abi.encodePacked(gem, uint24(fee), nst);
         SwapRouterLike.ExactInputParams memory params = SwapRouterLike.ExactInputParams({
             path:             path,
@@ -216,12 +239,4 @@ contract Swapper {
 
         emit Swap(msg.sender, gem, nst, wad, out);
     }
-
-    // After ES, we allow to permissionlessly bring all the nst back to the buffer
-    function quit() external {
-        require(vat.live() == 0, "Swapper/vat-still-live");
-        uint256 wad = GemLike(nst).balanceOf(address(this));
-        GemLike(nst).transfer(buffer, wad);
-        emit Quit(msg.sender, wad);
-    } 
 }
