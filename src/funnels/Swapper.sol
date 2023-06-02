@@ -129,16 +129,16 @@ contract Swapper {
         emit File(what, data);
     }
 
-    function file(bytes32 what, address data, uint256 val) external auth {
-        if (what == "box") boxes[data] = val;
-        else revert("Swapper/file-unrecognized-param");
-        emit File(what, data, val);
-    }
-
     function file(bytes32 what, address data) external auth {
         if (what == "buffer") buffer = data;
         else revert("Swapper/file-unrecognized-param");
         emit File(what, data);
+    }
+
+    function file(bytes32 what, address data, uint256 val) external auth {
+        if (what == "box") boxes[data] = val;
+        else revert("Swapper/file-unrecognized-param");
+        emit File(what, data, val);
     }
 
     function setWeights(Weight[] memory newWeights) external toll {
@@ -146,7 +146,7 @@ contract Swapper {
         uint256[] memory arr = new uint256[](newWeights.length);
         for(uint256 i; i < newWeights.length;) {
             (address _box, uint256 _pct) = (newWeights[i].box, uint256(newWeights[i].wad));
-            require(boxes[_box] == 1, "Swapper/invalid-destination");
+            require(boxes[_box] == 1, "Swapper/invalid-box");
             require(_pct <= WAD, "Swapper/not-wad-percentage");
             arr[i] = (uint256(uint160(_box)) << 96) | _pct;
             cumPct += _pct;
@@ -156,9 +156,10 @@ contract Swapper {
         weights = arr;
     }
 
-    function getWeightAt(uint256 i) public view returns (address from, uint256 percent) {
+    function getWeightAt(uint256 i) public view returns (address box, uint256 percent) {
         uint256 weight = weights[i];
-        (from, percent) = (address(uint160(weight >> 96)), weight & (2**96 - 1)); // TODO: check that this tuple assignment results in only one SLOAD
+        (box, percent) = (address(uint160(weight >> 96)), weight & (2**96 - 1)); // TODO: check that this tuple assignment results in only one SLOAD
+        require(boxes[box] == 1, "Swapper/invalid-box"); // sanity check that any deauthorised box has also been removed from the weights vector
     }
 
     function getWeightsLength() external view returns (uint256 len) {
