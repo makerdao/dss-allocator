@@ -49,13 +49,13 @@ contract Swapper {
     mapping (address => uint256) public boxes;    // whitelisted conduits
     
     address public buffer;     // Allocation buffer for this Swapper
-    PipLike public pip;        // Reference price oracle in NST/USDC
     uint256 public hop;        // [seconds] swap cooldown
     uint256 public maxIn;      // [WAD]       Max amount swapped from nst to gem every hop
     uint256 public maxOut;     // [WAD]       Max amount swapped from gem to nst every hop
+    uint256 public wantIn;     // [WAD]       Relative multiplier of the reference price (equal to 1 gem/nst) to insist on in the swap from nst to gem.
+    uint256 public wantOut;    // [WAD]       Relative multiplier of the reference price (equal to 1 nst/gem) to insist on in the swap from gem to nst.
     uint256 public zzz;        // [Timestamp] Last swap
     uint256 public fee;        // [BPS]       UniV3 pool fee
-    uint256 public want;       // [WAD]       Relative multiplier of the reference price to insist on in the swap.
 
     uint256[] internal weights;   // Bit vector tightly packing (address(box), uint96(percentage)) tuple entries such that the sum of all percentages = 1 WAD (100%)
 
@@ -119,11 +119,12 @@ contract Swapper {
     function forbid(address usr) external toll { keepers[usr] = 0; emit Forbid(usr); }
 
     function file(bytes32 what, uint256 data) external auth {
-        if      (what == "maxIn")  maxIn  = data;
-        else if (what == "maxOut") maxOut = data;
-        else if (what == "hop")    hop    = data;
-        else if (what == "want")   want   = data;
-        else if (what == "fee")    fee    = data;
+        if      (what == "maxIn")   maxIn  = data;
+        else if (what == "maxOut")  maxOut = data;
+        else if (what == "wantIn")  wantIn = data;
+        else if (what == "wantOut") wantOut = data;
+        else if (what == "hop")     hop    = data;
+        else if (what == "fee")     fee    = data;
         else revert("Swapper/file-unrecognized-param");
         emit File(what, data);
     }
@@ -135,8 +136,7 @@ contract Swapper {
     }
 
     function file(bytes32 what, address data) external auth {
-        if      (what == "pip")       pip = PipLike(data);
-        else if (what == "buffer") buffer = data;
+        if (what == "buffer") buffer = data;
         else revert("Swapper/file-unrecognized-param");
         emit File(what, data);
     }
@@ -165,11 +165,12 @@ contract Swapper {
         len = weights.length;
     }
 
-    function swapIn(uint256 wad) external keeper returns (uint256 out) {
+    function swapIn(uint256 wad, uint256 min) external keeper returns (uint256 out) {
         require(block.timestamp >= zzz + hop, "Swapper/too-soon");
         zzz = block.timestamp;
 
-        require(wad <= maxIn, "Swapper/exceeds-max-in");
+        require(wad <= maxIn, "Swapper/wad-too-large");
+        require(min >= wad * wantIn / 10**30 , "Swapper/min-too-small"); // 1/10**30 = 1/WAD * 1/10**12
 
         BufferLike(buffer).take(address(this), wad);
 
@@ -179,9 +180,7 @@ contract Swapper {
             recipient:        address(this),
             deadline:         block.timestamp,
             amountIn:         wad,
-            // Q: can we assume pip giving NST price in USDC (or equivalently, in USD with USDC = 1$) ?
-            // Q: do we want to move the decimal conversion to the pip instead of here?
-            amountOutMinimum: uint256(pip.read()) * wad * want / 10**48 // 10**48 = WAD * WAD * 10**12
+            amountOutMinimum: min
         });
         out = SwapRouterLike(uniV3Router).exactInput(params);
 
@@ -201,12 +200,13 @@ contract Swapper {
         emit Swap(msg.sender, nst, gem, wad, out);
     }
 
-    function swapOut(uint256 wad) external keeper returns (uint256 out) {
+    function swapOut(uint256 wad, uint256 min) external keeper returns (uint256 out) {
 
         require(block.timestamp >= zzz + hop, "Swapper/too-soon");
         zzz = block.timestamp;
 
-        require(wad <= maxOut, "Swapper/exceeds-max-out");
+        require(wad <= maxOut, "Swapper/wad-too-large");
+        require(min >= wad * wantOut / 10**6, "Swapper/min-too-small"); // 1/10**6 = 10**12 / WAD
         
         uint256 pending = wad;
         uint256 len = weights.length;
@@ -230,7 +230,7 @@ contract Swapper {
             amountIn:         wad,
             // Q: can we assume pip giving NST price in USDC (or equivalently, in USD with USDC = 1$) ?
             // Q: do we want to move the decimal conversion to the pip instead of here?
-            amountOutMinimum: wad * want / uint256(pip.read()) * 10**12
+            amountOutMinimum: min
         });
         out = SwapRouterLike(uniV3Router).exactInput(params);
 
