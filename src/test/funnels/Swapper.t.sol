@@ -32,8 +32,6 @@ contract BoxMock {
         GemLike(withdrawals[withdrawId].token).approve(withdrawals[withdrawId].operator, withdrawals[withdrawId].amount);
         delete withdrawals[withdrawId];
     }
-
-    function deposit(address gem, uint256 wad) external {}
 }
 
 contract SwapperTest is DssTest {
