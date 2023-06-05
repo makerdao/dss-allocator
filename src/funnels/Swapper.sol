@@ -62,30 +62,35 @@ contract Swapper {
     
     address public buffer;     // Allocation buffer for this Swapper
     uint256 public hop;        // [seconds]   Swap cooldown
-    uint256 public nstLot;     // [WAD]       Amount swapped from nst to gem every hop
-    uint256 public gemLot;     // [WAD]       Amount swapped from gem to nst every hop
+    uint256 public nstLot;     // [WAD]       Amount swapped from nst to gem every hop (set by facilitators)
+    uint256 public gemLot;     // [WAD]       Amount swapped from gem to nst every hop (set by facilitators)
+    uint256 public maxNstLot;  // [WAD]       Max allowable nstLot (set by governance)
+    uint256 public maxGemLot;  // [WAD]       Max allowable gemLot (set by governance)
     uint256 public gemWant;    // [WAD]       Relative multiplier of the reference price (equal to 1 gem/nst) to insist on in the swap from nst to gem.
     uint256 public nstWant;    // [WAD]       Relative multiplier of the reference price (equal to 1 nst/gem) to insist on in the swap from gem to nst.
     uint256 public zzz;        // [Timestamp] Last swap
 
     uint256[] internal weights;   // Bit vector tightly packing (address(box), uint96(percentage)) tuple entries such that the sum of all percentages = 1 WAD (100%)
 
-    event Rely  (address indexed usr);
-    event Deny  (address indexed usr);
-    event Kissed(address indexed usr);
-    event Dissed(address indexed usr);
-    event Permit(address indexed usr);
-    event Forbid(address indexed usr);
-    event File  (bytes32 indexed what, uint256 data);
-    event File  (bytes32 indexed what, address data);
-    event File  (bytes32 indexed what, address data, uint256 val);
-    event Swap  (address indexed kpr, address indexed from, address indexed to, uint256 amt, uint256 out);
-    event Quit  (address indexed usr, uint256 wad);
-
     struct Weight {
         address box;
         uint96 wad; // percentage in WAD such that 1 WAD = 100%
     }
+
+    event Rely   (address indexed usr);
+    event Deny   (address indexed usr);
+    event Kissed (address indexed usr);
+    event Dissed (address indexed usr);
+    event Permit (address indexed usr);
+    event Forbid (address indexed usr);
+    event File   (bytes32 indexed what, uint256 data);
+    event File   (bytes32 indexed what, address data);
+    event File   (bytes32 indexed what, address data, uint256 val);
+    event Lots   (address indexed bud, uint256 nstLot, uint256 gemLot);
+    event Weights(address indexed bud, Weight[] weights);
+    event Swap   (address indexed kpr, address indexed from, address indexed to, uint256 amt, uint256 out);
+    event Quit   (address indexed usr, uint256 wad);
+
 
     constructor(address _nst, address _gem, address _uniV3Router, uint256 _fee) {
         nst = _nst;
@@ -133,11 +138,11 @@ contract Swapper {
     function forbid(address usr) external toll { keepers[usr] = 0; emit Forbid(usr); }
 
     function file(bytes32 what, uint256 data) external auth {
-        if      (what == "nstLot")   nstLot  = data;
-        else if (what == "gemLot")  gemLot = data;
-        else if (what == "gemWant")  gemWant = data;
-        else if (what == "nstWant") nstWant = data;
-        else if (what == "hop")     hop    = data;
+        if      (what == "maxNstLot")  maxNstLot = data;
+        else if (what == "maxGemLot")  maxGemLot = data;
+        else if (what == "gemWant")    gemWant   = data;
+        else if (what == "nstWant")    nstWant   = data;
+        else if (what == "hop")        hop       = data;
         else revert("Swapper/file-unrecognized-param");
         emit File(what, data);
     }
@@ -154,6 +159,14 @@ contract Swapper {
         emit File(what, data, val);
     }
 
+    function setLots(uint256 _nstLot, uint256 _gemLot) external toll {
+        require(_nstLot <= maxNstLot, "Swapper/exceeds-max-nst-lot");
+        require(_gemLot <= maxGemLot, "Swapper/exceeds-max-gem-lot");
+        nstLot = _nstLot;
+        gemLot = _gemLot;
+        emit Lots(msg.sender, _nstLot, _gemLot);
+    }
+
     function setWeights(Weight[] memory newWeights) external toll {
         uint256 cumPct;
         uint256[] memory arr = new uint256[](newWeights.length);
@@ -165,6 +178,7 @@ contract Swapper {
         }
         require(cumPct == WAD, "Swapper/total-weight-not-wad");
         weights = arr;
+        emit Weights(msg.sender, newWeights);
     }
 
     function getWeightAt(uint256 i) public view returns (address box, uint256 percent) {
@@ -177,11 +191,11 @@ contract Swapper {
         len = weights.length;
     }
 
-    function nstToGem(uint256 amt, uint256 min) external keeper returns (uint256 out) {
+    function nstToGem(uint256 min) external keeper returns (uint256 out) {
         require(block.timestamp >= zzz + hop, "Swapper/too-soon");
         zzz = block.timestamp;
 
-        require(amt <= nstLot, "Swapper/wad-too-large");
+        uint256 amt = nstLot;
         require(min >= amt * gemWant / 10**30 , "Swapper/min-too-small"); // 1/10**30 = 1/WAD * 1/10**12
 
         BufferLike(buffer).take(address(this), amt);
@@ -212,12 +226,11 @@ contract Swapper {
         emit Swap(msg.sender, nst, gem, amt, out);
     }
 
-    function gemToNst(uint256 amt, uint256 min) external keeper returns (uint256 out) {
-
+    function gemToNst(uint256 min) external keeper returns (uint256 out) {
         require(block.timestamp >= zzz + hop, "Swapper/too-soon");
         zzz = block.timestamp;
 
-        require(amt <= gemLot, "Swapper/wad-too-large");
+        uint256 amt = gemLot;
         require(min >= amt * nstWant / 10**6, "Swapper/min-too-small"); // 1/10**6 = 10**12 / WAD
         
         uint256 pending = amt;
@@ -240,8 +253,6 @@ contract Swapper {
             recipient:        address(this),
             deadline:         block.timestamp,
             amountIn:         amt,
-            // Q: can we assume pip giving NST price in USDC (or equivalently, in USD with USDC = 1$) ?
-            // Q: do we want to move the decimal conversion to the pip instead of here?
             amountOutMinimum: min
         });
         out = SwapRouterLike(uniV3Router).exactInput(params);
