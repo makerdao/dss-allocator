@@ -1,5 +1,21 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+// SPDX-FileCopyrightText: © 2020 Lev Livnev <lev@liv.nev.org.uk>
+// SPDX-FileCopyrightText: © 2021 Dai Foundation <www.daifoundation.org>
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+pragma solidity ^0.8.16;
 
 interface BufferLike {
     function take(address to, uint256 wad) external;
@@ -11,6 +27,7 @@ interface BoxLike { // aka "Conduit"
 }
 
 interface GemLike {
+    function decimals() external view returns (uint8);
     function balanceOf(address) external view returns (uint256);
     function approve(address, uint256) external returns (bool);
     function transfer(address, uint256) external returns (bool);
@@ -64,7 +81,7 @@ contract Swapper {
     event File  (bytes32 indexed what, uint256 data);
     event File  (bytes32 indexed what, address data);
     event File  (bytes32 indexed what, address data, uint256 val);
-    event Swap  (address indexed kpr, address indexed from, address indexed to, uint256 wad, uint256 out);
+    event Swap  (address indexed kpr, address indexed from, address indexed to, uint256 amt, uint256 out);
     event Quit  (address indexed usr, uint256 wad);
 
     struct Weight {
@@ -77,6 +94,7 @@ contract Swapper {
         gem = _gem;
         uniV3Router = _uniV3Router;
 
+        require(GemLike(gem).decimals() == 6, "Swapper/gem-decimals-not-6");
         GemLike(nst).approve(uniV3Router, type(uint256).max);
         GemLike(gem).approve(uniV3Router, type(uint256).max);
 
@@ -142,8 +160,6 @@ contract Swapper {
         uint256[] memory arr = new uint256[](newWeights.length);
         for(uint256 i; i < newWeights.length;) {
             (address _box, uint256 _pct) = (newWeights[i].box, uint256(newWeights[i].wad));
-            require(boxes[_box] == 1, "Swapper/invalid-box");
-            require(_pct <= WAD, "Swapper/not-wad-percentage");
             arr[i] = (uint256(uint160(_box)) << 96) | _pct;
             cumPct += _pct;
             unchecked { ++i; }
@@ -154,7 +170,7 @@ contract Swapper {
 
     function getWeightAt(uint256 i) public view returns (address box, uint256 percent) {
         uint256 weight = weights[i];
-        (box, percent) = (address(uint160(weight >> 96)), weight & (2**96 - 1)); // TODO: check that this tuple assignment results in only one SLOAD
+        (box, percent) = (address(uint160(weight >> 96)), weight & (2**96 - 1));
         require(boxes[box] == 1, "Swapper/invalid-box"); // sanity check that any deauthorised box has also been removed from the weights vector
     }
 
@@ -162,21 +178,21 @@ contract Swapper {
         len = weights.length;
     }
 
-    function swapIn(uint256 wad, uint256 min) external keeper returns (uint256 out) {
+    function swapIn(uint256 amt, uint256 min) external keeper returns (uint256 out) {
         require(block.timestamp >= zzz + hop, "Swapper/too-soon");
         zzz = block.timestamp;
 
-        require(wad <= maxIn, "Swapper/wad-too-large");
-        require(min >= wad * wantIn / 10**30 , "Swapper/min-too-small"); // 1/10**30 = 1/WAD * 1/10**12
+        require(amt <= maxIn, "Swapper/wad-too-large");
+        require(min >= amt * wantIn / 10**30 , "Swapper/min-too-small"); // 1/10**30 = 1/WAD * 1/10**12
 
-        BufferLike(buffer).take(address(this), wad);
+        BufferLike(buffer).take(address(this), amt);
 
         bytes memory path = abi.encodePacked(nst, uint24(fee), gem);
         SwapRouterLike.ExactInputParams memory params = SwapRouterLike.ExactInputParams({
             path:             path,
             recipient:        address(this),
             deadline:         block.timestamp,
-            amountIn:         wad,
+            amountIn:         amt,
             amountOutMinimum: min
         });
         out = SwapRouterLike(uniV3Router).exactInput(params);
@@ -194,22 +210,22 @@ contract Swapper {
             unchecked { ++i; }
         }
 
-        emit Swap(msg.sender, nst, gem, wad, out);
+        emit Swap(msg.sender, nst, gem, amt, out);
     }
 
-    function swapOut(uint256 wad, uint256 min) external keeper returns (uint256 out) {
+    function swapOut(uint256 amt, uint256 min) external keeper returns (uint256 out) {
 
         require(block.timestamp >= zzz + hop, "Swapper/too-soon");
         zzz = block.timestamp;
 
-        require(wad <= maxOut, "Swapper/wad-too-large");
-        require(min >= wad * wantOut / 10**6, "Swapper/min-too-small"); // 1/10**6 = 10**12 / WAD
+        require(amt <= maxOut, "Swapper/wad-too-large");
+        require(min >= amt * wantOut / 10**6, "Swapper/min-too-small"); // 1/10**6 = 10**12 / WAD
         
-        uint256 pending = wad;
+        uint256 pending = amt;
         uint256 len = weights.length;
         for(uint256 i; i < len;) {
             (address _from, uint256 _percent) = getWeightAt(i);
-            uint256 _amt = (i == len - 1) ? pending : wad * _percent / WAD;
+            uint256 _amt = (i == len - 1) ? pending : amt * _percent / WAD;
 
             // We assume the swapper was set as operator when calling box.initiateWithdrawal() and has
             // subsequently been granted a gem allowance by the box in box.completeWithdrawal()
@@ -224,7 +240,7 @@ contract Swapper {
             path:             path,
             recipient:        address(this),
             deadline:         block.timestamp,
-            amountIn:         wad,
+            amountIn:         amt,
             // Q: can we assume pip giving NST price in USDC (or equivalently, in USD with USDC = 1$) ?
             // Q: do we want to move the decimal conversion to the pip instead of here?
             amountOutMinimum: min
@@ -234,6 +250,6 @@ contract Swapper {
         GemLike(nst).transfer(buffer, out);
         BufferLike(buffer).wipe(out);
 
-        emit Swap(msg.sender, gem, nst, wad, out);
+        emit Swap(msg.sender, gem, nst, amt, out);
     }
 }
