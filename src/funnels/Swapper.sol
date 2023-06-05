@@ -98,10 +98,10 @@ contract Swapper {
     constructor(address _nst, address _gem, address _uniV3Router, uint256 _fee) {
         nst = _nst;
         gem = _gem;
+        decimals = GemLike(gem).decimals();
         uniV3Router = _uniV3Router;
         fee = _fee;
 
-        require(GemLike(gem).decimals() == 6, "Swapper/gem-decimals-not-6");
         GemLike(nst).approve(uniV3Router, type(uint256).max);
         GemLike(gem).approve(uniV3Router, type(uint256).max);
 
@@ -128,6 +128,7 @@ contract Swapper {
 
     uint256 internal constant WAD = 10 ** 18;
 
+    uint8   public immutable decimals;     // gem.decimals()
     uint256 public immutable fee;          // [BPS] UniV3 pool fee
     address public immutable uniV3Router;
     address public immutable nst;
@@ -205,7 +206,7 @@ contract Swapper {
         zzz = block.timestamp;
 
         uint256 amt = nstLot;
-        require(min >= amt * gemWant / 10**30 , "Swapper/min-too-small"); // 1/10**30 = 1/WAD * 1/10**12
+        require(min >= amt * gemWant / 10**(36 - decimals), "Swapper/min-too-small"); // 1/10^(36-d) = 1/WAD * 1/WAD * 10^d
 
         uint256 cnt = nstToGemCount;
         require(cnt > 0, "Swapper/exceeds-count");
@@ -244,7 +245,7 @@ contract Swapper {
         zzz = block.timestamp;
 
         uint256 amt = gemLot;
-        require(min >= amt * nstWant / 10**6, "Swapper/min-too-small"); // 1/10**6 = 10**12 / WAD
+        require(min >= amt * nstWant / 10**decimals, "Swapper/min-too-small"); // 1/10^d = 1/10^d * 1/WAD * WAD
         
         uint256 cnt = gemToNstCount;
         require(cnt > 0, "Swapper/exceeds-count");
