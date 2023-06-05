@@ -54,7 +54,6 @@ interface SwapRouterLike {
     }
 }
 
-// Assume one Swapper per SubDAO
 contract Swapper {
     mapping (address => uint256) public wards;
     mapping (address => uint256) public buds;     // whitelisted facilitators
@@ -62,13 +61,12 @@ contract Swapper {
     mapping (address => uint256) public boxes;    // whitelisted conduits
     
     address public buffer;     // Allocation buffer for this Swapper
-    uint256 public hop;        // [seconds] swap cooldown
-    uint256 public maxIn;      // [WAD]       Max amount swapped from nst to gem every hop
-    uint256 public maxOut;     // [WAD]       Max amount swapped from gem to nst every hop
-    uint256 public wantIn;     // [WAD]       Relative multiplier of the reference price (equal to 1 gem/nst) to insist on in the swap from nst to gem.
-    uint256 public wantOut;    // [WAD]       Relative multiplier of the reference price (equal to 1 nst/gem) to insist on in the swap from gem to nst.
+    uint256 public hop;        // [seconds]   Swap cooldown
+    uint256 public nstLot;     // [WAD]       Amount swapped from nst to gem every hop
+    uint256 public gemLot;     // [WAD]       Amount swapped from gem to nst every hop
+    uint256 public gemWant;    // [WAD]       Relative multiplier of the reference price (equal to 1 gem/nst) to insist on in the swap from nst to gem.
+    uint256 public nstWant;    // [WAD]       Relative multiplier of the reference price (equal to 1 nst/gem) to insist on in the swap from gem to nst.
     uint256 public zzz;        // [Timestamp] Last swap
-    uint256 public fee;        // [BPS]       UniV3 pool fee
 
     uint256[] internal weights;   // Bit vector tightly packing (address(box), uint96(percentage)) tuple entries such that the sum of all percentages = 1 WAD (100%)
 
@@ -89,10 +87,11 @@ contract Swapper {
         uint96 wad; // percentage in WAD such that 1 WAD = 100%
     }
 
-    constructor(address _nst, address _gem, address _uniV3Router) {
+    constructor(address _nst, address _gem, address _uniV3Router, uint256 _fee) {
         nst = _nst;
         gem = _gem;
         uniV3Router = _uniV3Router;
+        fee = _fee;
 
         require(GemLike(gem).decimals() == 6, "Swapper/gem-decimals-not-6");
         GemLike(nst).approve(uniV3Router, type(uint256).max);
@@ -121,6 +120,7 @@ contract Swapper {
 
     uint256 internal constant WAD = 10 ** 18;
 
+    uint256 public immutable fee;          // [BPS] UniV3 pool fee
     address public immutable uniV3Router;
     address public immutable nst;
     address public immutable gem;
@@ -133,12 +133,11 @@ contract Swapper {
     function forbid(address usr) external toll { keepers[usr] = 0; emit Forbid(usr); }
 
     function file(bytes32 what, uint256 data) external auth {
-        if      (what == "maxIn")   maxIn  = data;
-        else if (what == "maxOut")  maxOut = data;
-        else if (what == "wantIn")  wantIn = data;
-        else if (what == "wantOut") wantOut = data;
+        if      (what == "nstLot")   nstLot  = data;
+        else if (what == "gemLot")  gemLot = data;
+        else if (what == "gemWant")  gemWant = data;
+        else if (what == "nstWant") nstWant = data;
         else if (what == "hop")     hop    = data;
-        else if (what == "fee")     fee    = data;
         else revert("Swapper/file-unrecognized-param");
         emit File(what, data);
     }
@@ -178,12 +177,12 @@ contract Swapper {
         len = weights.length;
     }
 
-    function swapIn(uint256 amt, uint256 min) external keeper returns (uint256 out) {
+    function nstToGem(uint256 amt, uint256 min) external keeper returns (uint256 out) {
         require(block.timestamp >= zzz + hop, "Swapper/too-soon");
         zzz = block.timestamp;
 
-        require(amt <= maxIn, "Swapper/wad-too-large");
-        require(min >= amt * wantIn / 10**30 , "Swapper/min-too-small"); // 1/10**30 = 1/WAD * 1/10**12
+        require(amt <= nstLot, "Swapper/wad-too-large");
+        require(min >= amt * gemWant / 10**30 , "Swapper/min-too-small"); // 1/10**30 = 1/WAD * 1/10**12
 
         BufferLike(buffer).take(address(this), amt);
 
@@ -213,13 +212,13 @@ contract Swapper {
         emit Swap(msg.sender, nst, gem, amt, out);
     }
 
-    function swapOut(uint256 amt, uint256 min) external keeper returns (uint256 out) {
+    function gemToNst(uint256 amt, uint256 min) external keeper returns (uint256 out) {
 
         require(block.timestamp >= zzz + hop, "Swapper/too-soon");
         zzz = block.timestamp;
 
-        require(amt <= maxOut, "Swapper/wad-too-large");
-        require(min >= amt * wantOut / 10**6, "Swapper/min-too-small"); // 1/10**6 = 10**12 / WAD
+        require(amt <= gemLot, "Swapper/wad-too-large");
+        require(min >= amt * nstWant / 10**6, "Swapper/min-too-small"); // 1/10**6 = 10**12 / WAD
         
         uint256 pending = amt;
         uint256 len = weights.length;
