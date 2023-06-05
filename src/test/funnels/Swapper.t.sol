@@ -12,8 +12,6 @@ contract BufferMock {
     function take(address to, uint256 wad) external {
         GemLike(dai).transfer(to, wad);
     }
-    function wipe(uint256 wad) external {
-    }
 }
 
 contract BoxMock {

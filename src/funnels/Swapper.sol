@@ -19,7 +19,6 @@ pragma solidity ^0.8.16;
 
 interface BufferLike {
     function take(address to, uint256 wad) external;
-    function wipe(uint256 wad) external;
 }
 
 interface BoxLike { // aka "Conduit"
@@ -276,7 +275,6 @@ contract Swapper {
         out = SwapRouterLike(uniV3Router).exactInput(params);
 
         GemLike(nst).transfer(buffer, out);
-        BufferLike(buffer).wipe(out);
 
         emit Swap(msg.sender, gem, nst, amt, out);
     }
