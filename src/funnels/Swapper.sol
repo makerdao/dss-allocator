@@ -230,7 +230,6 @@ contract Swapper {
             uint256 _amt = (i == len - 1) ? pending : out * _percent / WAD;
 
             require(GemLike(gem).transfer(_to, _amt));
-            BoxLike(_to).deposit(gem, _amt);
 
             pending -= _amt;
             unchecked { ++i; }
