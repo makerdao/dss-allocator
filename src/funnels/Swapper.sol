@@ -17,10 +17,6 @@ interface GemLike {
     function transferFrom(address, address, uint256) external returns (bool);
 }
 
-interface PipLike {
-    function read() external view returns (bytes32);
-}
-
 interface VatLike {
     function live() external view returns (uint256);
 }
