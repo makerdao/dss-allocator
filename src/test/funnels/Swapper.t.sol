@@ -67,6 +67,7 @@ contract SwapperTest is DssTest {
         swapper.file("nstWant", 99 ether / 100);
         swapper.kiss(FACILITATOR);
         vm.prank(FACILITATOR); swapper.setLots(maxNstLot, maxGemLot);
+        vm.prank(FACILITATOR); swapper.setCounts(1, 1);
         vm.prank(FACILITATOR); swapper.permit(KEEPER);
 
         Swapper.Weight[] memory weights = new Swapper.Weight[](2);

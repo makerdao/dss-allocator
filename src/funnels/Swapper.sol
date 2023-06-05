@@ -60,17 +60,19 @@ contract Swapper {
     mapping (address => uint256) public keepers;  // whitelisted keepers
     mapping (address => uint256) public boxes;    // whitelisted conduits
     
-    address public buffer;     // Allocation buffer for this Swapper
-    uint256 public hop;        // [seconds]   Swap cooldown
-    uint256 public nstLot;     // [WAD]       Amount swapped from nst to gem every hop (set by facilitators)
-    uint256 public gemLot;     // [WAD]       Amount swapped from gem to nst every hop (set by facilitators)
-    uint256 public maxNstLot;  // [WAD]       Max allowable nstLot (set by governance)
-    uint256 public maxGemLot;  // [WAD]       Max allowable gemLot (set by governance)
-    uint256 public gemWant;    // [WAD]       Relative multiplier of the reference price (equal to 1 gem/nst) to insist on in the swap from nst to gem.
-    uint256 public nstWant;    // [WAD]       Relative multiplier of the reference price (equal to 1 nst/gem) to insist on in the swap from gem to nst.
-    uint256 public zzz;        // [Timestamp] Last swap
+    address public buffer;         // Allocation buffer for this Swapper
+    uint256 public hop;            // [seconds]   Swap cooldown (set by governance)
+    uint256 public nstToGemCount;  // [WAD]       Remaining number of time that a nst-to-gem swap can be performed (set by facilitators)
+    uint256 public gemToNstCount;  // [WAD]       Remaining number of time that a gem-to-nst swap can be performed (set by facilitators)
+    uint256 public nstLot;         // [WAD]       Amount swapped from nst to gem every hop (set by facilitators)
+    uint256 public gemLot;         // [WAD]       Amount swapped from gem to nst every hop (set by facilitators)
+    uint256 public maxNstLot;      // [WAD]       Max allowable nstLot (set by governance)
+    uint256 public maxGemLot;      // [WAD]       Max allowable gemLot (set by governance)
+    uint256 public gemWant;        // [WAD]       Relative multiplier of the reference price (equal to 1 gem/nst) to insist on in the swap from nst to gem (set by governance)
+    uint256 public nstWant;        // [WAD]       Relative multiplier of the reference price (equal to 1 nst/gem) to insist on in the swap from gem to nst (set by governance)
+    uint256 public zzz;            // [Timestamp] Last swap
 
-    uint256[] internal weights;   // Bit vector tightly packing (address(box), uint96(percentage)) tuple entries such that the sum of all percentages = 1 WAD (100%)
+    uint256[] internal weights;   // Bit vector tightly packing (address(box), uint96(percentage)) tuple entries such that the sum of all percentages = 1 WAD (100%) (set by facilitators)
 
     struct Weight {
         address box;
@@ -87,6 +89,7 @@ contract Swapper {
     event File   (bytes32 indexed what, address data);
     event File   (bytes32 indexed what, address data, uint256 val);
     event Lots   (address indexed bud, uint256 nstLot, uint256 gemLot);
+    event Counts (address indexed bud, uint256 nstToGemCount, uint256 gemToNstCount);
     event Weights(address indexed bud, Weight[] weights);
     event Swap   (address indexed kpr, address indexed from, address indexed to, uint256 amt, uint256 out);
     event Quit   (address indexed usr, uint256 wad);
@@ -159,12 +162,18 @@ contract Swapper {
         emit File(what, data, val);
     }
 
-    function setLots(uint256 _nstLot, uint256 _gemLot) external toll {
+    function setLots(uint256 _nstLot, uint256 _gemLot)  external toll {
         require(_nstLot <= maxNstLot, "Swapper/exceeds-max-nst-lot");
         require(_gemLot <= maxGemLot, "Swapper/exceeds-max-gem-lot");
         nstLot = _nstLot;
         gemLot = _gemLot;
         emit Lots(msg.sender, _nstLot, _gemLot);
+    }
+
+    function setCounts(uint256 _nstToGemCount, uint256 _gemToNstCount)  external toll {
+        nstToGemCount = _nstToGemCount;
+        gemToNstCount = _gemToNstCount;
+        emit Counts(msg.sender, _nstToGemCount, _gemToNstCount);
     }
 
     function setWeights(Weight[] memory newWeights) external toll {
@@ -197,6 +206,10 @@ contract Swapper {
 
         uint256 amt = nstLot;
         require(min >= amt * gemWant / 10**30 , "Swapper/min-too-small"); // 1/10**30 = 1/WAD * 1/10**12
+
+        uint256 cnt = nstToGemCount;
+        require(cnt > 0, "Swapper/exceeds-count");
+        nstToGemCount = cnt - 1;
 
         BufferLike(buffer).take(address(this), amt);
 
@@ -233,6 +246,10 @@ contract Swapper {
         uint256 amt = gemLot;
         require(min >= amt * nstWant / 10**6, "Swapper/min-too-small"); // 1/10**6 = 10**12 / WAD
         
+        uint256 cnt = gemToNstCount;
+        require(cnt > 0, "Swapper/exceeds-count");
+        gemToNstCount = cnt - 1;
+
         uint256 pending = amt;
         uint256 len = weights.length;
         for(uint256 i; i < len;) {
