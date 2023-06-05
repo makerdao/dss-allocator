@@ -51,7 +51,7 @@ contract SwapperTest is DssTest {
     address constant KEEPER      = address(0x1337);
 
     function setUp() public {
-        swapper = new Swapper(DAI, USDC, UNIV3_ROUTER);
+        swapper = new Swapper(DAI, USDC, UNIV3_ROUTER, 100);
         box1 = new BoxMock();
         box2 = new BoxMock();
         address buffer = address(new BufferMock(DAI));
@@ -59,12 +59,10 @@ contract SwapperTest is DssTest {
         swapper.file("box", address(box1), 1);
         swapper.file("box", address(box2), 1);
         swapper.file("buffer", buffer);
-        swapper.file("fee", 100);
-        swapper.file("fee", 100);
-        swapper.file("maxIn",  10_000 ether);
-        swapper.file("maxOut", 10_000 ether);
-        swapper.file("wantIn", 99 ether / 100);
-        swapper.file("wantOut", 99 ether / 100);
+        swapper.file("nstLot",  10_000 ether);
+        swapper.file("gemLot", 10_000 ether);
+        swapper.file("gemWant", 99 ether / 100);
+        swapper.file("nstWant", 99 ether / 100);
         swapper.kiss(FACILITATOR);
         vm.prank(FACILITATOR); swapper.permit(KEEPER);
 
@@ -78,14 +76,14 @@ contract SwapperTest is DssTest {
 
     function testSwap() public {
         uint256 daiIn = 10_000 ether;
-        vm.prank(KEEPER); uint256 gemOut = swapper.swapIn(daiIn, daiIn * 995/1000 / 10**12);
+        vm.prank(KEEPER); uint256 gemOut = swapper.nstToGem(daiIn, daiIn * 995/1000 / 10**12);
         console2.log("gemOut:", gemOut * 10**12);
 
         uint256 withdrawId1 = box1.initiateWithdraw(USDC, address(swapper), gemOut);
         uint256 withdrawId2 = box2.initiateWithdraw(USDC, address(swapper), gemOut);
         box1.completeWithdraw(withdrawId1);
         box2.completeWithdraw(withdrawId2);
-        vm.prank(KEEPER); uint256 daiOut = swapper.swapOut(gemOut, gemOut * 995/1000 * 10**12);
+        vm.prank(KEEPER); uint256 daiOut = swapper.gemToNst(gemOut, gemOut * 995/1000 * 10**12);
         console2.log("daiOut:", daiOut);
     }
 
