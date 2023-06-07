@@ -6,6 +6,7 @@ import "dss-test/DssTest.sol";
 import "../AllocatorBuffer.sol";
 
 contract VatMock {
+    uint256 public Art;
     uint256 public rate = 10**27;
     uint256 public line = 20_000_000 * 10**45;
 
@@ -19,7 +20,7 @@ contract VatMock {
     mapping (address => uint256)                   public dai;
 
     function ilks(bytes32) external view returns (uint256, uint256, uint256, uint256, uint256) {
-        return (0, rate, 0, line, 0);
+        return (Art, rate, 0, line, 0);
     }
 
     function hope(address) external {}
@@ -28,7 +29,7 @@ contract VatMock {
         Urn memory urn = urns[i][u];
 
         urn.ink = dink >= 0 ? urn.ink + uint256(dink) : urn.ink - uint256(-dink);
-        urn.art = dart >= 0 ? urn.art + uint256(dart) : urn.art - uint256(-dart);
+        Art = urn.art = dart >= 0 ? urn.art + uint256(dart) : urn.art - uint256(-dart);
 
         gem[i][v] = dink >= 0 ? gem[i][v] - uint256(dink) : gem[i][v] + uint256(-dink);
         int256 dtab = int256(rate) * dart;

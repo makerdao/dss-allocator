@@ -114,6 +114,8 @@ contract AllocatorBuffer {
     }
 
     // --- getters ---
+    // In theory, `ilk.Art` should be equal than `urn.art` for this type of collateral, as there should only be one position per `ilk`.
+    // However to stick with the correct usage, `ilk.Art` is used for calculating `slot()` and `urn.art` for the `debt()` of this position.
 
     function debt() external view returns (uint256) {
         (, uint256 art) = vat.urns(ilk, address(this));
@@ -127,9 +129,8 @@ contract AllocatorBuffer {
     }
 
     function slot() external view returns (uint256) {
-        (, uint256 art) = vat.urns(ilk, address(this));
-        (, uint256 rate,, uint256 line_,) = vat.ilks(ilk);
-        uint256 debt_ = art * rate;
+        (uint256 Art, uint256 rate,, uint256 line_,) = vat.ilks(ilk);
+        uint256 debt_ = Art * rate;
         return line_ > debt_ ? (line_ - debt_) / RAY : 0;
     }
 
