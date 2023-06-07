@@ -268,7 +268,7 @@ contract AllocatorBufferTest is DssTest {
         assertEq(art, 50 * 10**18);
         assertEq(vat.rate(), 10**27);
         assertEq(buffer.debt(), 50 * 10**18);
-        assertEq(buffer.slot(), (20_000_000 - 50) * 10**18);
+        assertEq(buffer.slot(), buffer.line() - 50 * 10**18);
         assertEq(nst.balanceOf(address(buffer)), 50 * 10**18);
         vm.warp(block.timestamp + 1);
         buffer.draw(50 * 10**18);
@@ -277,7 +277,7 @@ contract AllocatorBufferTest is DssTest {
         assertEq(art, expectedArt);
         assertEq(vat.rate(), 1001 * 10**27 / 1000);
         assertEq(buffer.debt(), _divup(expectedArt * 1001, 1000));
-        assertEq(buffer.slot(), 20_000_000 * 10**18 - _divup(expectedArt * 1001, 1000));
+        assertEq(buffer.slot(), buffer.line() - _divup(expectedArt * 1001, 1000));
         assertEq(nst.balanceOf(address(buffer)), 100 * 10**18);
         assertGt(art * vat.rate(), 100.05 * 10**45);
         assertLt(art * vat.rate(), 100.06 * 10**45);
@@ -308,5 +308,15 @@ contract AllocatorBufferTest is DssTest {
         buffer.take(address(0xBEEF), 20 * 10**18);
         assertEq(nst.balanceOf(address(buffer)), 30 * 10**18);
         assertEq(nst.balanceOf(address(0xBEEF)), 20 * 10**18);
+    }
+
+    function testDebtOverLine() public {
+        buffer.init();
+        buffer.file("jug", address(jug));
+        buffer.draw(buffer.line());
+        vm.warp(block.timestamp + 1);
+        jug.drip(ilk);
+        assertGt(buffer.debt(), buffer.line());
+        assertEq(buffer.slot(), 0);
     }
 }

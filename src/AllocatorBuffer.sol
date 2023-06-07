@@ -117,7 +117,7 @@ contract AllocatorBuffer {
 
     function debt() external view returns (uint256) {
         (, uint256 art) = vat.urns(ilk, address(this));
-        (, uint rate,,,) = vat.ilks(ilk);
+        (, uint256 rate,,,) = vat.ilks(ilk);
         return _divup(art * rate, RAY);
     }
 
@@ -128,8 +128,9 @@ contract AllocatorBuffer {
 
     function slot() external view returns (uint256) {
         (, uint256 art) = vat.urns(ilk, address(this));
-        (, uint rate,,uint256 line_,) = vat.ilks(ilk);
-        return (line_ - art * rate) / RAY;
+        (, uint256 rate,, uint256 line_,) = vat.ilks(ilk);
+        uint256 debt_ = art * rate;
+        return line_ > debt_ ? (line_ - debt_) / RAY : 0;
     }
 
     // --- administration ---
