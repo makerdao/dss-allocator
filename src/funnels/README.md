@@ -33,6 +33,6 @@ The escrow is the contract in which GEM (e.g. USDC or USDT) sits while not being
 
 ## Router
 
-The `Router` is a contract that allows priviledged facilitators to move GEM (e.g. USDC or USDT) between two different investment schemes (referred to as `box`es) without requiring the execution of a spell by Maker governance. They do so by interpreting the SubDAO Scope Artifacts and operating the `Router` accordingly. These facilitators are whitelisted by Maker Governance.
+The `Router` is a contract that allows priviledged facilitators to move GEM (e.g. USDC or USDT) between multiple authorised locations (referred to as `box`es in the `Router`. Box examples include the SubDAO proxy, the Escrow described above, or a RWA conduit) without requiring the execution of a spell by Maker governance. They do so by interpreting the SubDAO Scope Artifacts and operating the `Router` accordingly. These facilitators are whitelisted by Maker Governance.
 
 The `Router` contract also includes logic to enable facilitators to handle the withdrawal of funds from RWA conduits, which may require the ability to (1) initiate a withdrawal request and (2) finalize that same withdrawal after a delay.
