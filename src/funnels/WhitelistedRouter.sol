@@ -42,7 +42,7 @@ contract WhitelistedRouter {
     event Dissed  (address indexed usr);
     event File    (bytes32 indexed what, address data);
     event File    (bytes32 indexed what, address data, uint256 val);
-    event Transfer(address indexed router, address indexed from, address indexed to, uint256 amt, bool ack);
+    event Transfer(address indexed bud, address indexed from, address indexed to, uint256 amt, bool ack);
 
     constructor(address _gem) {
         gem = _gem;
@@ -88,7 +88,7 @@ contract WhitelistedRouter {
         require(boxes[to] == 1, "WhitelistedRouter/invalid-to");
         require(GemLike(gem).transferFrom(from, to, amt), "WhitelistedRouter/transfer-failed");
         (ack,) = address(to).call(abi.encodeWithSelector(BoxLike.moved.selector, owner, amt)); // this call is allowed to fail - `to` may not implement BoxLike.moved()
-        emit Transfer(address(this), from, to, amt, ack);
+        emit Transfer(msg.sender, from, to, amt, ack);
     }
 
     // RWA Conduit Withdrawal Management
