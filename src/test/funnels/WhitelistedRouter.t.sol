@@ -13,7 +13,6 @@ contract ConduitMock {
     mapping(address => uint256) public wards;
     mapping(uint256 => Withdrawal) withdrawals;
     mapping(address => uint256) deposits;
-    uint256 lastBalance;
     uint256 nextWithdrawId;
     struct Withdrawal {
         address owner;
