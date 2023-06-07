@@ -7,6 +7,7 @@ import "../AllocatorBuffer.sol";
 
 contract VatMock {
     uint256 public rate = 10**27;
+    uint256 public line = 20_000_000 * 10**45;
 
     struct Urn {
         uint256 ink;
@@ -17,10 +18,11 @@ contract VatMock {
     mapping (bytes32 => mapping (address => uint)) public gem;
     mapping (address => uint256)                   public dai;
 
-    function hope(address) external {}
+    function ilks(bytes32) external view returns (uint256, uint256, uint256, uint256, uint256) {
+        return (0, rate, 0, line, 0);
+    }
 
-    event log(string, uint256);
-    event log(string, int256);
+    function hope(address) external {}
 
     function frob(bytes32 i, address u, address v, address w, int256 dink, int256 dart) external {
         Urn memory urn = urns[i][u];
@@ -258,12 +260,15 @@ contract AllocatorBufferTest is DssTest {
     function testDrawWipe() public {
         buffer.init();
         buffer.file("jug", address(jug));
+        assertEq(buffer.line(), 20_000_000 * 10**18);
         (, uint256 art) = vat.urns(ilk, address(buffer));
         assertEq(art, 0);
         buffer.draw(50 * 10**18);
         (, art) = vat.urns(ilk, address(buffer));
         assertEq(art, 50 * 10**18);
         assertEq(vat.rate(), 10**27);
+        assertEq(buffer.debt(), 50 * 10**18);
+        assertEq(buffer.slot(), (20_000_000 - 50) * 10**18);
         assertEq(nst.balanceOf(address(buffer)), 50 * 10**18);
         vm.warp(block.timestamp + 1);
         buffer.draw(50 * 10**18);
@@ -271,6 +276,8 @@ contract AllocatorBufferTest is DssTest {
         uint256 expectedArt = 50 * 10**18 + _divup(50 * 10**18 * 1000, div);
         assertEq(art, expectedArt);
         assertEq(vat.rate(), 1001 * 10**27 / 1000);
+        assertEq(buffer.debt(), _divup(expectedArt * 1001, 1000));
+        assertEq(buffer.slot(), 20_000_000 * 10**18 - _divup(expectedArt * 1001, 1000));
         assertEq(nst.balanceOf(address(buffer)), 100 * 10**18);
         assertGt(art * vat.rate(), 100.05 * 10**45);
         assertLt(art * vat.rate(), 100.06 * 10**45);

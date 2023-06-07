@@ -18,7 +18,9 @@
 pragma solidity ^0.8.16;
 
 interface VatLike {
+    function ilks(bytes32) external view returns (uint256, uint256, uint256, uint256, uint256);
     function live() external view returns (uint256);
+    function urns(bytes32, address) external view returns (uint256, uint256);
     function frob(bytes32, address, address, address, int256, int256) external;
     function hope(address) external;
 }
@@ -109,6 +111,25 @@ contract AllocatorBuffer {
         unchecked {
             z = x != 0 ? ((x - 1) / y) + 1 : 0;
         }
+    }
+
+    // --- getters ---
+
+    function debt() external view returns (uint256) {
+        (, uint256 art) = vat.urns(ilk, address(this));
+        (, uint rate,,,) = vat.ilks(ilk);
+        return _divup(art * rate, RAY);
+    }
+
+    function line() external view returns (uint256) {
+        (,,, uint256 line_,) = vat.ilks(ilk);
+        return line_ / RAY;
+    }
+
+    function slot() external view returns (uint256) {
+        (, uint256 art) = vat.urns(ilk, address(this));
+        (, uint rate,,uint256 line_,) = vat.ilks(ilk);
+        return (line_ - art * rate) / RAY;
     }
 
     // --- administration ---
