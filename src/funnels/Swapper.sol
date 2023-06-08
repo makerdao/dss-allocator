@@ -24,7 +24,6 @@ interface BufferLike {
 interface GemLike {
     function decimals() external view returns (uint8);
     function approve(address, uint256) external returns (bool);
-    function transfer(address, uint256) external returns (bool);
     function transferFrom(address, address, uint256) external returns (bool);
 }
 
@@ -169,14 +168,12 @@ contract Swapper {
         bytes memory path = abi.encodePacked(nst, uint24(fee), gem);
         SwapRouterLike.ExactInputParams memory params = SwapRouterLike.ExactInputParams({
             path:             path,
-            recipient:        address(this),
+            recipient:        escrow,
             deadline:         block.timestamp,
             amountIn:         amt,
             amountOutMinimum: min
         });
         out = SwapRouterLike(uniV3Router).exactInput(params);
-
-        GemLike(gem).transfer(escrow, out);
 
         emit Swap(msg.sender, nst, gem, amt, out);
     }
@@ -197,14 +194,12 @@ contract Swapper {
         bytes memory path = abi.encodePacked(gem, uint24(fee), nst);
         SwapRouterLike.ExactInputParams memory params = SwapRouterLike.ExactInputParams({
             path:             path,
-            recipient:        address(this),
+            recipient:        buffer,
             deadline:         block.timestamp,
             amountIn:         amt,
             amountOutMinimum: min
         });
         out = SwapRouterLike(uniV3Router).exactInput(params);
-
-        GemLike(nst).transfer(buffer, out);
 
         emit Swap(msg.sender, gem, nst, amt, out);
     }

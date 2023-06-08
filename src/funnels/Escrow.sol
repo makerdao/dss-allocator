@@ -17,14 +17,14 @@
 
 pragma solidity ^0.8.16;
 
-interface ApproveLike {
-  function approve(address, uint256) external;
+interface TokenLike {
+    function transferFrom(address, address, uint256) external;
+    function approve(address, uint256) external;
 }
 
 // Escrow of GEM for SubDAOs
 
 contract Escrow {
-  // --- Auth ---
   mapping(address => uint256) public wards;
 
   function rely(address usr) external auth {
@@ -44,17 +44,21 @@ contract Escrow {
 
   event Rely(address indexed usr);
   event Deny(address indexed usr);
-
-  event Approve(address indexed token, address indexed spender, uint256 value);
+  event Approve(address indexed gem, address indexed spender, uint256 amount);
+  event Deposit(address indexed gem, address indexed sender, uint256 amount);
 
   constructor() {
     wards[msg.sender] = 1;
     emit Rely(msg.sender);
   }
 
-  function approve(address token, address spender, uint256 value) external auth {
-    emit Approve(token, spender, value);
+  function approve(address gem, address spender, uint256 amount) external auth {
+    TokenLike(gem).approve(spender, amount);
+    emit Approve(gem, spender, amount);
+  }
 
-    ApproveLike(token).approve(spender, value);
+  function deposit(address gem, uint256 amount, address /* owner */) external {
+    TokenLike(gem).transferFrom(msg.sender, address(this), amount);
+    emit Deposit(gem, msg.sender, amount);
   }
 }

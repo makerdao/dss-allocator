@@ -5,13 +5,17 @@ import "../../funnels/Swapper.sol";
 import "../../funnels/Escrow.sol";
 import "dss-test/DssTest.sol";
 
+interface TransferLike {
+    function transfer(address, uint256) external returns (bool);
+}
+
 contract BufferMock {
     address immutable dai;
     constructor(address _dai) {
         dai = _dai;
     }
     function take(address to, uint256 wad) external {
-        GemLike(dai).transfer(to, wad);
+        TransferLike(dai).transfer(to, wad);
     }
 }
 

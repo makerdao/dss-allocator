@@ -18,15 +18,12 @@
 pragma solidity ^0.8.16;
 
 interface BoxLike {
-    function moved(address owner, uint256 amount) external;
-    function isCancelable(uint256 withdrawalId) external view returns (bool isCancelable);
-    function initiateWithdraw(address owner, uint256 amount) external returns (uint256 withdrawalId);
-    function cancelWithdraw(uint256 withdrawalId) external;
-    function withdraw(uint256 withdrawalId) external returns (uint256 resultingWithdrawalId);
+    function deposit(address gem, uint256 amount, address owner) external;
 }
 
 interface GemLike {
-    function transferFrom(address, address, uint256) external returns (bool);
+    function transferFrom(address, address, uint256) external;
+    function approve(address, uint256) external;
 }
 
 contract WhitelistedRouter {
@@ -42,11 +39,9 @@ contract WhitelistedRouter {
     event Dissed  (address indexed usr);
     event File    (bytes32 indexed what, address data);
     event File    (bytes32 indexed what, address data, uint256 val);
-    event Transfer(address indexed bud, address indexed from, address indexed to, uint256 amt, bool ack);
+    event Transfer(address indexed gem, address indexed from, address indexed to, uint256 amt, address bud);
 
-    constructor(address _gem) {
-        gem = _gem;
-
+    constructor() {
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
     }
@@ -61,8 +56,6 @@ contract WhitelistedRouter {
         require(buds[msg.sender] == 1, "WhitelistedRouter/non-facilitator"); 
         _;
     }
-
-    address public immutable gem;
 
     function rely(address usr)   external auth { wards[usr]   = 1; emit Rely(usr); }
     function deny(address usr)   external auth { wards[usr]   = 0; emit Deny(usr); }
@@ -81,28 +74,12 @@ contract WhitelistedRouter {
         emit File(what, data, val);
     }
 
-    // Fund Transfer
-
-    function transferFrom(address from, address to, uint256 amt) external toll returns (bool ack) {
+    function transferFrom(address gem, address from, address to, uint256 amt) external toll {
         require(boxes[from] == 1, "WhitelistedRouter/invalid-from");
         require(boxes[to] == 1, "WhitelistedRouter/invalid-to");
-        require(GemLike(gem).transferFrom(from, to, amt), "WhitelistedRouter/transfer-failed");
-        (ack,) = address(to).call(abi.encodeWithSelector(BoxLike.moved.selector, owner, amt)); // this call is allowed to fail - `to` may not implement BoxLike.moved()
-        emit Transfer(msg.sender, from, to, amt, ack);
-    }
-
-    // RWA Conduit Withdrawal Management
-
-    function initiateWithdraw(address box, uint256 amt) external toll returns (uint256 withdrawalId) {
-        withdrawalId = BoxLike(box).initiateWithdraw(owner, amt);
-    }
-
-    function cancelWithdraw(address box, uint256 withdrawalId) external toll {
-        require(BoxLike(box).isCancelable(withdrawalId), "WhitelistedRouter/not-cancelable");
-        BoxLike(box).cancelWithdraw(withdrawalId);
-    }
-
-    function withdraw(address box, uint256 withdrawalId) external toll returns (uint256 resultingWithdrawalId) {
-        resultingWithdrawalId = BoxLike(box).withdraw(withdrawalId);
+        GemLike(gem).transferFrom(from, address(this), amt);
+        GemLike(gem).approve(to, amt);
+        BoxLike(to).deposit(gem, amt, owner);
+        emit Transfer(gem, from, to, amt, msg.sender);
     }
 }
