@@ -74,7 +74,7 @@ contract WhitelistedRouter {
         emit File(what, data, val);
     }
 
-    function transferFrom(address gem, address from, address to, uint256 amt) external toll {
+    function move(address gem, address from, address to, uint256 amt) external toll {
         require(boxes[from] == 1, "WhitelistedRouter/invalid-from");
         require(boxes[to] == 1, "WhitelistedRouter/invalid-to");
         GemLike(gem).transferFrom(from, address(this), amt);

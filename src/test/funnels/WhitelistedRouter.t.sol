@@ -33,28 +33,28 @@ contract WhitelistedRouterTest is DssTest {
         router.kiss(FACILITATOR);
     }
 
-    function _checkTransferFrom(address gem, uint256 amt) internal {
+    function _checkMove(address gem, uint256 amt) internal {
         deal(gem, box1, amt, true);
         assertEq(BalanceLike(gem).balanceOf(box1), amt);
         assertEq(BalanceLike(gem).balanceOf(box2), 0);
         vm.startPrank(FACILITATOR); 
         
-        router.transferFrom(gem, box1, box2, amt);
+        router.move(gem, box1, box2, amt);
 
         assertEq(BalanceLike(gem).balanceOf(box1), 0);
         assertEq(BalanceLike(gem).balanceOf(box2), amt);
 
-        router.transferFrom(gem, box2, box1, amt);
+        router.move(gem, box2, box1, amt);
 
         assertEq(BalanceLike(gem).balanceOf(box1), amt);
         assertEq(BalanceLike(gem).balanceOf(box2), 0);
         vm.stopPrank();
     }
 
-    function testTransferFromUSDC() public {
-        _checkTransferFrom(USDC, 1000 ether);
+    function testMoveUSDC() public {
+        _checkMove(USDC, 1000 ether);
     }
-    function testTransferFromUSDT() public {
-        _checkTransferFrom(USDT, 1000 ether);
+    function testMoveUSDT() public {
+        _checkMove(USDT, 1000 ether);
     }
 }
