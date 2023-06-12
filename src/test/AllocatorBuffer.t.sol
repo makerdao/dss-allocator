@@ -252,7 +252,7 @@ contract AllocatorBufferTest is DssTest {
 
     function testRoles() public {
         MockRoles roles = new MockRoles();
-        buffer.file("roles", address(new MockRoles()));
+        buffer.file("roles", address(roles));
         vm.startPrank(address(0xBEEF));
         vm.expectRevert("AllocatorBuffer/not-authorized");
         buffer.file("jug", address(0));
