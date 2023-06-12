@@ -87,7 +87,8 @@ contract AllocatorBuffer {
 
     modifier auth() {
         address roles_ = roles;
-        require(wards[msg.sender] == 1 || roles_ != address(0) && RolesLike(roles_).canCall(msg.sender, address(this), msg.sig), "AllocatorBuffer/not-authorized");
+        require(roles_ != address(0) && RolesLike(roles_).canCall(msg.sender, address(this), msg.sig) ||
+                wards[msg.sender] == 1, "AllocatorBuffer/not-authorized");
         _;
     }
 
