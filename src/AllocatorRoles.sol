@@ -30,12 +30,22 @@ contract AllocatorRoles
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
+    event SetUserRole(address indexed who, uint8 indexed role, bool enabled);
+    event SetPublicCapability(address indexed target, bytes4 indexed sig, bool enabled);
+    event SetRoleCapability(uint8 indexed role, address indexed target, bytes4 indexed sig, bool enabled);
 
     // --- modifiers ---
 
     modifier auth() {
         require(wards[msg.sender] == 1, "AllocatorRoles/not-authorized");
         _;
+    }
+
+    // --- constructor ---
+
+    constructor() {
+        wards[msg.sender] = 1;
+        emit Rely(msg.sender);
     }
 
     // --- getters ---
@@ -62,17 +72,19 @@ contract AllocatorRoles
         emit Deny(usr);
     }
 
-    function setUserRole(address who, bytes32 role, bool enabled) public auth {
+    function setUserRole(address who, uint8 role, bool enabled) public auth {
         bytes32 mask = bytes32(uint256(uint256(2) ** uint256(role)));
         if (enabled) {
             userRoles[who] |= mask;
         } else {
             userRoles[who] &= _bitNot(mask);
         }
+        emit SetUserRole(who, role, enabled);
     }
 
     function setPublicCapability(address target, bytes4 sig, bool enabled) external auth {
         publicActions[target][sig] = enabled ? 1 : 0;
+        emit SetPublicCapability(target, sig, enabled);
     }
 
     function setRoleCapability(uint8 role, address target, bytes4 sig, bool enabled) external auth {
@@ -82,6 +94,7 @@ contract AllocatorRoles
         } else {
             actionsRoles[target][sig] &= _bitNot(mask);
         }
+        emit SetRoleCapability(role, target, sig, enabled);
     }
 
     // --- caller ---
