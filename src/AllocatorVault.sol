@@ -32,7 +32,7 @@ interface JugLike {
 interface TokenLike {
     function totalSupply() external view returns (uint256);
     function approve(address, uint256) external;
-    function transfer(address, uint256) external;
+    function transferFrom(address, address, uint256) external;
 }
 
 interface GemJoinLike {
@@ -63,6 +63,7 @@ contract AllocatorVault {
 
     // --- immutables ---
 
+    address     immutable public buffer;
     VatLike     immutable public vat;
     bytes32     immutable public ilk;
     GemJoinLike immutable public gemJoin;
@@ -87,7 +88,8 @@ contract AllocatorVault {
 
     // --- constructor ---
 
-    constructor(address vat_, address gemJoin_, address nstJoin_) {
+    constructor(address buffer_, address vat_, address gemJoin_, address nstJoin_) {
+        buffer = buffer_;
         vat = VatLike(vat_);
 
         gemJoin = GemJoinLike(gemJoin_);
@@ -175,15 +177,11 @@ contract AllocatorVault {
     }
 
     function draw(uint256 wad) external {
-        draw(address(this), wad);
-    }
-
-    function take(address to, uint256 wad) external auth {
-        nst.transfer(to, wad);
-        emit Take(msg.sender, to, wad);
+        draw(buffer, wad);
     }
 
     function wipe(uint256 wad) external auth {
+        nst.transferFrom(buffer, address(this), wad);
         nstJoin.join(address(this), wad);
         uint256 rate = jug.drip(ilk);
         uint256 dart = wad * RAY / rate;

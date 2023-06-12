@@ -3,7 +3,8 @@
 pragma solidity ^0.8.16;
 
 import "dss-test/DssTest.sol";
-import "../AllocatorVault.sol";
+import { AllocatorVault } from "../AllocatorVault.sol";
+import { AllocatorBuffer } from "../AllocatorBuffer.sol";
 
 contract VatMock {
     uint256 public Art;
@@ -193,6 +194,7 @@ contract AllocatorVaultTest is DssTest {
     GemJoinMock     public gemJoin;
     GemMock         public nst;
     NstJoinMock     public nstJoin;
+    AllocatorBuffer public buffer;
     AllocatorVault  public vault;
     bytes32         public ilk;
 
@@ -210,7 +212,9 @@ contract AllocatorVaultTest is DssTest {
         gemJoin = new GemJoinMock(vat, ilk, gem);
         nst     = new GemMock(0);
         nstJoin = new NstJoinMock(vat, nst);
-        vault   = new AllocatorVault(address(vat), address(gemJoin), address(nstJoin));
+        buffer  = new AllocatorBuffer();
+        vault   = new AllocatorVault(address(buffer), address(vat), address(gemJoin), address(nstJoin));
+        buffer.approve(address(nst), address(vault), type(uint256).max);
         gem.transfer(address(vault), 1_000_000 * 10**18);
 
         // Add some existing DAI assigned to nstJoin to avoid a particular error
@@ -222,12 +226,11 @@ contract AllocatorVaultTest is DssTest {
     }
 
     function testModifiers() public {
-        bytes4[] memory authedMethods = new bytes4[](5);
+        bytes4[] memory authedMethods = new bytes4[](4);
         authedMethods[0] = vault.init.selector;
         authedMethods[1] = bytes4(keccak256("draw(address,uint256)"));
         authedMethods[2] = bytes4(keccak256("draw(uint256)"));
-        authedMethods[3] = vault.take.selector;
-        authedMethods[4] = vault.wipe.selector;
+        authedMethods[3] = vault.wipe.selector;
 
         vm.startPrank(address(0xBEEF));
         checkModifier(address(vault), "AllocatorVault/not-authorized", authedMethods);
@@ -262,7 +265,7 @@ contract AllocatorVaultTest is DssTest {
         vault.init();
         vault.file("jug", address(jug));
         assertEq(vault.line(), 20_000_000 * 10**18);
-        (, uint256 art) = vat.urns(ilk, address(vault));
+        (, uint256 art) = vat.urns(ilk, address(buffer));
         assertEq(art, 0);
         vault.draw(50 * 10**18);
         (, art) = vat.urns(ilk, address(vault));
@@ -270,7 +273,7 @@ contract AllocatorVaultTest is DssTest {
         assertEq(vat.rate(), 10**27);
         assertEq(vault.debt(), 50 * 10**18);
         assertEq(vault.slot(), vault.line() - 50 * 10**18);
-        assertEq(nst.balanceOf(address(vault)), 50 * 10**18);
+        assertEq(nst.balanceOf(address(buffer)), 50 * 10**18);
         vm.warp(block.timestamp + 1);
         vault.draw(50 * 10**18);
         (, art) = vat.urns(ilk, address(vault));
@@ -279,17 +282,17 @@ contract AllocatorVaultTest is DssTest {
         assertEq(vat.rate(), 1001 * 10**27 / 1000);
         assertEq(vault.debt(), _divup(expectedArt * 1001, 1000));
         assertEq(vault.slot(), vault.line() - _divup(expectedArt * 1001, 1000));
-        assertEq(nst.balanceOf(address(vault)), 100 * 10**18);
+        assertEq(nst.balanceOf(address(buffer)), 100 * 10**18);
         assertGt(art * vat.rate(), 100.05 * 10**45);
         assertLt(art * vat.rate(), 100.06 * 10**45);
         vm.expectRevert("Gem/insufficient-balance");
         vault.wipe(100.06 ether);
-        deal(address(nst), address(vault), 100.06 * 10**18, true);
-        assertEq(nst.balanceOf(address(vault)), 100.06 * 10**18);
+        deal(address(nst), address(buffer), 100.06 * 10**18, true);
+        assertEq(nst.balanceOf(address(buffer)), 100.06 * 10**18);
         vm.expectRevert();
         vault.wipe(100.06 ether); // It will try to wipe more art than existing, then reverts
         vault.wipe(100.05 ether);
-        assertEq(nst.balanceOf(address(vault)), 0.01 * 10**18);
+        assertEq(nst.balanceOf(address(buffer)), 0.01 * 10**18);
         (, art) = vat.urns(ilk, address(vault));
         assertEq(art, 1); // Dust which is impossible to wipe
     }
@@ -299,16 +302,6 @@ contract AllocatorVaultTest is DssTest {
         vault.file("jug", address(jug));
         vault.draw(address(0xBEEF), 50 * 10**18);
         assertEq(nst.balanceOf(address(0xBEEF)), 50 * 10**18);
-    }
-
-    function testDrawAndTake() public {
-        vault.init();
-        vault.file("jug", address(jug));
-        vault.draw(50 * 10**18);
-        assertEq(nst.balanceOf(address(vault)), 50 * 10**18);
-        vault.take(address(0xBEEF), 20 * 10**18);
-        assertEq(nst.balanceOf(address(vault)), 30 * 10**18);
-        assertEq(nst.balanceOf(address(0xBEEF)), 20 * 10**18);
     }
 
     function testDebtOverLine() public {
