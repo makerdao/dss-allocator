@@ -235,7 +235,7 @@ contract AllocatorBufferTest is DssTest {
     }
 
     function testFile() public {
-        checkFileAddress(address(buffer), "AllocatorBuffer", ["jug"]);
+        checkFileAddress(address(buffer), "AllocatorBuffer", ["roles", "jug"]);
     }
 
     function testInit() public {

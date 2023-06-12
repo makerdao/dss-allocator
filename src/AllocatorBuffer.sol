@@ -17,6 +17,10 @@
 
 pragma solidity ^0.8.16;
 
+interface RolesLike {
+    function canCall(address, address, bytes4) external view returns (bool);
+}
+
 interface VatLike {
     function ilks(bytes32) external view returns (uint256, uint256, uint256, uint256, uint256);
     function live() external view returns (uint256);
@@ -54,6 +58,7 @@ contract AllocatorBuffer {
     // --- storage variables ---
 
     mapping(address => uint256) public wards;
+    address public roles;
     JugLike public jug;
 
     // --- constants ---
@@ -81,7 +86,8 @@ contract AllocatorBuffer {
     // --- modifiers ---
 
     modifier auth() {
-        require(wards[msg.sender] == 1, "AllocatorBuffer/not-authorized");
+        address roles_ = roles;
+        require(wards[msg.sender] == 1 || roles_ != address(0) && RolesLike(roles_).canCall(msg.sender, address(this), msg.sig), "AllocatorBuffer/not-authorized");
         _;
     }
 
@@ -157,7 +163,9 @@ contract AllocatorBuffer {
     }
 
     function file(bytes32 what, address data) external auth {
-        if (what == "jug") {
+        if (what == "roles") {
+            roles = data;
+        } else if (what == "jug") {
             jug = JugLike(data);
         } else revert("AllocatorBuffer/file-unrecognized-param");
         emit File(what, data);
