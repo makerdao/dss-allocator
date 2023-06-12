@@ -184,6 +184,18 @@ contract NstJoinMock {
     }
 }
 
+contract MockRoles {
+    bool ok;
+
+    function setOk(bool ok_) external {
+        ok = ok_;
+    }
+
+    function canCall(address, address, bytes4) external view returns (bool) {
+        return ok;
+    }
+}
+
 contract AllocatorBufferTest is DssTest {
     using stdStorage for StdStorage;
 
@@ -236,6 +248,16 @@ contract AllocatorBufferTest is DssTest {
 
     function testFile() public {
         checkFileAddress(address(buffer), "AllocatorBuffer", ["roles", "jug"]);
+    }
+
+    function testRoles() public {
+        MockRoles roles = new MockRoles();
+        buffer.file("roles", address(new MockRoles()));
+        vm.startPrank(address(0xBEEF));
+        vm.expectRevert("AllocatorBuffer/not-authorized");
+        buffer.file("jug", address(0));
+        roles.setOk(true);
+        buffer.file("jug", address(0));
     }
 
     function testInit() public {

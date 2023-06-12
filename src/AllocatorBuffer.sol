@@ -87,8 +87,19 @@ contract AllocatorBuffer {
 
     modifier auth() {
         address roles_ = roles;
-        require(roles_ != address(0) && RolesLike(roles_).canCall(msg.sender, address(this), msg.sig) ||
-                wards[msg.sender] == 1, "AllocatorBuffer/not-authorized");
+        bool access;
+        if (roles_ != address(0)) {
+            (bool ok, bytes memory ret) = roles_.call(
+                                            abi.encodeWithSignature(
+                                                "canCall(address,address,bytes4)",
+                                                msg.sender,
+                                                address(this),
+                                                msg.sig
+                                            )
+            );
+            access = ok && ret.length == 32 && abi.decode(ret, (bool));
+        }
+        require(access || wards[msg.sender] == 1, "AllocatorBuffer/not-authorized");
         _;
     }
 

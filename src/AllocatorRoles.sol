@@ -63,11 +63,11 @@ contract AllocatorRoles
     }
 
     function setUserRole(address who, bytes32 role, bool enabled) public auth {
-        bytes32 shifted = bytes32(uint256(uint256(2) ** uint256(role)));
+        bytes32 mask = bytes32(uint256(uint256(2) ** uint256(role)));
         if (enabled) {
-            userRoles[who] |= shifted;
+            userRoles[who] |= mask;
         } else {
-            userRoles[who] &= _bitNot(shifted);
+            userRoles[who] &= _bitNot(mask);
         }
     }
 
@@ -76,17 +76,17 @@ contract AllocatorRoles
     }
 
     function setRoleCapability(uint8 role, address target, bytes4 sig, bool enabled) external auth {
-        bytes32 shifted = bytes32(uint256(uint256(2) ** uint256(role)));
+        bytes32 mask = bytes32(uint256(uint256(2) ** uint256(role)));
         if (enabled) {
-            actionsRoles[target][sig] |= shifted;
+            actionsRoles[target][sig] |= mask;
         } else {
-            actionsRoles[target][sig] &= _bitNot(shifted);
+            actionsRoles[target][sig] &= _bitNot(mask);
         }
     }
 
     // --- caller ---
 
     function canCall(address caller, address target, bytes4 sig) external view returns (bool ok) {
-        ok = publicActions[target][sig] == 1 || userRoles[caller] & actionsRoles[target][sig] != bytes32(0);
+        ok = userRoles[caller] & actionsRoles[target][sig] != bytes32(0) || publicActions[target][sig] == 1;
     }
 }
