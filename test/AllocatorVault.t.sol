@@ -3,8 +3,8 @@
 pragma solidity ^0.8.16;
 
 import "dss-test/DssTest.sol";
-import { AllocatorVault } from "../AllocatorVault.sol";
-import { AllocatorBuffer } from "../AllocatorBuffer.sol";
+import { AllocatorVault } from "../src/AllocatorVault.sol";
+import { AllocatorBuffer } from "../src/AllocatorBuffer.sol";
 import { RolesMock } from "./mocks/RolesMock.sol";
 import { VatMock } from "./mocks/VatMock.sol";
 import { JugMock } from "./mocks/JugMock.sol";
