@@ -1,5 +1,4 @@
-// SPDX-FileCopyrightText: © 2020 Lev Livnev <lev@liv.nev.org.uk>
-// SPDX-FileCopyrightText: © 2021 Dai Foundation <www.daifoundation.org>
+// SPDX-FileCopyrightText: © 2023 Dai Foundation <www.daifoundation.org>
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
 // This program is free software: you can redistribute it and/or modify
@@ -17,66 +16,22 @@
 
 pragma solidity ^0.8.16;
 
-interface VatLike {
-    function ilks(bytes32) external view returns (uint256, uint256, uint256, uint256, uint256);
-    function live() external view returns (uint256);
-    function urns(bytes32, address) external view returns (uint256, uint256);
-    function frob(bytes32, address, address, address, int256, int256) external;
-    function hope(address) external;
-}
-
-interface JugLike {
-    function drip(bytes32) external returns (uint256);
-}
-
 interface TokenLike {
-    function totalSupply() external view returns (uint256);
     function approve(address, uint256) external;
-    function transfer(address, uint256) external;
-}
-
-interface GemJoinLike {
-    function gem() external view returns (TokenLike);
-    function ilk() external view returns (bytes32);
-    function vat() external view returns (address);
-    function join(address, uint256) external;
-}
-
-interface NstJoinLike {
-    function nst() external view returns (TokenLike);
-    function vat() external view returns (address);
-    function exit(address, uint256) external;
-    function join(address, uint256) external;
+    function transferFrom(address, address, uint256) external;
 }
 
 contract AllocatorBuffer {
-
     // --- storage variables ---
 
     mapping(address => uint256) public wards;
-    JugLike public jug;
-
-    // --- constants ---
-
-    uint256 constant WAD = 10**18;
-    uint256 constant RAY = 10**27;
-
-    // --- immutables ---
-
-    VatLike     immutable public vat;
-    bytes32     immutable public ilk;
-    GemJoinLike immutable public gemJoin;
-    NstJoinLike immutable public nstJoin;
-    TokenLike   immutable public nst;
 
     // --- events ---
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
-    event File(bytes32 indexed what, address data);
-    event Draw(address indexed funnel, address indexed to, uint256 wad);
-    event Take(address indexed funnel, address indexed to, uint256 wad);
-    event Wipe(address indexed funnel, uint256 wad);
+    event Approve(address indexed token, address indexed spender, uint256 amount);
+    event Deposit(address indexed token, address indexed sender, uint256 amount);
 
     // --- modifiers ---
 
@@ -87,64 +42,12 @@ contract AllocatorBuffer {
 
     // --- constructor ---
 
-    constructor(address vat_, address gemJoin_, address nstJoin_) {
-        vat = VatLike(vat_);
-
-        gemJoin = GemJoinLike(gemJoin_);
-        nstJoin = NstJoinLike(nstJoin_);
-
-        require(vat_ == gemJoin.vat() && vat_ == nstJoin.vat(), "AllocatorBuffer/vat-not-match");
-
-        ilk = GemJoinLike(gemJoin_).ilk();
-        nst = NstJoinLike(nstJoin_).nst();
-
-        VatLike(vat_).hope(nstJoin_);
-        nst.approve(nstJoin_, type(uint256).max);
-
+    constructor() {
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
     }
 
-    // --- math ---
-
-    function _divup(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        unchecked {
-            z = x != 0 ? ((x - 1) / y) + 1 : 0;
-        }
-    }
-
-    // --- getters ---
-    // In theory, `ilk.Art` should be equal to `urn.art` for this type of collateral, as there should only be one position per `ilk`.
-    // However to stick with the correct usage, `ilk.Art` is used for calculating `slot()` and `urn.art` for the `debt()` of this position.
-
-    function debt() external view returns (uint256) {
-        (, uint256 art) = vat.urns(ilk, address(this));
-        (, uint256 rate,,,) = vat.ilks(ilk);
-        return _divup(art * rate, RAY);
-    }
-
-    function line() external view returns (uint256) {
-        (,,, uint256 line_,) = vat.ilks(ilk);
-        return line_ / RAY;
-    }
-
-    function slot() external view returns (uint256) {
-        (uint256 Art, uint256 rate,, uint256 line_,) = vat.ilks(ilk);
-        uint256 debt_ = Art * rate;
-        return line_ > debt_ ? (line_ - debt_) / RAY : 0;
-    }
-
     // --- administration ---
-
-    function init() external auth {
-        TokenLike gem = gemJoin.gem();
-        uint256 supply = gem.totalSupply();
-        require(supply == 10**6 * WAD, "AllocatorBuffer/supply-not-one-million-wad");
-
-        gem.approve(address(gemJoin), supply);
-        gemJoin.join(address(this), supply);
-        vat.frob(ilk, address(this), address(this), address(0), int256(supply), 0);
-    }
 
     function rely(address usr) external auth {
         wards[usr] = 1;
@@ -156,41 +59,19 @@ contract AllocatorBuffer {
         emit Deny(usr);
     }
 
-    function file(bytes32 what, address data) external auth {
-        if (what == "jug") {
-            jug = JugLike(data);
-        } else revert("AllocatorBuffer/file-unrecognized-param");
-        emit File(what, data);
+    // --- functions ---
+
+    function approve(
+        address token,
+        address spender,
+        uint256 amount
+    ) external auth {
+        TokenLike(token).approve(spender, amount);
+        emit Approve(token, spender, amount);
     }
 
-    // --- funnels execution ---
-
-    function draw(address to, uint256 wad) public auth {
-        uint256 rate = jug.drip(ilk);
-        uint256 dart = _divup(wad * RAY, rate);
-        require(dart <= uint256(type(int256).max), "AllocatorBuffer/overflow");
-        vat.frob(ilk, address(this), address(0), address(this), 0, int256(dart));
-        nstJoin.exit(to, wad);
-        emit Draw(msg.sender, to, wad);
+    function deposit(address token, uint256 amount, address /* owner */) external {
+        TokenLike(token).transferFrom(msg.sender, address(this), amount);
+        emit Deposit(token, msg.sender, amount);
     }
-
-    function draw(uint256 wad) external {
-        draw(address(this), wad);
-    }
-
-    function take(address to, uint256 wad) external auth {
-        nst.transfer(to, wad);
-        emit Take(msg.sender, to, wad);
-    }
-
-    function wipe(uint256 wad) external auth {
-        nstJoin.join(address(this), wad);
-        uint256 rate = jug.drip(ilk);
-        uint256 dart = wad * RAY / rate;
-        require(dart <= uint256(type(int256).max), "AllocatorBuffer/overflow");
-        vat.frob(ilk, address(this), address(this), address(this), 0, -int256(dart));
-        emit Wipe(msg.sender, wad);
-    }
-
-    // TODO: evaluate if quit function is necessary and how it should be
 }
