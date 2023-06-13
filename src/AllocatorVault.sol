@@ -116,7 +116,7 @@ contract AllocatorVault {
     }
 
     // --- getters ---
-    // In theory, `ilk.Art` should be equal than `urn.art` for this type of collateral, as there should only be one position per `ilk`.
+    // In theory, `ilk.Art` should be equal to `urn.art` for this type of collateral, as there should only be one position per `ilk`.
     // However to stick with the correct usage, `ilk.Art` is used for calculating `slot()` and `urn.art` for the `debt()` of this position.
 
     function debt() external view returns (uint256) {
