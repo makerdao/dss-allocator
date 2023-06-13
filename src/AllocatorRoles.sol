@@ -31,8 +31,8 @@ contract AllocatorRoles
     event Rely(address indexed usr);
     event Deny(address indexed usr);
     event SetUserRole(address indexed who, uint8 indexed role, bool enabled);
-    event SetPublicCapability(address indexed target, bytes4 indexed sig, bool enabled);
-    event SetRoleCapability(uint8 indexed role, address indexed target, bytes4 indexed sig, bool enabled);
+    event SetPublicAction(address indexed target, bytes4 indexed sig, bool enabled);
+    event SetRoleAction(uint8 indexed role, address indexed target, bytes4 indexed sig, bool enabled);
 
     // --- modifiers ---
 
@@ -82,19 +82,19 @@ contract AllocatorRoles
         emit SetUserRole(who, role, enabled);
     }
 
-    function setPublicCapability(address target, bytes4 sig, bool enabled) external auth {
+    function setPublicAction(address target, bytes4 sig, bool enabled) external auth {
         publicActions[target][sig] = enabled ? 1 : 0;
-        emit SetPublicCapability(target, sig, enabled);
+        emit SetPublicAction(target, sig, enabled);
     }
 
-    function setRoleCapability(uint8 role, address target, bytes4 sig, bool enabled) external auth {
+    function setRoleAction(uint8 role, address target, bytes4 sig, bool enabled) external auth {
         bytes32 mask = bytes32(uint256(uint256(2) ** uint256(role)));
         if (enabled) {
             actionsRoles[target][sig] |= mask;
         } else {
             actionsRoles[target][sig] &= _bitNot(mask);
         }
-        emit SetRoleCapability(role, target, sig, enabled);
+        emit SetRoleAction(role, target, sig, enabled);
     }
 
     // --- caller ---
