@@ -47,8 +47,7 @@ contract Swapper {
     mapping (address => uint256) public buds;     // whitelisted facilitators
     mapping (address => uint256) public keepers;  // whitelisted keepers
 
-    address public buffer;         // Allocation buffer for this Swapper
-    address public escrow;         // Contract from which the GEM to sell is pulled before a GEM-to-NST swap or to which the bought GEM is pushed after a NST-to-GEM swap
+    address public buffer;         // Contract from which the GEM to sell is pulled and to which the bought GEM is pushed
     uint256 public hop;            // [seconds]   Swap cooldown (set by governance)
     uint256 public nstToGemCount;  // [count]     Remaining number of times that a nst-to-gem swap can be performed (set by facilitators)
     uint256 public gemToNstCount;  // [count]     Remaining number of times that a gem-to-nst swap can be performed (set by facilitators)
@@ -132,13 +131,12 @@ contract Swapper {
     }
 
     function file(bytes32 what, address data) external auth {
-        if      (what == "escrow") escrow = data;
-        else if (what == "buffer") buffer = data;
+        if (what == "buffer") buffer = data;
         else revert("Swapper/file-unrecognized-param");
         emit File(what, data);
     }
 
-    function setLots(uint256 _nstLot, uint256 _gemLot)  external toll {
+    function setLots(uint256 _nstLot, uint256 _gemLot) external toll {
         require(_nstLot <= maxNstLot, "Swapper/exceeds-max-nst-lot");
         require(_gemLot <= maxGemLot, "Swapper/exceeds-max-gem-lot");
         nstLot = _nstLot;
@@ -146,7 +144,7 @@ contract Swapper {
         emit Lots(msg.sender, _nstLot, _gemLot);
     }
 
-    function setCounts(uint256 _nstToGemCount, uint256 _gemToNstCount)  external toll {
+    function setCounts(uint256 _nstToGemCount, uint256 _gemToNstCount) external toll {
         nstToGemCount = _nstToGemCount;
         gemToNstCount = _gemToNstCount;
         emit Counts(msg.sender, _nstToGemCount, _gemToNstCount);
@@ -163,12 +161,12 @@ contract Swapper {
         require(cnt > 0, "Swapper/exceeds-count");
         nstToGemCount = cnt - 1;
 
-        BufferLike(buffer).take(address(this), amt);
+        GemLike(nst).transferFrom(buffer, address(this), amt);
 
         bytes memory path = abi.encodePacked(nst, uint24(fee), gem);
         SwapRouterLike.ExactInputParams memory params = SwapRouterLike.ExactInputParams({
             path:             path,
-            recipient:        escrow,
+            recipient:        buffer,
             deadline:         block.timestamp,
             amountIn:         amt,
             amountOutMinimum: min
@@ -189,7 +187,7 @@ contract Swapper {
         require(cnt > 0, "Swapper/exceeds-count");
         gemToNstCount = cnt - 1;
 
-        GemLike(gem).transferFrom(escrow, address(this), amt);
+        GemLike(gem).transferFrom(buffer, address(this), amt);
 
         bytes memory path = abi.encodePacked(gem, uint24(fee), nst);
         SwapRouterLike.ExactInputParams memory params = SwapRouterLike.ExactInputParams({
