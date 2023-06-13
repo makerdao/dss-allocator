@@ -47,20 +47,20 @@ contract AllocatorRolesTest is DssTest {
 		assertTrue(!roles.hasUserRole(address(this), user_role));
 		assertEq32(bytes32(hex"0000000000000000000000000000000000000000000000000000000000000001"), roles.userRoles(address(this)));
 
-		assertTrue(!roles.canCall(address(this), address(authed), bytes4(keccak256("cap1()"))));
+		assertTrue(!roles.canCall(address(this), address(authed), bytes4(keccak256("exec()"))));
 		vm.expectRevert("AuthedMock/not-authorized");
-		authed.cap1();
+		authed.exec();
 
-		roles.setRoleAction(admin_role, address(authed), bytes4(keccak256("cap1()")), true);
+		roles.setRoleAction(admin_role, address(authed), bytes4(keccak256("exec()")), true);
 
-		assertTrue(roles.canCall(address(this), address(authed), bytes4(keccak256("cap1()"))));
-		authed.cap1();
-		assertTrue(authed.flag1());
+		assertTrue(roles.canCall(address(this), address(authed), bytes4(keccak256("exec()"))));
+		authed.exec();
+		assertTrue(authed.flag());
 
-		roles.setRoleAction(admin_role, address(authed), bytes4(keccak256("cap1()")), false);
-		assertTrue(!roles.canCall(address(this), address(authed), bytes4(keccak256("cap1()"))));
+		roles.setRoleAction(admin_role, address(authed), bytes4(keccak256("exec()")), false);
+		assertTrue(!roles.canCall(address(this), address(authed), bytes4(keccak256("exec()"))));
 		vm.expectRevert("AuthedMock/not-authorized");
-		authed.cap1();
+		authed.exec();
 
 		roles.setUserRole(address(this), mod_role, true);
 
@@ -84,16 +84,21 @@ contract AllocatorRolesTest is DssTest {
 		assertEq32(bytes32(hex"0000000000000000000000000000000000000000000000000000000000000005"), roles.userRoles(address(this)));
 	}
 
-	function testPublicCapabilities() public {
-		assertEq(roles.publicActions(address(authed), bytes4(keccak256("cap1()"))), 0);
-		assertTrue(!roles.canCall(address(this), address(authed), bytes4(keccak256("cap1()"))));
+	function testPublicActions() public {
+		assertEq(roles.publicActions(address(authed), bytes4(keccak256("exec()"))), 0);
+		assertTrue(!roles.canCall(address(this), address(authed), bytes4(keccak256("exec()"))));
+		vm.expectRevert("AuthedMock/not-authorized");
+		authed.exec();
 
-		roles.setPublicAction(address(authed), bytes4(keccak256("cap1()")), true);
-		assertEq(roles.publicActions(address(authed), bytes4(keccak256("cap1()"))), 1);
-		assertTrue(roles.canCall(address(this), address(authed), bytes4(keccak256("cap1()"))));
+		roles.setPublicAction(address(authed), bytes4(keccak256("exec()")), true);
+		assertEq(roles.publicActions(address(authed), bytes4(keccak256("exec()"))), 1);
+		assertTrue(roles.canCall(address(this), address(authed), bytes4(keccak256("exec()"))));
+		authed.exec();
 
-		roles.setPublicAction(address(authed), bytes4(keccak256("cap1()")), false);
-		assertEq(roles.publicActions(address(authed), bytes4(keccak256("cap1()"))), 0);
-		assertTrue(!roles.canCall(address(this), address(authed), bytes4(keccak256("cap1()"))));
+		roles.setPublicAction(address(authed), bytes4(keccak256("exec()")), false);
+		assertEq(roles.publicActions(address(authed), bytes4(keccak256("exec()"))), 0);
+		assertTrue(!roles.canCall(address(this), address(authed), bytes4(keccak256("exec()"))));
+		vm.expectRevert("AuthedMock/not-authorized");
+		authed.exec();
 	}
 }

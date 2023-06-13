@@ -4,8 +4,7 @@ pragma solidity ^0.8.16;
 
 contract AuthedMock {
     address public roles;
-    bool public flag1;
-    bool public flag2;
+    bool public flag;
 
     constructor(address roles_) {
         roles = roles_;
@@ -29,11 +28,7 @@ contract AuthedMock {
         _;
     }
 
-    function cap1() public auth {
-		flag1 = true;
-	}
-
-	function cap2() public auth {
-		flag2 = true;
-	}
+    function exec() public auth {
+        flag = true;
+    }
 }
