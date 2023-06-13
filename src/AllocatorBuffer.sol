@@ -18,6 +18,7 @@ pragma solidity ^0.8.16;
 
 interface TokenLike {
     function approve(address, uint256) external;
+    function transferFrom(address, address, uint256) external;
 }
 
 contract AllocatorBuffer {
@@ -29,7 +30,8 @@ contract AllocatorBuffer {
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
-    event Approve(address indexed token, address indexed spender, uint256 value);
+    event Approve(address indexed token, address indexed spender, uint256 amount);
+    event Deposit(address indexed token, address indexed sender, uint256 amount);
 
     // --- modifiers ---
 
@@ -45,14 +47,31 @@ contract AllocatorBuffer {
         emit Rely(msg.sender);
     }
 
+    // --- administration ---
+
+    function rely(address usr) external auth {
+        wards[usr] = 1;
+        emit Rely(usr);
+    }
+
+    function deny(address usr) external auth {
+        wards[usr] = 0;
+        emit Deny(usr);
+    }
+
     // --- functions ---
 
     function approve(
         address token,
         address spender,
-        uint256 value
+        uint256 amount
     ) external auth {
-        TokenLike(token).approve(spender, value);
-        emit Approve(token, spender, value);
+        TokenLike(token).approve(spender, amount);
+        emit Approve(token, spender, amount);
+    }
+
+    function deposit(address token, uint256 amount, address /* owner */) external {
+        TokenLike(token).transferFrom(msg.sender, address(this), amount);
+        emit Deposit(token, msg.sender, amount);
     }
 }
