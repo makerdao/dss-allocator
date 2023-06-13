@@ -17,6 +17,10 @@
 
 pragma solidity ^0.8.16;
 
+interface RolesLike {
+    function canCall(address, address, bytes4) external view returns (bool);
+}
+
 interface GemLike {
     function balanceOf(address) external view returns (uint256);
     function transferFrom(address, address, uint256) external;
@@ -33,6 +37,7 @@ contract Swapper {
     mapping (address => mapping (address => uint256)) public maxSrcAmts; // [weis]     maxSrcAmts[src][dst] is the maximum amount that can be swapped each hop when swapping `src` to `dst`.
 
     address public buffer;                                               // Escrow contract from which the GEM to sell is pulled and to which the bought GEM is pushed
+    address public roles;                                                // Contract managing access control for this Swapper
 
     event Rely (address indexed usr);
     event Deny (address indexed usr);
@@ -45,13 +50,26 @@ contract Swapper {
         emit Rely(msg.sender);
     }
 
-    modifier auth {
-        require(wards[msg.sender] == 1, "Swapper/not-authorized");
+    modifier auth() {
+        address roles_ = roles;
+        bool access;
+        if (roles_ != address(0)) {
+            (bool ok, bytes memory ret) = roles_.call(
+                                            abi.encodeWithSignature(
+                                                "canCall(address,address,bytes4)",
+                                                msg.sender,
+                                                address(this),
+                                                msg.sig
+                                            )
+            );
+            access = ok && ret.length == 32 && abi.decode(ret, (bool));
+        }
+        require(access || wards[msg.sender] == 1, "Swapper/not-authorized");
         _;
     }
 
-    function rely(address usr)   external auth { wards[usr]   = 1; emit Rely(usr); }
-    function deny(address usr)   external auth { wards[usr]   = 0; emit Deny(usr); }
+    function rely(address usr) external auth { wards[usr] = 1; emit Rely(usr); }
+    function deny(address usr) external auth { wards[usr] = 0; emit Deny(usr); }
 
     function file(bytes32 what, address src, address dst, uint256 data) external auth {
         if      (what == "maxSrcAmt")  maxSrcAmts[src][dst] = data;
