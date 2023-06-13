@@ -17,7 +17,7 @@
 
 pragma solidity ^0.8.16;
 
-interface GemLike {
+interface ApproveLike {
     function approve(address, uint256) external returns (bool);
 }
 
@@ -46,7 +46,7 @@ contract UniV3SwapperCallee {
     function swap(address src, address /* dst */, uint256 amt, uint256 minOut, address to, bytes calldata data) external {
         bytes memory path = data;
         // TODO: worth requiring path goes from src to dst?
-        GemLike(src).approve(uniV3Router, amt); // TODO: cheaper to SLOAD allowance to check if we need to approve max?
+        ApproveLike(src).approve(uniV3Router, amt); // TODO: cheaper to SLOAD allowance to check if we need to approve max?
         SwapRouterLike.ExactInputParams memory params = SwapRouterLike.ExactInputParams({
             path:             path,
             recipient:        to,

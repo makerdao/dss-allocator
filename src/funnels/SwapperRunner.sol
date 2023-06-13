@@ -18,7 +18,7 @@
 pragma solidity ^0.8.16;
 
 interface SwapperLike {
-    function swap(address src, address dst, uint256 amt, uint256 minOut, address callee, bytes calldata data) external;
+    function swap(address src, address dst, uint256 amt, uint256 minOut, address callee, bytes calldata data) external returns (uint256 out);
 }
 
 contract SwapperRunner {
@@ -68,24 +68,24 @@ contract SwapperRunner {
         if      (what == "count")        counts[src][dst] = data;
         else if (what == "lot")            lots[src][dst] = data;
         else if (what == "minPrice")  minPrices[src][dst] = data;
-        else revert("Swapper/file-unrecognized-param");
+        else revert("SwapperRunner/file-unrecognized-param");
         emit File(what, src, dst, data);
     }
 
     function file(bytes32 what, address data) external auth {
         if   (what == "swapper") swapper = data;
-        else revert("Swapper/file-unrecognized-param");
+        else revert("SwapperRunner/file-unrecognized-param");
         emit File(what, data);
     }
 
-    function swap(address src, address dst, uint256 minOut, address callee, bytes calldata data) toll external {
+    function swap(address src, address dst, uint256 minOut, address callee, bytes calldata data) toll external returns (uint256 out) {
         uint256 cnt = counts[src][dst];
         require(cnt > 0, "SwapperRunner/exceeds-count");
         counts[src][dst] = cnt - 1;
 
         uint256 amt = lots[src][dst];
-        require(minOut >= amt * minPrices[src][dst] / WAD, "Swapper/min-too-small");
+        require(minOut >= amt * minPrices[src][dst] / WAD, "SwapperRunner/min-too-small");
 
-        SwapperLike(swapper).swap(src, dst, amt, minOut, callee, data);
+        out = SwapperLike(swapper).swap(src, dst, amt, minOut, callee, data);
     }
 }
