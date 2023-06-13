@@ -180,14 +180,18 @@ contract AllocatorVault {
         draw(buffer, wad);
     }
 
-    function wipe(uint256 wad) external auth {
-        nst.transferFrom(buffer, address(this), wad);
+    function wipe(address from, uint256 wad) public auth {
+        nst.transferFrom(from, address(this), wad);
         nstJoin.join(address(this), wad);
         uint256 rate = jug.drip(ilk);
         uint256 dart = wad * RAY / rate;
         require(dart <= uint256(type(int256).max), "AllocatorVault/overflow");
         vat.frob(ilk, address(this), address(this), address(this), 0, -int256(dart));
         emit Wipe(msg.sender, wad);
+    }
+
+    function wipe(uint256 wad) external {
+        wipe(buffer, wad);
     }
 
     // TODO: evaluate if quit function is necessary and how it should be

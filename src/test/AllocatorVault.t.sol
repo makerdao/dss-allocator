@@ -226,11 +226,12 @@ contract AllocatorVaultTest is DssTest {
     }
 
     function testModifiers() public {
-        bytes4[] memory authedMethods = new bytes4[](4);
+        bytes4[] memory authedMethods = new bytes4[](5);
         authedMethods[0] = vault.init.selector;
         authedMethods[1] = bytes4(keccak256("draw(address,uint256)"));
         authedMethods[2] = bytes4(keccak256("draw(uint256)"));
-        authedMethods[3] = vault.wipe.selector;
+        authedMethods[3] = bytes4(keccak256("wipe(address,uint256)"));
+        authedMethods[4] = bytes4(keccak256("wipe(uint256)"));
 
         vm.startPrank(address(0xBEEF));
         checkModifier(address(vault), "AllocatorVault/not-authorized", authedMethods);
@@ -297,11 +298,15 @@ contract AllocatorVaultTest is DssTest {
         assertEq(art, 1); // Dust which is impossible to wipe
     }
 
-    function testDrawOtherAddress() public {
+    function testDrawAndWipeOtherAddress() public {
         vault.init();
         vault.file("jug", address(jug));
         vault.draw(address(0xBEEF), 50 * 10**18);
         assertEq(nst.balanceOf(address(0xBEEF)), 50 * 10**18);
+        vm.prank(address(0xBEEF));
+        nst.approve(address(vault), 50 * 10**18);
+        vault.wipe(address(0xBEEF), 50 * 10**18);
+        assertEq(nst.balanceOf(address(0xBEEF)), 0);
     }
 
     function testDebtOverLine() public {
