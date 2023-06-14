@@ -88,11 +88,7 @@ contract AllocatorRoles
     }
 
     function setRoleAction(uint8 role, address target, bytes4 sig, bool enabled) external auth {
-<<<<<<< HEAD
         bytes32 mask = bytes32(2 ** uint256(role));
-=======
-        bytes32 mask = bytes32(uint256(uint256(2) ** uint256(role)));
->>>>>>> 5be5a3f (Add tests + some renaming)
         if (enabled) {
             actionsRoles[target][sig] |= mask;
         } else {
