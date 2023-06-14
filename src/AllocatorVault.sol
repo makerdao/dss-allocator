@@ -54,6 +54,7 @@ contract AllocatorVault {
     // --- storage variables ---
 
     mapping(address => uint256) public wards;
+    address public roles;
     JugLike public jug;
 
     // --- constants ---
@@ -82,7 +83,20 @@ contract AllocatorVault {
     // --- modifiers ---
 
     modifier auth() {
-        require(wards[msg.sender] == 1, "AllocatorVault/not-authorized");
+        address roles_ = roles;
+        bool access;
+        if (roles_ != address(0)) {
+            (bool ok, bytes memory ret) = roles_.call(
+                                            abi.encodeWithSignature(
+                                                "canCall(address,address,bytes4)",
+                                                msg.sender,
+                                                address(this),
+                                                msg.sig
+                                            )
+            );
+            access = ok && ret.length == 32 && abi.decode(ret, (bool));
+        }
+        require(access || wards[msg.sender] == 1, "AllocatorVault/not-authorized");
         _;
     }
 
@@ -159,7 +173,9 @@ contract AllocatorVault {
     }
 
     function file(bytes32 what, address data) external auth {
-        if (what == "jug") {
+        if (what == "roles") {
+            roles = data;
+        } else if (what == "jug") {
             jug = JugLike(data);
         } else revert("AllocatorVault/file-unrecognized-param");
         emit File(what, data);

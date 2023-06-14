@@ -5,6 +5,7 @@ pragma solidity ^0.8.16;
 import "dss-test/DssTest.sol";
 import { AllocatorVault } from "../src/AllocatorVault.sol";
 import { AllocatorBuffer } from "../src/AllocatorBuffer.sol";
+import { RolesMock } from "./mocks/RolesMock.sol";
 import { VatMock } from "./mocks/VatMock.sol";
 import { JugMock } from "./mocks/JugMock.sol";
 import { GemMock } from "./mocks/GemMock.sol";
@@ -65,7 +66,17 @@ contract AllocatorVaultTest is DssTest {
     }
 
     function testFile() public {
-        checkFileAddress(address(vault), "AllocatorVault", ["jug"]);
+        checkFileAddress(address(vault), "AllocatorVault", ["roles", "jug"]);
+    }
+
+    function testRoles() public {
+        RolesMock roles = new RolesMock();
+        vault.file("roles", address(roles));
+        vm.startPrank(address(0xBEEF));
+        vm.expectRevert("AllocatorVault/not-authorized");
+        vault.file("jug", address(0));
+        roles.setOk(true);
+        vault.file("jug", address(0));
     }
 
     function testInit() public {
