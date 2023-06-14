@@ -5,34 +5,11 @@ import "../../funnels/Swapper.sol";
 import "../../funnels/SwapperRunner.sol";
 import "../../funnels/UniV3SwapperCallee.sol";
 import "../../AllocatorRoles.sol";
+import "../../AllocatorBuffer.sol";
 import "dss-test/DssTest.sol";
 
-contract BufferMock {
-    mapping(address => uint256) public wards;
-    event Rely(address indexed usr);
-    event Deny(address indexed usr);
-    event Approve(address indexed token, address indexed spender, uint256 value);
-    modifier auth() {
-        require(wards[msg.sender] == 1, "AllocatorBuffer/not-authorized");
-        _;
-    }
-    constructor() {
-        wards[msg.sender] = 1;
-        emit Rely(msg.sender);
-    }
-    function approve(
-        address token,
-        address spender,
-        uint256 value
-    ) external auth {
-        ApproveLike(token).approve(spender, value);
-        emit Approve(token, spender, value);
-    }
-}
-
-
 contract SwapperTest is DssTest {
-    BufferMock public buffer;
+    AllocatorBuffer public buffer;
     Swapper public swapper;
     SwapperRunner public runner;
     UniV3SwapperCallee public uniV3Callee;
@@ -48,7 +25,7 @@ contract SwapperTest is DssTest {
 
 
     function setUp() public {
-        buffer = new BufferMock();
+        buffer = new AllocatorBuffer();
         swapper = new Swapper();
         uniV3Callee = new UniV3SwapperCallee(UNIV3_ROUTER);
         AllocatorRoles roles = new AllocatorRoles();
