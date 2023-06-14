@@ -34,10 +34,12 @@ contract AllocatorRolesTest is DssTest {
         uint8 admin_role = 0;
         uint8 mod_role = 1;
         uint8 user_role = 2;
+        uint8 max_role = 255;
 
         assertTrue(!roles.hasUserRole(address(this), admin_role));
         assertTrue(!roles.hasUserRole(address(this), mod_role));
         assertTrue(!roles.hasUserRole(address(this), user_role));
+        assertTrue(!roles.hasUserRole(address(this), max_role));
         assertEq32(bytes32(hex"0000000000000000000000000000000000000000000000000000000000000000"), roles.userRoles(address(this)));
 
         roles.setUserRole(address(this), admin_role, true);
@@ -45,6 +47,7 @@ contract AllocatorRolesTest is DssTest {
         assertTrue( roles.hasUserRole(address(this), admin_role));
         assertTrue(!roles.hasUserRole(address(this), mod_role));
         assertTrue(!roles.hasUserRole(address(this), user_role));
+        assertTrue(!roles.hasUserRole(address(this), max_role));
         assertEq32(bytes32(hex"0000000000000000000000000000000000000000000000000000000000000001"), roles.userRoles(address(this)));
 
         assertTrue(!roles.canCall(address(this), address(authed), bytes4(keccak256("exec()"))));
@@ -67,6 +70,7 @@ contract AllocatorRolesTest is DssTest {
         assertTrue( roles.hasUserRole(address(this), admin_role));
         assertTrue( roles.hasUserRole(address(this), mod_role));
         assertTrue(!roles.hasUserRole(address(this), user_role));
+        assertTrue(!roles.hasUserRole(address(this), max_role));
         assertEq32(bytes32(hex"0000000000000000000000000000000000000000000000000000000000000003"), roles.userRoles(address(this)));
 
         roles.setUserRole(address(this), user_role, true);
@@ -74,6 +78,7 @@ contract AllocatorRolesTest is DssTest {
         assertTrue( roles.hasUserRole(address(this), admin_role));
         assertTrue( roles.hasUserRole(address(this), mod_role));
         assertTrue( roles.hasUserRole(address(this), user_role));
+        assertTrue(!roles.hasUserRole(address(this), max_role));
         assertEq32(bytes32(hex"0000000000000000000000000000000000000000000000000000000000000007"), roles.userRoles(address(this)));
 
         roles.setUserRole(address(this), mod_role, false);
@@ -81,7 +86,16 @@ contract AllocatorRolesTest is DssTest {
         assertTrue( roles.hasUserRole(address(this), admin_role));
         assertTrue(!roles.hasUserRole(address(this), mod_role));
         assertTrue( roles.hasUserRole(address(this), user_role));
+        assertTrue(!roles.hasUserRole(address(this), max_role));
         assertEq32(bytes32(hex"0000000000000000000000000000000000000000000000000000000000000005"), roles.userRoles(address(this)));
+
+        roles.setUserRole(address(this), max_role, true);
+
+        assertTrue( roles.hasUserRole(address(this), admin_role));
+        assertTrue(!roles.hasUserRole(address(this), mod_role));
+        assertTrue( roles.hasUserRole(address(this), user_role));
+        assertTrue( roles.hasUserRole(address(this), max_role));
+        assertEq32(bytes32(hex"8000000000000000000000000000000000000000000000000000000000000005"), roles.userRoles(address(this)));
     }
 
     function testPublicActions() public {

@@ -51,7 +51,7 @@ contract AllocatorRoles
     // --- getters ---
 
     function hasUserRole(address who, uint8 role) external view returns (bool) {
-        return bytes32(0) != userRoles[who] & bytes32(uint256(uint256(2) ** uint256(role)));
+        return bytes32(0) != userRoles[who] & bytes32(2 ** uint256(role));
     }
 
     // --- internals ---
