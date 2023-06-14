@@ -21,21 +21,21 @@ contract SwapperTest is DssTest {
     address constant FACILITATOR = address(0x1337);
     address constant KEEPER      = address(0xb0b);
 
-    uint8 constant FACILITATOR_ROLE = uint8(1);
+    uint8 constant SWAP_ROLE = uint8(1);
 
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETH_RPC_URL"));
-        
+
         buffer = new AllocatorBuffer();
         swapper = new Swapper();
         uniV3Callee = new UniV3SwapperCallee(UNIV3_ROUTER);
         AllocatorRoles roles = new AllocatorRoles();
         vm.prank(FACILITATOR); runner = new SwapperRunner();
 
-        roles.setRoleAction(FACILITATOR_ROLE, address(swapper), swapper.swap.selector, true);
-        roles.setUserRole(FACILITATOR, FACILITATOR_ROLE, true);
-        roles.setUserRole(address(runner), FACILITATOR_ROLE, true);
+        roles.setRoleAction(SWAP_ROLE, address(swapper), swapper.swap.selector, true);
+        roles.setUserRole(FACILITATOR, SWAP_ROLE, true);
+        roles.setUserRole(address(runner), SWAP_ROLE, true);
 
         swapper.file("buffer", address(buffer));
         swapper.file("roles", address(roles));
