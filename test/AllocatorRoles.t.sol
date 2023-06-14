@@ -96,6 +96,10 @@ contract AllocatorRolesTest is DssTest {
         assertTrue( roles.hasUserRole(address(this), user_role));
         assertTrue( roles.hasUserRole(address(this), max_role));
         assertEq32(bytes32(hex"8000000000000000000000000000000000000000000000000000000000000005"), roles.userRoles(address(this)));
+
+        roles.setRoleAction(max_role, address(authed), bytes4(keccak256("exec()")), true);
+        assertTrue(roles.canCall(address(this), address(authed), bytes4(keccak256("exec()"))));
+        authed.exec();
     }
 
     function testPublicActions() public {

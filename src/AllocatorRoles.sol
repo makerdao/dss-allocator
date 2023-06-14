@@ -73,7 +73,7 @@ contract AllocatorRoles
     }
 
     function setUserRole(address who, uint8 role, bool enabled) public auth {
-        bytes32 mask = bytes32(uint256(uint256(2) ** uint256(role)));
+        bytes32 mask = bytes32(2 ** uint256(role));
         if (enabled) {
             userRoles[who] |= mask;
         } else {
@@ -88,7 +88,7 @@ contract AllocatorRoles
     }
 
     function setRoleAction(uint8 role, address target, bytes4 sig, bool enabled) external auth {
-        bytes32 mask = bytes32(uint256(uint256(2) ** uint256(role)));
+        bytes32 mask = bytes32(2 ** uint256(role));
         if (enabled) {
             actionsRoles[target][sig] |= mask;
         } else {
