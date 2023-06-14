@@ -25,6 +25,8 @@ contract WhitelistedRouterTest is DssTest {
     address constant SUBDAO_PROXY = address(0xDA0);
 
     function setUp() public {
+        vm.createSelectFork(vm.envString("ETH_RPC_URL"));
+        
         router = new WhitelistedRouter();
         box1 = address(new AllocatorBuffer());
         box2 = address(new AllocatorBuffer());
