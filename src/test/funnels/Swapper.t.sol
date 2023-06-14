@@ -54,7 +54,7 @@ contract SwapperTest is DssTest {
         AllocatorRoles roles = new AllocatorRoles();
         vm.prank(FACILITATOR); runner = new SwapperRunner();
 
-        roles.setRoleCapability(FACILITATOR_ROLE, address(swapper), swapper.swap.selector, true);
+        roles.setRoleAction(FACILITATOR_ROLE, address(swapper), swapper.swap.selector, true);
         roles.setUserRole(FACILITATOR, FACILITATOR_ROLE, true);
         roles.setUserRole(address(runner), FACILITATOR_ROLE, true);
 
