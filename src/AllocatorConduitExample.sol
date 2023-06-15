@@ -18,14 +18,21 @@ pragma solidity ^0.8.16;
 
 import "./IAllocatorConduit.sol";
 
+interface RolesLike {
+    function canCall(bytes32, address, address, bytes4) external view returns (bool);
+}
+
 contract AllocatorConduitExample is IAllocatorConduit {
     // --- storage variables ---
 
     mapping(address => uint256) public wards;
-    mapping(bytes32 => address) public roles;
     mapping(address => FundRequest[]) public fundRequests;
     uint256 public totalFundRequests;
     mapping(bytes32 => mapping(address => uint256)) public positions;
+
+    // --- immutables ---
+
+    RolesLike public immutable roles;
 
     // --- events ---
 
@@ -41,21 +48,14 @@ contract AllocatorConduitExample is IAllocatorConduit {
     }
 
     modifier domainAuth(bytes32 domain) {
-        address roles_ = roles[domain];
-        bool access;
-        if (roles_ != address(0)) {
-            (bool ok, bytes memory ret) = roles_.call(
-                                            abi.encodeWithSignature(
-                                                "canCall(address,address,bytes4)",
-                                                msg.sender,
-                                                address(this),
-                                                msg.sig
-                                            )
-            );
-            access = ok && ret.length == 32 && abi.decode(ret, (bool));
-        }
-        require(access, "AllocatorConduitExample/not-authorized");
+        require(roles.canCall(domain, msg.sender, address(this), msg.sig), "AllocatorConduitExample/domain-not-authorized");
         _;
+    }
+
+    // --- constructor ---
+
+    constructor(address roles_) {
+        roles = RolesLike(roles_);
     }
 
     // --- getters ---
@@ -111,11 +111,6 @@ contract AllocatorConduitExample is IAllocatorConduit {
     function deny(address usr) external auth {
         wards[usr] = 0;
         emit Deny(usr);
-    }
-
-    function setRoles(bytes32 domain, address roles_) external auth {
-        roles[domain] = roles_;
-        emit SetRoles(domain, roles_);
     }
 
     // --- functions ---
