@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.13;
 
 /**
  *  @title IAllocatorConduit
@@ -27,14 +27,14 @@ interface IAllocatorConduit {
     /**
      *  @dev   Event emitted when a deposit is made to the Conduit.
      *  @param domain The unique identifier of the domain.
-     *  @param asset  The address of the asset deposited.
-     *  @param amount The amount of asset deposited.
+     *  @param asset     The address of the asset deposited.
+     *  @param amount    The amount of asset deposited.
      */
     event Deposit(bytes32 indexed domain, address indexed asset, uint256 amount);
 
     /**
      *  @dev   Event emitted when a withdrawal is made from the Conduit.
-     *  @param domain      The unique identifier of the domain.
+     *  @param domain   The unique identifier of the domain.
      *  @param asset       The address of the asset withdrawn.
      *  @param destination The address where the asset is sent.
      *  @param amount      The amount of asset withdrawn.
@@ -43,7 +43,7 @@ interface IAllocatorConduit {
 
     /**
      *  @dev   Event emitted when a Conduit request is made.
-     *  @param domain        The unique identifier of the domain.
+     *  @param domain     The unique identifier of the domain.
      *  @param asset         The address of the asset to be withdrawn.
      *  @param amount        The amount of asset to be withdrawn.
      *  @param data          Arbitrary encoded data to provide additional info to the Fund Manager.
@@ -53,7 +53,7 @@ interface IAllocatorConduit {
 
     /**
      *  @dev   Event emitted when a fund request is cancelled.
-     *  @param domain        The unique identifier of the domain.
+     *  @param domain     The unique identifier of the domain.
      *  @param asset         The address of the asset for the cancelled request.
      *  @param amount        The amount of asset for the cancelled request.
      *  @param data          Arbitrary encoded data to provide additional info to the Fund Manager.
@@ -63,7 +63,7 @@ interface IAllocatorConduit {
 
     /**
      *  @dev   Event emitted when a fund request is filled.
-     *  @param domain    The unique identifier of the domain.
+     *  @param domain The unique identifier of the domain.
      *  @param asset     The address of the asset for the filled request.
      *  @param amount    The amount of asset for the filled request.
      *  @param data      Arbitrary encoded data to provide additional info to the Conduit.
@@ -73,7 +73,8 @@ interface IAllocatorConduit {
     /**
      *  @dev   Struct representing a fund request.
      *  @param status          The current status of the fund request.
-     *  @param domain          The unique identifier of the domain.
+     *  @param domain       The unique identifier of the domain.
+     *  @param amountAvailable The amount of asset available for withdrawal.
      *  @param amountRequested The amount of asset requested in the fund request.
      *  @param amountFilled    The amount of asset filled in the fund request.
      *  @param fundRequestId   The ID of the fund request.
@@ -81,9 +82,9 @@ interface IAllocatorConduit {
     struct FundRequest {
         StatusEnum status;
         bytes32    domain;
+        uint256    amountAvailable;
         uint256    amountRequested;
         uint256    amountFilled;
-        bytes      data;
         uint256    fundRequestId;  // NOTE: Investigate usage
     }
 
@@ -103,16 +104,16 @@ interface IAllocatorConduit {
     }
 
     /**
-     *  @dev    Function for depositing tokens into a Fund Manager.
-     *  @param  domain    The unique identifier of the domain.
-     *  @param  asset     The asset to deposit.
-     *  @param  amount    The amount of tokens to deposit.
+     *  @dev   Function for depositing tokens into a Fund Manager.
+     *  @param domain The unique identifier of the domain.
+     *  @param asset     The asset to deposit.
+     *  @param amount    The amount of tokens to deposit.
      */
     function deposit(bytes32 domain, address asset, uint256 amount) external;
 
     /**
      *  @dev   Function for withdrawing tokens from a Fund Manager.
-     *  @param domain      The unique identifier of the domain.
+     *  @param domain   The unique identifier of the domain.
      *  @param asset       The asset to withdraw.
      *  @param destination The address to send the withdrawn tokens to.
      *  @param amount      The amount of tokens to withdraw.
@@ -121,7 +122,7 @@ interface IAllocatorConduit {
 
     /**
      *  @dev    Function to get the maximum deposit possible for a specific asset and domain.
-     *  @param  domain      The unique identifier of the domain.
+     *  @param  domain   The unique identifier of the domain.
      *  @param  asset       The asset to check.
      *  @return maxDeposit_ The maximum possible deposit for the asset.
      */
@@ -129,7 +130,7 @@ interface IAllocatorConduit {
 
     /**
      *  @dev    Function to get the maximum withdrawal possible for a specific asset and domain.
-     *  @param  domain       The unique identifier of the domain.
+     *  @param  domain    The unique identifier of the domain.
      *  @param  asset        The asset to check.
      *  @return maxWithdraw_ The maximum possible withdrawal for the asset.
      */
@@ -137,7 +138,7 @@ interface IAllocatorConduit {
 
     /**
      *  @dev    Function to initiate a withdrawal request from a Fund Manager.
-     *  @param  domain        The unique identifier of the domain.
+     *  @param  domain     The unique identifier of the domain.
      *  @param  asset         The asset to withdraw.
      *  @param  amount        The amount of tokens to withdraw.
      *  @param  data          Arbitrary encoded data to provide additional info to the Fund Manager.
@@ -148,36 +149,42 @@ interface IAllocatorConduit {
     /**
      *  @dev   Function to cancel a withdrawal request from a Fund Manager.
      *  @param domain        The unique identifier of the domain.
+     *  @param asset         The asset to cancel the fund request for.
      *  @param fundRequestId The ID of the withdrawal request.
      */
-    function cancelFundRequest(bytes32 domain, uint256 fundRequestId) external;
+    function cancelFundRequest(bytes32 domain, address asset, uint256 fundRequestId) external;
 
     /**
      *  @dev    Function to check if a withdrawal request can be cancelled.
+     *  @param  asset         The asset to check.
      *  @param  fundRequestId The ID of the withdrawal request.
      *  @return isCancelable_ True if the withdrawal request can be cancelled, false otherwise.
      */
-    function isCancelable(uint256 fundRequestId) external view returns (bool isCancelable_);
+    function isCancelable(address asset, uint256 fundRequestId) external view returns (bool isCancelable_);
 
     /**
      *  @dev    Function to get the status of a withdrawal request.
+     *  @param  asset         The asset to check.
      *  @param  fundRequestId The ID of the withdrawal request.
+     *  @return domain        The domain of the withdrawal request.
      *  @return fundRequest   The FundRequest struct representing the withdrawal request.
      */
-    function fundRequestStatus(uint256 fundRequestId) external returns (FundRequest memory fundRequest);
+    function fundRequestStatus(address asset, uint256 fundRequestId) external returns (bytes32 domain, FundRequest memory fundRequest);
 
     /**
      *  @dev    Function to get the active fund requests for a particular domain.
+     *  @param  asset          The address of the asset.
      *  @param  domain         The unique identifier of the domain.
      *  @return fundRequestIds Array of the IDs of active fund requests.
      *  @return totalAmount    The total amount of tokens requested in the active fund requests.
      */
-    function activeFundRequests(bytes32 domain) external returns (uint256[] memory fundRequestIds, uint256 totalAmount);
+    function activeFundRequests(address asset, bytes32 domain) external returns (uint256[] memory fundRequestIds, uint256 totalAmount);
 
     /**
      *  @dev    Function to get the total amount of active withdrawal requests.
+     *  @param  asset       The asset to check.
      *  @return totalAmount The total amount of tokens requested for withdrawal.
      */
-    function totalActiveFundRequests() external returns (uint256 totalAmount);
+    function totalActiveFundRequests(address asset) external returns (uint256 totalAmount);
 
 }
