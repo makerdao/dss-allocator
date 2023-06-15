@@ -85,6 +85,7 @@ interface IAllocatorConduit {
         uint256    amountAvailable;
         uint256    amountRequested;
         uint256    amountFilled;
+        bytes      data;
         uint256    fundRequestId;  // NOTE: Investigate usage
     }
 
@@ -166,10 +167,9 @@ interface IAllocatorConduit {
      *  @dev    Function to get the status of a withdrawal request.
      *  @param  asset         The asset to check.
      *  @param  fundRequestId The ID of the withdrawal request.
-     *  @return domain        The domain of the withdrawal request.
      *  @return fundRequest   The FundRequest struct representing the withdrawal request.
      */
-    function fundRequestStatus(address asset, uint256 fundRequestId) external returns (bytes32 domain, FundRequest memory fundRequest);
+    function fundRequestStatus(address asset, uint256 fundRequestId) external returns (FundRequest memory fundRequest);
 
     /**
      *  @dev    Function to get the active fund requests for a particular domain.

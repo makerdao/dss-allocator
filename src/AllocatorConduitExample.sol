@@ -21,10 +21,11 @@ import "./IAllocatorConduit.sol";
 contract AllocatorConduitExample is IAllocatorConduit {
     // --- storage variables ---
 
-    mapping(address => uint256) public wards;
-    mapping(bytes32 => address) public roles;
-    mapping(address => FundRequest[]) public fundRequests;
+    mapping (address => uint256) public wards;
+    mapping (bytes32 => address) public roles;
+    mapping (address => FundRequest[]) public fundRequests;
     uint256 public totalFundRequests;
+    mapping (bytes32 => mapping (address => uint256)) public positions;
 
     // --- events ---
 
@@ -67,33 +68,33 @@ contract AllocatorConduitExample is IAllocatorConduit {
         // Implement the logic for maxWithdraw
     }
 
-    function isCancelable(uint256 fundRequestId) external view returns (bool isCancelable_) {
-        FundRequest storage request = fundRequests[address(0)][fundRequestId];
+    function isCancelable(address asset, uint256 fundRequestId) external view returns (bool isCancelable_) {
+        FundRequest storage request = fundRequests[asset][fundRequestId];
         isCancelable_ = request.status != StatusEnum.CANCELLED && request.status != StatusEnum.COMPLETED;
     }
 
-    function fundRequestStatus(uint256 fundRequestId) external view returns (FundRequest memory fundRequest) {
-        fundRequest = fundRequests[address(0)][fundRequestId];
+    function fundRequestStatus(address asset, uint256 fundRequestId) external view returns (FundRequest memory fundRequest) {
+        fundRequest = fundRequests[asset][fundRequestId];
     }
 
-    function activeFundRequests(bytes32 domain) external view returns (uint256[] memory fundRequestIds, uint256 totalAmount) {
+    function activeFundRequests(address asset, bytes32 domain) external view returns (uint256[] memory fundRequestIds, uint256 totalAmount) {
         fundRequestIds = new uint256[](totalFundRequests);
         uint256 count;
 
         for (uint256 i = 1; i <= totalFundRequests; i++) {
-            if (fundRequests[address(0)][i].domain == domain && fundRequests[address(0)][i].status != StatusEnum.CANCELLED && fundRequests[address(0)][i].status != StatusEnum.COMPLETED) {
+            if (fundRequests[asset][i].domain == domain && fundRequests[asset][i].status != StatusEnum.CANCELLED && fundRequests[asset][i].status != StatusEnum.COMPLETED) {
                 fundRequestIds[count++] = i;
             }
         }
 
         for (uint256 i = 0; i < count; i++) {
-            totalAmount += fundRequests[address(0)][fundRequestIds[i]].amountRequested;
+            totalAmount += fundRequests[asset][fundRequestIds[i]].amountRequested;
         }
     }
 
-    function totalActiveFundRequests() external view returns (uint256 count) {
+    function totalActiveFundRequests(address asset) external view returns (uint256 count) {
         for (uint256 i = 1; i <= totalFundRequests; i++) {
-            if (fundRequests[address(0)][i].status != StatusEnum.CANCELLED && fundRequests[address(0)][i].status != StatusEnum.COMPLETED) {
+            if (fundRequests[asset][i].status != StatusEnum.CANCELLED && fundRequests[asset][i].status != StatusEnum.COMPLETED) {
                 count++;
             }
         }
@@ -119,13 +120,14 @@ contract AllocatorConduitExample is IAllocatorConduit {
     // --- functions ---
 
     function deposit(bytes32 domain, address asset, uint256 amount) external domainAuth(domain) {
+        positions[domain][asset] += amount;
         // Implement the logic to deposit funds into the FundManager
         emit Deposit(domain, asset, amount);
     }
 
     function withdraw(bytes32 domain, address asset, address destination, uint256 amount) external domainAuth(domain) {
+        positions[domain][asset] -= amount;
         // Implement the logic to withdraw funds from the FundManager
-
         emit Withdraw(domain, asset, destination, amount);
     }
 
@@ -133,17 +135,17 @@ contract AllocatorConduitExample is IAllocatorConduit {
         require(amount > 0, "AllocatorConduitExample/amount-not-greater-0");
 
         fundRequestId = ++totalFundRequests;
-        fundRequests[asset].push(FundRequest(StatusEnum.PENDING, domain, amount, 0, data, fundRequestId));
+        fundRequests[asset].push(FundRequest(StatusEnum.PENDING, domain, positions[domain][asset], amount, 0, data, fundRequestId));
 
         emit RequestFunds(domain, asset, amount, data, fundRequestId);
     }
 
-    function cancelFundRequest(bytes32 domain, uint256 fundRequestId) external domainAuth(domain) {
-        FundRequest storage request = fundRequests[address(0)][fundRequestId];
+    function cancelFundRequest(bytes32 domain, address asset, uint256 fundRequestId) external domainAuth(domain) {
+        FundRequest storage request = fundRequests[asset][fundRequestId];
         require(request.domain == domain, "AllocatorConduitExample/domain-not-match");
         require(request.status != StatusEnum.CANCELLED && request.status != StatusEnum.COMPLETED, "AllocatorConduitExample/request-not-active");
 
         request.status = StatusEnum.CANCELLED;
-        // emit CancelRequest(domain, asset, amount, data, fundRequestId); // TODO: define how to get certain data
+        emit CancelRequest(domain, asset, request.amountRequested, request.data, fundRequestId);
     }
 }
