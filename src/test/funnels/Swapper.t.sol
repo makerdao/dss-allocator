@@ -21,7 +21,7 @@ contract SwapperTest is DssTest {
     address constant FACILITATOR = address(0x1337);
     address constant KEEPER      = address(0xb0b);
 
-    uint8 constant SWAP_ROLE = uint8(1);
+    uint8 constant SWAPPER_ROLE = uint8(1);
 
 
     function setUp() public {
@@ -33,9 +33,9 @@ contract SwapperTest is DssTest {
         AllocatorRoles roles = new AllocatorRoles();
         vm.prank(FACILITATOR); runner = new SwapperRunner();
 
-        roles.setRoleAction(SWAP_ROLE, address(swapper), swapper.swap.selector, true);
-        roles.setUserRole(FACILITATOR, SWAP_ROLE, true);
-        roles.setUserRole(address(runner), SWAP_ROLE, true);
+        roles.setRoleAction(SWAPPER_ROLE, address(swapper), swapper.swap.selector, true);
+        roles.setUserRole(FACILITATOR, SWAPPER_ROLE, true);
+        roles.setUserRole(address(runner), SWAPPER_ROLE, true);
 
         swapper.file("buffer", address(buffer));
         swapper.file("roles", address(roles));

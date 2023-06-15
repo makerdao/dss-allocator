@@ -16,6 +16,10 @@
 
 pragma solidity ^0.8.16;
 
+interface NonFungibleTokenLike {
+    function setApprovalForAll(address _operator, bool _approved) external;
+}
+
 interface TokenLike {
     function approve(address, uint256) external;
     function transferFrom(address, address, uint256) external;
@@ -73,6 +77,15 @@ contract AllocatorBuffer {
     }
 
     // --- functions ---
+
+    function setApprovalForAll(
+        address token,
+        address spender,
+        bool approved
+    ) external auth {
+        NonFungibleTokenLike(token).setApprovalForAll(spender, approved);
+        emit Approve(token, spender, approved ? 1 : 0);
+    }
 
     function approve(
         address token,

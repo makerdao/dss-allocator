@@ -23,6 +23,8 @@ interface RolesLike {
 
 interface GemLike {
     function balanceOf(address) external view returns (uint256);
+    function approve(address, uint256) external;
+    function transfer(address, uint256) external;
     function transferFrom(address, address, uint256) external;
 }
 

@@ -43,9 +43,17 @@ contract UniV3SwapperCallee {
 
     address public immutable uniV3Router;
 
-    function swap(address src, address /* dst */, uint256 amt, uint256 minOut, address to, bytes calldata data) external {
+    function swap(address src, address dst, uint256 amt, uint256 minOut, address to, bytes calldata data) external {
         bytes memory path = data;
-        // TODO: worth requiring path goes from src to dst?
+
+        address firstToken;
+        address lastToken;
+        assembly {
+            firstToken := div(mload(add(path, 0x20)), 0x1000000000000000000000000)
+            lastToken := div(mload(sub(add(add(path, 0x20), mload(path)), 0x14)), 0x1000000000000000000000000)
+        }
+        require(src == firstToken && dst == lastToken, "UniV3SwapperCallee/invalid-path");
+
         ApproveLike(src).approve(uniV3Router, amt); // TODO: cheaper to SLOAD allowance to check if we need to approve max?
         SwapRouterLike.ExactInputParams memory params = SwapRouterLike.ExactInputParams({
             path:             path,
