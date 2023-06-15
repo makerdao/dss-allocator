@@ -241,16 +241,16 @@ contract Depositor {
         require(block.timestamp >= zzz[p.gem0][p.gem1] + hops[p.gem0][p.gem1], "Depositor/too-soon");
         zzz[p.gem0][p.gem1] = block.timestamp;
 
-        require(p.amt0 * p.amt1 <= caps[p.gem0][p.gem1], "Depositor/exceeds-cap");
-
         address buffer_ = buffer;
         DepositedGemLike(p.gem0).transferFrom(buffer_, address(this), p.amt0);
         DepositedGemLike(p.gem1).transferFrom(buffer_, address(this), p.amt1);
         DepositedGemLike(p.gem0).approve(uniV3PositionManager, p.amt0); // TODO: cheaper to SLOAD allowance to check if we need to approve max?
         DepositedGemLike(p.gem1).approve(uniV3PositionManager, p.amt1);
-        (liquidity, amt0, amt1) = addLiquidity(p, buffer_);
 
-        emit Deposit(msg.sender, p.gem0, p.gem1, liquidity, p.amt0, p.amt1);
+        (liquidity, amt0, amt1) = addLiquidity(p, buffer_);
+        require(amt0 * amt1 <= caps[p.gem0][p.gem1], "Depositor/exceeds-cap");
+
+        emit Deposit(msg.sender, p.gem0, p.gem1, liquidity, amt0, amt1);
     }
 
     struct WithdrawParams {
