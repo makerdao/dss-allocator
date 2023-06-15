@@ -21,11 +21,11 @@ import "./IAllocatorConduit.sol";
 contract AllocatorConduitExample is IAllocatorConduit {
     // --- storage variables ---
 
-    mapping (address => uint256) public wards;
-    mapping (bytes32 => address) public roles;
-    mapping (address => FundRequest[]) public fundRequests;
+    mapping(address => uint256) public wards;
+    mapping(bytes32 => address) public roles;
+    mapping(address => FundRequest[]) public fundRequests;
     uint256 public totalFundRequests;
-    mapping (bytes32 => mapping (address => uint256)) public positions;
+    mapping(bytes32 => mapping(address => uint256)) public positions;
 
     // --- events ---
 
