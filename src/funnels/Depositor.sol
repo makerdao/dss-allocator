@@ -17,19 +17,12 @@
 
 pragma solidity ^0.8.16;
 
-import "./Swapper.sol";
-
-interface UniV3PoolLike {
-    function slot0() external view returns (
-        uint160 sqrtPriceX96,
-        int24 tick,
-        uint16 observationIndex,
-        uint16 observationCardinality,
-        uint16 observationCardinalityNext,
-        uint8 feeProtocol,
-        bool unlocked
-    );
+interface DepositedGemLike {
+    function approve(address, uint256) external;
+    function transfer(address, uint256) external;
+    function transferFrom(address, address, uint256) external;
 }
+
 
 // https://github.com/Uniswap/v3-periphery/blob/464a8a49611272f7349c970e0fadb7ec1d3c1086/contracts/interfaces/INonfungiblePositionManager.sol#L17
 interface PositionManagerLike {
@@ -142,12 +135,8 @@ contract Depositor {
 
     address public buffer;                          // Escrow contract from/to which the two tokens that make up the liquidity position are pulled/pushed
     address public roles;                           // Contract managing access control for this Depositor
-    address public swapper;                         // Swapper contract
 
-    uint256 internal constant WAD = 10 ** 18;
-
-    address internal immutable uniV3PositionManager;
-    address internal immutable uniV3Factory;
+    address internal immutable uniV3PositionManager;  // 0xC36442b4a4522E871399CD717aBDD847Ab11FE88
 
     event Rely (address indexed usr);
     event Deny (address indexed usr);
@@ -156,9 +145,8 @@ contract Depositor {
     event Deposit(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1);
     event Withdraw(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1);
 
-    constructor(address _uniV3PositionManager, address _uniV3Factory) {
-        uniV3PositionManager = _uniV3PositionManager; // 0xC36442b4a4522E871399CD717aBDD847Ab11FE88
-        uniV3Factory = _uniV3Factory; // 0x1F98431c8aD98523631AE4a59f267346ea31F984
+    constructor(address _uniV3PositionManager) {
+        uniV3PositionManager = _uniV3PositionManager;
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
     }
@@ -187,7 +175,6 @@ contract Depositor {
     function file(bytes32 what, address data) external auth {
         if      (what == "buffer")   buffer  = data;
         else if (what == "roles")    roles   = data;
-        else if (what == "swapper")  swapper = data;
         else revert("Depositor/file-unrecognized-param");
         emit File(what, data);
     }
@@ -200,16 +187,6 @@ contract Depositor {
         emit File(what, gem0, gem1, data);
     }
 
-    // https://github.com/Uniswap/v3-periphery/blob/464a8a49611272f7349c970e0fadb7ec1d3c1086/contracts/libraries/PoolAddress.sol#L33
-    function getPoolAddress(address gem0, address gem1, uint24 fee) internal view returns (address pool) {
-        pool = address(uint160(uint256(keccak256(abi.encodePacked(
-            hex'ff',
-            uniV3Factory,
-            keccak256(abi.encode(gem0, gem1, fee)),
-            bytes32(0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54) // POOL_INIT_CODE_HASH
-         )))));
-    }
-
     struct DepositParams {
         address gem0;
         address gem1;
@@ -217,51 +194,12 @@ contract Depositor {
         uint256 amt1;
         uint256 minAmt0;
         uint256 minAmt1;
-        uint256 minSwappedOut;
         uint24 fee;
         int24 tickLower;
         int24 tickUpper;
-        address swapperCallee;
-        bytes swapperData;
     }
 
-    function sortDepositedTokens(DepositParams memory p) internal pure returns (DepositParams memory) {
-        (p.gem0, p.gem1, p.amt0, p.amt1, p.minAmt0, p.minAmt1) 
-            = p.gem0 < p.gem1 ? (p.gem0, p.gem1, p.amt0, p.amt1, p.minAmt0, p.minAmt1) : (p.gem1, p.gem0, p.amt1, p.amt0, p.minAmt1, p.minAmt0);
-        return p;
-    }
-
-    function getConvertedAmounts(DepositParams memory p) internal view returns (uint256 amt0_1, uint256 amt1_0) {
-        (uint160 sqrtPriceX96,,,,,,) = UniV3PoolLike(getPoolAddress(p.gem0, p.gem1, p.fee)).slot0();
-        uint256 p0 = uint256(sqrtPriceX96) * uint256(sqrtPriceX96) * WAD / uint256(2 ** 192);
-        amt0_1 = p.amt0 * p0 / WAD;
-        amt1_0 = p.amt1 * WAD / p0;
-    }
-
-    function swapBeforeDeposit(DepositParams memory p) internal returns (uint256 amt0, uint256 amt1) {
-        (uint256 amt0_1, uint256 amt1_0) = getConvertedAmounts(p);
-        // TODO1: return if differences amt0-amt1_0 and amt1-amt0_1 are both lower than some swap threshold
-        // TODO2: calculate more accurate swap amounts when callee is UniV3SwapperCallee
-        
-        uint bought;
-        uint sold;
-        if (p.amt0 > amt1_0) {
-            // need to sell some gem0
-            sold = (p.amt0 - amt1_0) / 2;
-            bought = Swapper(swapper).swap(p.gem0, p.gem1, sold, p.minSwappedOut, p.swapperCallee, p.swapperData);
-            amt0 = p.amt0 - sold;
-            amt1 = p.amt1 + bought;
-
-        } else if (p.amt1 > amt0_1) {
-            // need to sell some gem1
-            sold = (p.amt1 - amt0_1) / 2;
-            bought = Swapper(swapper).swap(p.gem1, p.gem0, sold, p.minSwappedOut, p.swapperCallee, p.swapperData);
-            amt1 = p.amt1 - sold;
-            amt0 = p.amt0 + bought;
-        }
-    }
-
-    function addLiquidity(DepositParams memory p, address to, uint256 bal0, uint256 bal1) internal returns (uint128 liquidity, uint256 amt0, uint256 amt1) {
+    function addLiquidity(DepositParams memory p, address to) internal returns (uint128 liquidity, uint256 amt0, uint256 amt1) {
         bytes32 key = keccak256(abi.encode(p.gem0, p.gem1, p.fee, p.tickLower, p.tickUpper));
         uint256 tokenId = positions[key];
         if (tokenId == 0) {
@@ -271,8 +209,8 @@ contract Depositor {
                 fee: p.fee,
                 tickLower: p.tickLower,
                 tickUpper: p.tickUpper,
-                amount0Desired: bal0,
-                amount1Desired: bal1,
+                amount0Desired: p.amt0,
+                amount1Desired: p.amt1,
                 amount0Min: p.minAmt0,
                 amount1Min: p.minAmt1,
                 recipient: to,
@@ -283,8 +221,8 @@ contract Depositor {
         } else {
             PositionManagerLike.IncreaseLiquidityParams memory params = PositionManagerLike.IncreaseLiquidityParams({
                 tokenId: tokenId,
-                amount0Desired: bal0,
-                amount1Desired: bal1,
+                amount0Desired: p.amt0,
+                amount1Desired: p.amt1,
                 amount0Min: p.minAmt0,
                 amount1Min: p.minAmt1,
                 deadline: block.timestamp
@@ -293,25 +231,25 @@ contract Depositor {
         }
         
         // Send leftover tokens back to buffer
-        if(amt0 < bal0) GemLike(p.gem0).transfer(to, bal0 - amt0);
-        if(amt1 < bal1) GemLike(p.gem1).transfer(to, bal1 - amt1);
+        if(amt0 < p.amt0) DepositedGemLike(p.gem0).transfer(to, p.amt0 - amt0);
+        if(amt1 < p.amt1) DepositedGemLike(p.gem1).transfer(to, p.amt1 - amt1);
     }
 
     function deposit(DepositParams memory p) external auth returns (uint128 liquidity, uint256 amt0, uint256 amt1) {
-        p = sortDepositedTokens(p);
+        require(p.gem0 < p.gem1, "Depositor/wrong-gem-order");
 
         require(block.timestamp >= zzz[p.gem0][p.gem1] + hops[p.gem0][p.gem1], "Depositor/too-soon");
         zzz[p.gem0][p.gem1] = block.timestamp;
 
-        (amt0, amt1) = swapBeforeDeposit(p);
-        require(amt0 * amt1 <= caps[p.gem0][p.gem1], "Depositor/exceeds-cap");
+        require(p.amt0 * p.amt1 <= caps[p.gem0][p.gem1], "Depositor/exceeds-cap");
 
         address buffer_ = buffer;
-        GemLike(p.gem0).transferFrom(buffer_, address(this), amt0);
-        GemLike(p.gem1).transferFrom(buffer_, address(this), amt1);
-        GemLike(p.gem0).approve(uniV3PositionManager, amt0); // TODO: cheaper to SLOAD allowance to check if we need to approve max?
-        GemLike(p.gem1).approve(uniV3PositionManager, amt1);
-        (liquidity, amt0, amt1) = addLiquidity(p, buffer_, amt0, amt1);
+        DepositedGemLike(p.gem0).transferFrom(buffer_, address(this), p.amt0);
+        DepositedGemLike(p.gem1).transferFrom(buffer_, address(this), p.amt1);
+        DepositedGemLike(p.gem0).approve(uniV3PositionManager, p.amt0); // TODO: cheaper to SLOAD allowance to check if we need to approve max?
+        DepositedGemLike(p.gem1).approve(uniV3PositionManager, p.amt1);
+        (liquidity, amt0, amt1) = addLiquidity(p, buffer_);
+
         emit Deposit(msg.sender, p.gem0, p.gem1, liquidity, p.amt0, p.amt1);
     }
 
@@ -321,36 +259,9 @@ contract Depositor {
         uint128 liquidity;
         uint256 minAmt0;
         uint256 minAmt1;
-        uint256 swappedAmt0;
-        uint256 swappedAmt1;
-        uint256 minSwappedOut;
         uint24 fee;
         int24 tickLower;
         int24 tickUpper;
-        address swapperCallee;
-        bytes swapperData;
-    }
-
-    function sortWithdrawnTokens(WithdrawParams memory p) internal pure returns (WithdrawParams memory) {
-        (p.gem0, p.gem1, p.minAmt0, p.minAmt1, p.swappedAmt0, p.swappedAmt1) 
-            = p.gem0 < p.gem1 ? (p.gem0, p.gem1, p.minAmt0, p.minAmt1, p.swappedAmt0, p.swappedAmt1) : (p.gem1, p.gem0, p.minAmt1, p.minAmt0, p.swappedAmt1, p.swappedAmt0);
-        return p;
-    }
-
-    function swapAfterWithdraw(WithdrawParams memory p, uint256 bal0, uint256 bal1) internal returns (uint256 amt0, uint256 amt1) {
-        uint256 sold;
-        uint256 bought;
-        if(p.swappedAmt0 > 0) {
-            sold = p.swappedAmt0 > bal0 ? bal0 : p.swappedAmt0;
-            bought = Swapper(swapper).swap(p.gem0, p.gem1, sold, p.minSwappedOut, p.swapperCallee, p.swapperData);
-            amt0 = bal0 - sold;
-            amt1 = bal1 + bought;
-        } else if (p.swappedAmt1 > 0) {
-            sold = p.swappedAmt1 > bal1 ? bal1 : p.swappedAmt1;
-            bought = Swapper(swapper).swap(p.gem1, p.gem0, sold, p.minSwappedOut, p.swapperCallee, p.swapperData);
-            amt1 = bal1 - sold;
-            amt0 = bal0 + bought;
-        }
     }
 
     function removeLiquidity(WithdrawParams memory p) internal returns (uint256 amt0, uint256 amt1) {
@@ -377,8 +288,7 @@ contract Depositor {
     }
         
     function withdraw(WithdrawParams memory p) external auth returns (uint256 amt0, uint256 amt1) {
-        require(p.swappedAmt0 == 0 || p.swappedAmt1 == 0, "Depositor/cannot-swap-both-gems");
-        p = sortWithdrawnTokens(p);
+        require(p.gem0 < p.gem1, "Depositor/wrong-gem-order");
 
         require(block.timestamp >= zzz[p.gem0][p.gem1] + hops[p.gem0][p.gem1], "Depositor/too-soon");
         zzz[p.gem0][p.gem1] = block.timestamp;
@@ -386,7 +296,6 @@ contract Depositor {
         (amt0, amt1) = removeLiquidity(p);
         require(amt0 * amt1 <= caps[p.gem0][p.gem1], "Depositor/exceeds-cap");
 
-        (amt0, amt1) = swapAfterWithdraw(p, amt0, amt1);
         emit Withdraw(msg.sender, p.gem0, p.gem1, p.liquidity, amt0, amt1);
     }
 }
