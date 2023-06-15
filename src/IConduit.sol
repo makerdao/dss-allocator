@@ -3,7 +3,9 @@ pragma solidity ^0.8.13;
 
 /**
  *  @title IConduit
- *  @dev   Interface for the Conduit smart contract, which is used to manage deposits and withdrawals in a fund.
+ *  @dev   Conduits are to be used to manage positions for multiple Allocators.
+ *         After funds are deposited into a Conduit, they can be deployed by Fund Managers to earn yield.
+ *         When Allocators want funds back, they can request funds from the Fund Managers and then withdraw once liquidity is available.
  */
 interface IConduit {
 
