@@ -60,12 +60,13 @@ contract AllocatorConduitExample is IAllocatorConduit {
 
     // --- getters ---
 
-    function maxDeposit(bytes32 domain, address asset) external view returns (uint256 maxDeposit_) {
-        // Implement the logic for maxDeposit
+    function maxDeposit(bytes32 domain, address asset) external pure returns (uint256 maxDeposit_) {
+        domain;asset;
+        maxDeposit_ = type(uint256).max;
     }
 
     function maxWithdraw(bytes32 domain, address asset) external view returns (uint256 maxWithdraw_) {
-        // Implement the logic for maxWithdraw
+        maxWithdraw_ = positions[domain][asset];
     }
 
     function isCancelable(address asset, uint256 fundRequestId) external view returns (bool isCancelable_) {
