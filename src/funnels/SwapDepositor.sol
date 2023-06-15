@@ -37,7 +37,7 @@ contract SwapDepositor {
 
     address public roles;                           // Contract managing access control for this SwapDepositor
     address public swapper;                         // Swapper contract
-    address public depositor;                       // SwapDepositor contract
+    address public depositor;                       // Depositor contract
 
     uint256 internal constant WAD = 10 ** 18;
 
