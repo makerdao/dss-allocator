@@ -134,6 +134,10 @@ interface PositionManagerLike {
 
 contract Depositor {
     mapping (address => uint256) public wards;
+    mapping (address => mapping (address => uint256)) public hops;       // [seconds]   hops[gem0][gem1] is the cooldown one has to wait between changes to the liquidity of a (gem0, gem1) pool
+    mapping (address => mapping (address => uint256)) public zzz;        // [seconds]    zzz[gem0][gem1] is the timestamp of the last liquidity change for a (gem0, gem1) pool
+    mapping (address => mapping (address => uint256)) public caps;       // [amount]    caps[gem0][gem1] is the maximum amount of squared-liquidity (defined as amt0 * amt1) that can be added each hop for a (gem0, gem1) pool
+
     mapping (bytes32 => uint256) public positions;  // key = keccak256(abi.encode(gem0, gem1, fee, tickLower, tickUpper)) => tokenId of the liquidity position
 
     address public buffer;                          // Escrow contract from/to which the two tokens that make up the liquidity position are pulled/pushed
@@ -147,7 +151,7 @@ contract Depositor {
 
     event Rely (address indexed usr);
     event Deny (address indexed usr);
-    // event File (bytes32 indexed what, address indexed src, address indexed dst, uint256 data);
+    event File (bytes32 indexed what, address indexed gem0, address indexed gem1, uint256 data);
     event File (bytes32 indexed what, address data);
     event Deposit(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1);
     event Withdraw(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1);
@@ -186,6 +190,14 @@ contract Depositor {
         else if (what == "swapper")  swapper = data;
         else revert("Depositor/file-unrecognized-param");
         emit File(what, data);
+    }
+
+    function file(bytes32 what, address gem0, address gem1, uint256 data) external auth {
+        (gem0, gem1) = gem0 < gem1 ? (gem0, gem1) : (gem1, gem0);
+        if      (what == "cap")  caps[gem0][gem1] = data;
+        else if (what == "hop")  hops[gem0][gem1] = data;
+        else revert("Depositor/file-unrecognized-param");
+        emit File(what, gem0, gem1, data);
     }
 
     // https://github.com/Uniswap/v3-periphery/blob/464a8a49611272f7349c970e0fadb7ec1d3c1086/contracts/libraries/PoolAddress.sol#L33
@@ -287,7 +299,13 @@ contract Depositor {
 
     function deposit(DepositParams memory p) external auth returns (uint128 liquidity, uint256 amt0, uint256 amt1) {
         p = sortDepositedTokens(p);
+
+        require(block.timestamp >= zzz[p.gem0][p.gem1] + hops[p.gem0][p.gem1], "Depositor/too-soon");
+        zzz[p.gem0][p.gem1] = block.timestamp;
+
         (amt0, amt1) = swapBeforeDeposit(p);
+        require(amt0 * amt1 <= caps[p.gem0][p.gem1], "Depositor/exceeds-cap");
+
         address buffer_ = buffer;
         GemLike(p.gem0).transferFrom(buffer_, address(this), amt0);
         GemLike(p.gem1).transferFrom(buffer_, address(this), amt1);
@@ -361,7 +379,13 @@ contract Depositor {
     function withdraw(WithdrawParams memory p) external auth returns (uint256 amt0, uint256 amt1) {
         require(p.swappedAmt0 == 0 || p.swappedAmt1 == 0, "Depositor/cannot-swap-both-gems");
         p = sortWithdrawnTokens(p);
+
+        require(block.timestamp >= zzz[p.gem0][p.gem1] + hops[p.gem0][p.gem1], "Depositor/too-soon");
+        zzz[p.gem0][p.gem1] = block.timestamp;
+
         (amt0, amt1) = removeLiquidity(p);
+        require(amt0 * amt1 <= caps[p.gem0][p.gem1], "Depositor/exceeds-cap");
+
         (amt0, amt1) = swapAfterWithdraw(p, amt0, amt1);
         emit Withdraw(msg.sender, p.gem0, p.gem1, p.liquidity, amt0, amt1);
     }

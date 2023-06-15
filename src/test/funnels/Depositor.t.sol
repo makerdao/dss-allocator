@@ -50,6 +50,8 @@ contract DepositorTest is DssTest {
         depositor.file("buffer", address(buffer));
         depositor.file("roles", address(roles));
         depositor.file("swapper", address(swapper));
+        depositor.file("cap", DAI, USDC, 10_000 * WAD * 10_000 * 10**6);
+        depositor.file("hop", DAI, USDC, 3600);
 
         deal(DAI,  address(buffer), 1_000_000 * WAD,   true);
         deal(USDC, address(buffer), 1_000_000 * 10**6, true);
@@ -81,7 +83,8 @@ contract DepositorTest is DssTest {
             swapperCallee: address(uniV3Callee), 
             swapperData: path
         });
-        vm.prank(FACILITATOR); (uint128 liq1,,) = depositor.deposit(dp);
+        vm.prank(FACILITATOR); (uint128 liq1,uint am0, uint am1) = depositor.deposit(dp);
+        console2.log(liq1, am0, am1);
 
         assertLt(GemLike(DAI).balanceOf(address(buffer)), prevDAI);
         assertEq(GemLike(USDC).balanceOf(address(buffer)), prevUSDC);
@@ -118,6 +121,7 @@ contract DepositorTest is DssTest {
             swapperCallee: address(uniV3Callee), 
             swapperData: path
         });
+        vm.warp(block.timestamp + 3600);
         vm.prank(FACILITATOR); depositor.withdraw(wp);
         
         assertGt(GemLike(DAI).balanceOf(address(buffer)), prevDAI);
