@@ -1,5 +1,20 @@
+// SPDX-FileCopyrightText: © 2023 Dai Foundation <www.daifoundation.org>
 // SPDX-License-Identifier: AGPL-3.0-or-later
-pragma solidity ^0.8.13;
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+pragma solidity ^0.8.0;
 
 /**
  *  @title IAllocatorConduit
@@ -7,7 +22,7 @@ pragma solidity ^0.8.13;
  *         After funds are deposited into a Conduit, they can be deployed by Fund Managers to earn yield.
  *         When Allocators want funds back, they can request funds from the Fund Managers and then withdraw once liquidity is available.
  */
-interface IConduit {
+interface IAllocatorConduit {
 
     /**
      *  @dev   Event emitted when a deposit is made to the Conduit.
@@ -68,6 +83,7 @@ interface IConduit {
         bytes32    domain;
         uint256    amountRequested;
         uint256    amountFilled;
+        bytes      data;
         uint256    fundRequestId;  // NOTE: Investigate usage
     }
 
@@ -131,9 +147,10 @@ interface IConduit {
 
     /**
      *  @dev   Function to cancel a withdrawal request from a Fund Manager.
+     *  @param domain        The unique identifier of the domain.
      *  @param fundRequestId The ID of the withdrawal request.
      */
-    function cancelFundRequest(uint256 fundRequestId) external;
+    function cancelFundRequest(bytes32 domain, uint256 fundRequestId) external;
 
     /**
      *  @dev    Function to check if a withdrawal request can be cancelled.
@@ -145,10 +162,9 @@ interface IConduit {
     /**
      *  @dev    Function to get the status of a withdrawal request.
      *  @param  fundRequestId The ID of the withdrawal request.
-     *  @return domain        The domain of the withdrawal request.
      *  @return fundRequest   The FundRequest struct representing the withdrawal request.
      */
-    function fundRequestStatus(uint256 fundRequestId) external returns (bytes32 domain, FundRequest memory fundRequest);
+    function fundRequestStatus(uint256 fundRequestId) external returns (FundRequest memory fundRequest);
 
     /**
      *  @dev    Function to get the active fund requests for a particular domain.

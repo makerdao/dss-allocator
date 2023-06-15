@@ -1,32 +1,36 @@
+// SPDX-FileCopyrightText: © 2023 Dai Foundation <www.daifoundation.org>
 // SPDX-License-Identifier: AGPL-3.0-or-later
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.8.16;
 
-contract AllocatorConduitExample {
+import "./IAllocatorConduit.sol";
+
+contract AllocatorConduitExample is IAllocatorConduit {
     // --- storage variables ---
 
     mapping(address => uint256) public wards;
     mapping(bytes32 => address) public roles;
-    mapping(uint256 => WithdrawalRequest) public withdrawalRequests;
-    uint256 public totalWithdrawalRequests;
-
-    // --- structs ---
-
-    enum StatusEnum { Inactive, Active, Completed }
-    struct WithdrawalRequest {
-        bytes32 domain;
-        uint256 amount;
-        StatusEnum status;
-    }
+    mapping(address => FundRequest[]) public fundRequests;
+    uint256 public totalFundRequests;
 
     // --- events ---
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
     event SetRoles(bytes32 indexed domain, address roles_);
-    event InitiateRequestFunds(address indexed sender, bytes32 domain, uint256 amount, StatusEnum status);
-    event CancelRequestFunds(address indexed sender, bytes32 indexed domain, uint256 withdrawalId);
-    event Withdraw(address indexed sender, bytes32 indexed domain, uint256 withdrawalId);
 
     // --- modifiers ---
 
@@ -55,34 +59,41 @@ contract AllocatorConduitExample {
 
     // --- getters ---
 
-    function isCancelable(uint256 withdrawalId) external view returns (bool ok) {
-        WithdrawalRequest storage request = withdrawalRequests[withdrawalId];
-        ok = request.status == StatusEnum.Active;
+    function maxDeposit(bytes32 domain, address asset) external view returns (uint256 maxDeposit_) {
+        // Implement the logic for maxDeposit
     }
 
-    function withdrawStatus(uint256 withdrawalId) external view returns (bytes32 domain, uint256 amount, StatusEnum status) {
-        WithdrawalRequest storage request = withdrawalRequests[withdrawalId];
-        (domain, amount, status) = (request.domain, request.amount, request.status);
+    function maxWithdraw(bytes32 domain, address asset) external view returns (uint256 maxWithdraw_) {
+        // Implement the logic for maxWithdraw
     }
 
-    function activeWithdraws(bytes32 domain) external view returns (uint256[] memory withdrawIds, uint256 totalAmount) {
-        withdrawIds = new uint256[](totalWithdrawalRequests);
+    function isCancelable(uint256 fundRequestId) external view returns (bool isCancelable_) {
+        FundRequest storage request = fundRequests[address(0)][fundRequestId];
+        isCancelable_ = request.status != StatusEnum.CANCELLED && request.status != StatusEnum.COMPLETED;
+    }
+
+    function fundRequestStatus(uint256 fundRequestId) external view returns (FundRequest memory fundRequest) {
+        fundRequest = fundRequests[address(0)][fundRequestId];
+    }
+
+    function activeFundRequests(bytes32 domain) external view returns (uint256[] memory fundRequestIds, uint256 totalAmount) {
+        fundRequestIds = new uint256[](totalFundRequests);
         uint256 count;
 
-        for (uint256 i = 1; i <= totalWithdrawalRequests; i++) {
-            if (withdrawalRequests[i].domain == domain && withdrawalRequests[i].status == StatusEnum.Active) {
-                withdrawIds[count++] = i;
+        for (uint256 i = 1; i <= totalFundRequests; i++) {
+            if (fundRequests[address(0)][i].domain == domain && fundRequests[address(0)][i].status != StatusEnum.CANCELLED && fundRequests[address(0)][i].status != StatusEnum.COMPLETED) {
+                fundRequestIds[count++] = i;
             }
         }
 
         for (uint256 i = 0; i < count; i++) {
-            totalAmount += withdrawalRequests[withdrawIds[i]].amount;
+            totalAmount += fundRequests[address(0)][fundRequestIds[i]].amountRequested;
         }
     }
 
-    function totalActiveWithdraws() external view returns (uint256 count) {
-        for (uint256 i = 1; i <= totalWithdrawalRequests; i++) {
-            if (withdrawalRequests[i].status == StatusEnum.Active) {
+    function totalActiveFundRequests() external view returns (uint256 count) {
+        for (uint256 i = 1; i <= totalFundRequests; i++) {
+            if (fundRequests[address(0)][i].status != StatusEnum.CANCELLED && fundRequests[address(0)][i].status != StatusEnum.COMPLETED) {
                 count++;
             }
         }
@@ -107,37 +118,32 @@ contract AllocatorConduitExample {
 
     // --- functions ---
 
-    function deposit(bytes32 domain, uint256 amount) external domainAuth(domain) {
+    function deposit(bytes32 domain, address asset, uint256 amount) external domainAuth(domain) {
         // Implement the logic to deposit funds into the FundManager
+        emit Deposit(domain, asset, amount);
     }
 
-    function initiateRequestFunds(bytes32 domain, uint256 amount) external domainAuth(domain) returns (uint256 withdrawalId) {
-        require(amount > 0, "AllocatorConduitExample/amount-not-greater-0");
-
-        withdrawalId = ++totalWithdrawalRequests;
-        withdrawalRequests[withdrawalId] = WithdrawalRequest(domain, amount, StatusEnum.Active);
-
-        emit InitiateRequestFunds(msg.sender, domain, amount, StatusEnum.Active);
-    }
-
-    function cancelRequestFunds(bytes32 domain, uint256 withdrawalId) external domainAuth(domain) {
-        WithdrawalRequest storage request = withdrawalRequests[withdrawalId];
-        require(request.domain == domain, "AllocatorConduitExample/domain-not-match");
-        require(request.status == StatusEnum.Active, "AllocatorConduitExample/request-not-active");
-
-        request.status = StatusEnum.Inactive;
-        emit CancelRequestFunds(msg.sender, domain, withdrawalId);
-    }
-
-    function withdraw(bytes32 domain, uint256 withdrawalId) external domainAuth(domain) {
-        WithdrawalRequest storage request = withdrawalRequests[withdrawalId];
-        require(request.domain == domain, "AllocatorConduitExample/domain-not-match");
-        require(request.status == StatusEnum.Active, "AllocatorConduitExample/request-not-active");
-
+    function withdraw(bytes32 domain, address asset, address destination, uint256 amount) external domainAuth(domain) {
         // Implement the logic to withdraw funds from the FundManager
 
-        request.status = StatusEnum.Completed;
+        emit Withdraw(domain, asset, destination, amount);
+    }
 
-        emit Withdraw(msg.sender, domain, withdrawalId);
+    function requestFunds(bytes32 domain, address asset, uint256 amount, bytes memory data) external domainAuth(domain) returns (uint256 fundRequestId) {
+        require(amount > 0, "AllocatorConduitExample/amount-not-greater-0");
+
+        fundRequestId = ++totalFundRequests;
+        fundRequests[asset].push(FundRequest(StatusEnum.PENDING, domain, amount, 0, data, fundRequestId));
+
+        emit RequestFunds(domain, asset, amount, data, fundRequestId);
+    }
+
+    function cancelFundRequest(bytes32 domain, uint256 fundRequestId) external domainAuth(domain) {
+        FundRequest storage request = fundRequests[address(0)][fundRequestId];
+        require(request.domain == domain, "AllocatorConduitExample/domain-not-match");
+        require(request.status != StatusEnum.CANCELLED && request.status != StatusEnum.COMPLETED, "AllocatorConduitExample/request-not-active");
+
+        request.status = StatusEnum.CANCELLED;
+        // emit CancelRequest(domain, asset, amount, data, fundRequestId); // TODO: define how to get certain data
     }
 }
