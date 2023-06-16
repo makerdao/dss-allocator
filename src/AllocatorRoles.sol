@@ -22,7 +22,7 @@ contract AllocatorRoles
     // --- storage variables ---
 
     mapping(address => uint256) public wards;
-    mapping(bytes32 => address) public domains;
+    mapping(bytes32 => address) public admins;
     mapping(bytes32 => mapping(address => bytes32)) public userRoles;
     mapping(bytes32 => mapping(address => mapping(bytes4 => bytes32))) public actionsRoles;
 
@@ -30,7 +30,7 @@ contract AllocatorRoles
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
-    event SetDomainAdmin(bytes32 indexed domain, address user);
+    event SetAdmin(bytes32 indexed domain, address user);
     event SetUserRole(address indexed who, uint8 indexed role, bool enabled);
     event SetRoleAction(uint8 indexed role, address indexed target, bytes4 indexed sig, bool enabled);
 
@@ -42,7 +42,7 @@ contract AllocatorRoles
     }
 
     modifier domainAuth(bytes32 domain) {
-        require(domains[domain] == msg.sender, "AllocatorRoles/domain-not-authorized");
+        require(admins[domain] == msg.sender, "AllocatorRoles/domain-not-authorized");
         _;
     }
 
@@ -77,9 +77,9 @@ contract AllocatorRoles
         emit Deny(usr);
     }
 
-    function setDomainAdmin(bytes32 domain, address user) external auth {
-        domains[domain] = user;
-        emit SetDomainAdmin(domain, user);
+    function setAdmin(bytes32 domain, address user) external auth {
+        admins[domain] = user;
+        emit SetAdmin(domain, user);
     }
 
     // --- domain administration ---

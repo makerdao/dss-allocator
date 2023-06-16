@@ -23,7 +23,7 @@ contract AllocatorRolesTest is DssTest {
 
     function testModifiers() public {
         bytes4[] memory authedMethods = new bytes4[](1);
-        authedMethods[0] = roles.setDomainAdmin.selector;
+        authedMethods[0] = roles.setAdmin.selector;
 
         vm.startPrank(address(0xBEEF));
         checkModifier(address(roles), "AllocatorRoles/not-authorized", authedMethods);
@@ -45,7 +45,7 @@ contract AllocatorRolesTest is DssTest {
         vm.expectRevert("AllocatorRoles/domain-not-authorized");
         roles.setUserRole(domain, address(this), admin_role, true);
 
-        roles.setDomainAdmin(domain, address(this));
+        roles.setAdmin(domain, address(this));
         roles.setUserRole(domain, address(this), admin_role, true);
 
         assertTrue( roles.hasUserRole(domain, address(this), admin_role));
