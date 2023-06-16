@@ -65,6 +65,8 @@ contract SwapDepositorTest is DssTest {
         swapDepositor.file("roles", address(roles));
         swapDepositor.file("swapper", address(swapper));
         swapDepositor.file("depositor", address(depositor));
+        swapDepositor.file("gap", DAI, 10 * WAD);
+        swapDepositor.file("gap", USDC, 10 * 10**6);
 
         deal(DAI,  address(buffer), 1_000_000 * WAD,   true);
         deal(USDC, address(buffer), 1_000_000 * 10**6, true);

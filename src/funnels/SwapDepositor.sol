@@ -34,6 +34,7 @@ interface UniV3PoolLike {
 
 contract SwapDepositor {
     mapping (address => uint256) public wards;
+    mapping (address => uint256) public gaps;     // gaps[gem0] is the maximum acceptable difference between the values of the tokens added as liquidity (calculated in terms of gem0), over which the excess token is sold prior to adding liquidity
 
     address public roles;                           // Contract managing access control for this SwapDepositor
     address public swapper;                         // Swapper contract
@@ -46,6 +47,7 @@ contract SwapDepositor {
     event Rely (address indexed usr);
     event Deny (address indexed usr);
     event File (bytes32 indexed what, address data);
+    event File (bytes32 indexed what, address gem, uint256 data);
 
     constructor(address _uniV3Factory) {
         uniV3Factory = _uniV3Factory;
@@ -75,11 +77,17 @@ contract SwapDepositor {
     function deny(address usr) external auth { wards[usr] = 0; emit Deny(usr); }
 
     function file(bytes32 what, address data) external auth {
-        if      (what == "roles")      roles   = data;
-        else if (what == "swapper")    swapper = data;
+        if      (what == "roles")      roles     = data;
+        else if (what == "swapper")    swapper   = data;
         else if (what == "depositor")  depositor = data;
         else revert("SwapDepositor/file-unrecognized-param");
         emit File(what, data);
+    }
+
+    function file(bytes32 what, address gem, uint256 data) external auth {
+        if      (what == "gap")  gaps[gem] = data;
+        else revert("SwapDepositor/file-unrecognized-param");
+        emit File(what, gem, data);
     }
 
 
@@ -123,24 +131,26 @@ contract SwapDepositor {
 
     function swapBeforeDeposit(SwapDepositParams memory p) internal returns (uint256 amt0, uint256 amt1) {
         (uint256 amt0_1, uint256 amt1_0) = getConvertedAmounts(p);
-        // TODO1: return if differences amt0-amt1_0 and amt1-amt0_1 are both lower than some swap threshold
         // TODO2: calculate more accurate swap amounts when callee is UniV3SwapperCallee
         
         uint bought;
         uint sold;
-        if (p.amt0 > amt1_0) {
+        if (p.amt0 > amt1_0 + gaps[p.gem0]) {
             // need to sell some gem0
             sold = (p.amt0 - amt1_0) / 2;
             bought = Swapper(swapper).swap(p.gem0, p.gem1, sold, p.minSwappedOut, p.swapperCallee, p.swapperData);
             amt0 = p.amt0 - sold;
             amt1 = p.amt1 + bought;
 
-        } else if (p.amt1 > amt0_1) {
+        } else if (p.amt1 > amt0_1 + gaps[p.gem1]) {
             // need to sell some gem1
             sold = (p.amt1 - amt0_1) / 2;
             bought = Swapper(swapper).swap(p.gem1, p.gem0, sold, p.minSwappedOut, p.swapperCallee, p.swapperData);
             amt1 = p.amt1 - sold;
             amt0 = p.amt0 + bought;
+        } else {
+            amt1 = p.amt1;
+            amt0 = p.amt0;
         }
     }
 
