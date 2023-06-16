@@ -21,7 +21,7 @@ interface SwapperLike {
     function swap(address src, address dst, uint256 amt, uint256 minOut, address callee, bytes calldata data) external returns (uint256 out);
 }
 
-contract SwapperRunner {
+contract StableSwapper {
     mapping (address => uint256) public wards;                          // facilitators
     mapping (address => uint256) public buds;                           // whitelisted keepers
     mapping (address => mapping (address => uint256)) public counts;    // counts[src][dst] is the remaining number of times that a src-to-dst swap can be performed by keepers
@@ -32,7 +32,7 @@ contract SwapperRunner {
                                                                         //       Example 2: a max loss of 1% when swapping  DAI to USDC corresponds to minPrices[src][dst] = 99 * WAD / 100 / 10**(18-6)
                                                                         //       Example 3: a max loss of 1% when swapping USDT to USDC corresponds to minPrices[src][dst] = 99 * WAD / 100
 
-    address public swapper;                                             // Swapper for this SwapperRunner
+    address public swapper;                                             // Swapper for this StableSwapper
 
     event Rely   (address indexed usr);
     event Deny   (address indexed usr);
@@ -47,13 +47,13 @@ contract SwapperRunner {
     }
 
     modifier auth {
-        require(wards[msg.sender] == 1, "SwapperRunner/not-authorized");
+        require(wards[msg.sender] == 1, "StableSwapper/not-authorized");
         _;
     }
 
     // permissionned to whitelisted keepers
     modifier toll { 
-        require(buds[msg.sender] == 1, "SwapperRunner/non-keeper"); 
+        require(buds[msg.sender] == 1, "StableSwapper/non-keeper"); 
         _;
     }
 
@@ -68,24 +68,26 @@ contract SwapperRunner {
         if      (what == "count")        counts[src][dst] = data;
         else if (what == "lot")            lots[src][dst] = data;
         else if (what == "minPrice")  minPrices[src][dst] = data;
-        else revert("SwapperRunner/file-unrecognized-param");
+        else revert("StableSwapper/file-unrecognized-param");
         emit File(what, src, dst, data);
     }
 
     function file(bytes32 what, address data) external auth {
         if   (what == "swapper") swapper = data;
-        else revert("SwapperRunner/file-unrecognized-param");
+        else revert("StableSwapper/file-unrecognized-param");
         emit File(what, data);
     }
 
     function swap(address src, address dst, uint256 minOut, address callee, bytes calldata data) toll external returns (uint256 out) {
         uint256 cnt = counts[src][dst];
-        require(cnt > 0, "SwapperRunner/exceeds-count");
+        require(cnt > 0, "StableSwapper/exceeds-count");
         counts[src][dst] = cnt - 1;
 
-        uint256 amt = lots[src][dst];
-        require(minOut >= amt * minPrices[src][dst] / WAD, "SwapperRunner/min-too-small");
+        uint256 lot = lots[src][dst];
+        uint256 reqOut = lot * minPrices[src][dst] / WAD;
+        if(minOut == 0) minOut = reqOut;
+        require(minOut >= reqOut, "SwapperRunner/min-too-small");
 
-        out = SwapperLike(swapper).swap(src, dst, amt, minOut, callee, data);
+        out = SwapperLike(swapper).swap(src, dst, lot, minOut, callee, data);
     }
 }

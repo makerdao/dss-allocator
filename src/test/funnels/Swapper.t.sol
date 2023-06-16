@@ -2,7 +2,7 @@
 pragma solidity ^0.8.16;
 
 import "../../funnels/Swapper.sol";
-import "../../funnels/SwapperRunner.sol";
+import "../../funnels/StableSwapper.sol";
 import "../../funnels/UniV3SwapperCallee.sol";
 import "../../AllocatorRoles.sol";
 import "../../AllocatorBuffer.sol";
@@ -11,7 +11,7 @@ import "dss-test/DssTest.sol";
 contract SwapperTest is DssTest {
     AllocatorBuffer public buffer;
     Swapper public swapper;
-    SwapperRunner public runner;
+    StableSwapper public runner;
     UniV3SwapperCallee public uniV3Callee;
 
     address constant DAI          = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -31,7 +31,7 @@ contract SwapperTest is DssTest {
         swapper = new Swapper();
         uniV3Callee = new UniV3SwapperCallee(UNIV3_ROUTER);
         AllocatorRoles roles = new AllocatorRoles();
-        vm.prank(FACILITATOR); runner = new SwapperRunner();
+        vm.prank(FACILITATOR); runner = new StableSwapper();
 
         roles.setRoleAction(SWAPPER_ROLE, address(swapper), swapper.swap.selector, true);
         roles.setUserRole(FACILITATOR, SWAPPER_ROLE, true);

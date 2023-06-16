@@ -99,7 +99,7 @@ contract SwapDepositorTest is DssTest {
         vm.prank(FACILITATOR); (uint128 liq1,,) = swapDepositor.deposit(dp);
 
         assertLt(TestGemLike(DAI).balanceOf(address(buffer)), prevDAI);
-        assertEq(TestGemLike(USDC).balanceOf(address(buffer)), prevUSDC);
+        assertGe(TestGemLike(USDC).balanceOf(address(buffer)), prevUSDC);
         assertEq(TestGemLike(DAI).balanceOf(address(depositor)), 0);
         assertEq(TestGemLike(USDC).balanceOf(address(depositor)), 0);
         assertEq(TestGemLike(UNIV3_POS_MGR).balanceOf(address(buffer)), 1);
@@ -110,7 +110,7 @@ contract SwapDepositorTest is DssTest {
         vm.prank(FACILITATOR);  (uint128 liq2,,) = swapDepositor.deposit(dp);
 
         assertLt(TestGemLike(DAI).balanceOf(address(buffer)), prevDAI);
-        assertEq(TestGemLike(USDC).balanceOf(address(buffer)), prevUSDC);
+        assertGe(TestGemLike(USDC).balanceOf(address(buffer)), prevUSDC);
         assertEq(TestGemLike(DAI).balanceOf(address(depositor)), 0);
         assertEq(TestGemLike(USDC).balanceOf(address(depositor)), 0);
         assertEq(TestGemLike(UNIV3_POS_MGR).balanceOf(address(buffer)), 1);
@@ -125,7 +125,7 @@ contract SwapDepositorTest is DssTest {
             minAmt0: 880 * WAD, 
             minAmt1: 880 * 10**6, 
             swappedAmt0: 0,
-            swappedAmt1: 1000 * 10**6,
+            swappedAmt1: type(uint256).max,
             minSwappedOut: 880 * 10**6,
             fee: uint24(100), 
             tickLower: refTick-100, 
