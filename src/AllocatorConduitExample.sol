@@ -16,7 +16,7 @@
 
 pragma solidity ^0.8.16;
 
-import "./IAllocatorConduit.sol";
+import "./interfaces/IAllocatorConduit.sol";
 
 contract AllocatorConduitExample is IAllocatorConduit {
     // --- storage variables ---
