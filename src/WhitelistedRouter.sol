@@ -17,8 +17,12 @@
 
 pragma solidity ^0.8.16;
 
+interface RolesLike {
+    function canCall(bytes32, address, address, bytes4) external view returns (bool);
+}
+
 interface BoxLike {
-    function deposit(address gem, uint256 amount, address owner) external;
+    function withdraw(bytes32, address, address, uint256) external;
 }
 
 interface GemLike {
@@ -27,45 +31,52 @@ interface GemLike {
 }
 
 contract WhitelistedRouter {
+
+    // --- storage variables ---
+
     mapping (address => uint256) public wards;    // Auth
-    mapping (address => uint256) public buds;     // whitelisted facilitators
     mapping (address => uint256) public boxes;    // whitelisted boxes (e.g. RWA conduits, Escrow, SubDAO proxy)
 
-    address public owner;                         // The SubDAO proxy owning this router. Used to notify boxes about the account owning the funds moved to them.
+    // --- immutables ---
 
-    event Rely    (address indexed usr);
-    event Deny    (address indexed usr);
-    event Kissed  (address indexed usr);
-    event Dissed  (address indexed usr);
-    event File    (bytes32 indexed what, address data);
-    event File    (bytes32 indexed what, address data, uint256 val);
-    event Transfer(address indexed gem, address indexed from, address indexed to, uint256 amt, address bud);
+    RolesLike immutable public roles;
+    bytes32   immutable public ilk;
 
-    constructor() {
+    // --- events ---
+
+    event Rely(address indexed usr);
+    event Deny(address indexed usr);
+    event File(bytes32 indexed what, address data, uint256 val);
+    event Move(address sender, address indexed asset, address indexed from, address to, uint256 amt);
+
+    // --- modifiers ---
+
+    modifier auth() {
+        require(roles.canCall(ilk, msg.sender, address(this), msg.sig) ||
+                wards[msg.sender] == 1, "WhitelistedRouter/not-authorized");
+        _;
+    }
+
+    // --- constructor ---
+
+    constructor(address roles_, bytes32 ilk_) {
+        roles = RolesLike(roles_);
+        ilk = ilk_;
+
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
     }
 
-    modifier auth {
-        require(wards[msg.sender] == 1, "WhitelistedRouter/not-authorized");
-        _;
+    // --- administration ---
+
+    function rely(address usr) external auth {
+        wards[usr] = 1;
+        emit Rely(usr);
     }
 
-    // permissionned to whitelisted facilitators
-    modifier toll { 
-        require(buds[msg.sender] == 1, "WhitelistedRouter/non-facilitator"); 
-        _;
-    }
-
-    function rely(address usr)   external auth { wards[usr]   = 1; emit Rely(usr); }
-    function deny(address usr)   external auth { wards[usr]   = 0; emit Deny(usr); }
-    function kiss(address usr)   external auth { buds[usr]    = 1; emit Kissed(usr); }
-    function diss(address usr)   external auth { buds[usr]    = 0; emit Dissed(usr); }
-
-    function file(bytes32 what, address data) external auth {
-        if (what == "owner") owner = data;
-        else revert("WhitelistedRouter/file-unrecognized-param");
-        emit File(what, data);
+    function deny(address usr) external auth {
+        wards[usr] = 0;
+        emit Deny(usr);
     }
 
     function file(bytes32 what, address data, uint256 val) external auth {
@@ -74,12 +85,12 @@ contract WhitelistedRouter {
         emit File(what, data, val);
     }
 
-    function move(address gem, address from, address to, uint256 amt) external toll {
+    // --- move execution ---
+
+    function move(address asset, address from, address to, uint256 amt) external auth {
         require(boxes[from] == 1, "WhitelistedRouter/invalid-from");
         require(boxes[to] == 1, "WhitelistedRouter/invalid-to");
-        GemLike(gem).transferFrom(from, address(this), amt);
-        GemLike(gem).approve(to, amt);
-        BoxLike(to).deposit(gem, amt, owner);
-        emit Transfer(gem, from, to, amt, msg.sender);
+        BoxLike(from).withdraw(ilk, asset, to, amt);
+        emit Move(msg.sender, asset, from, to, amt);
     }
 }

@@ -5,6 +5,7 @@ import "dss-test/DssTest.sol";
 import { WhitelistedRouter } from "src/WhitelistedRouter.sol";
 import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
 import { GemMock } from "./mocks/GemMock.sol";
+import { RolesMock } from "./mocks/RolesMock.sol";
 
 interface BalanceLike {
     function balanceOf(address) external view returns (uint256);
@@ -16,32 +17,37 @@ interface GemLikeLike {
 }
 
 contract WhitelistedRouterTest is DssTest {
+    bytes32           public ilk;
+    RolesMock         public roles;
     WhitelistedRouter public router;
-    address public box1;
-    address public box2;
-    address public USDC;
-    address public USDT;
+    address           public box1;
+    address           public box2;
+    address           public USDC;
+    address           public USDT;
 
     address constant FACILITATOR = address(0xb0b);
-    address constant SUBDAO_PROXY = address(0xDA0);
 
     function setUp() public {
-        router = new WhitelistedRouter();
+        ilk    = "TEST-ILK";
+        roles  = new RolesMock();
+        router = new WhitelistedRouter(address(roles), ilk);
         box1 = address(new AllocatorBuffer());
         box2 = address(new AllocatorBuffer());
-        USDC = address(new GemMock(1_000_000 ether));
-        USDT = address(new GemMock(1_000_000 ether));
-        AllocatorBuffer(box1).approve(USDC, address(router), type(uint256).max);
-        AllocatorBuffer(box2).approve(USDC, address(router), type(uint256).max);
-        AllocatorBuffer(box1).approve(USDT, address(router), type(uint256).max);
-        AllocatorBuffer(box2).approve(USDT, address(router), type(uint256).max);
+        USDC = address(new GemMock(0));
+        USDT = address(new GemMock(0));
+        AllocatorBuffer(box1).rely(address(router));
+        AllocatorBuffer(box2).rely(address(router));
         router.file("box", box1, 1);
         router.file("box", box2, 1);
-        router.file("owner", SUBDAO_PROXY);
-        router.kiss(FACILITATOR);
     }
 
-    function _checkMove(address gem, uint256 amt) internal {
+    function _checkMove(bool ward, address gem, uint256 amt) internal {
+        if (ward) {
+            router.rely(FACILITATOR);
+        } else {
+            roles.setOk(true);
+        }
+
         deal(gem, box1, amt, true);
         assertEq(BalanceLike(gem).balanceOf(box1), amt);
         assertEq(BalanceLike(gem).balanceOf(box2), 0);
@@ -59,10 +65,19 @@ contract WhitelistedRouterTest is DssTest {
         vm.stopPrank();
     }
 
-    function testMoveUSDC() public {
-        _checkMove(USDC, 1000 ether);
+    function testMoveUSDCWard() public {
+        _checkMove(true, USDC, 1000 ether);
     }
-    function testMoveUSDT() public {
-        _checkMove(USDT, 1000 ether);
+
+    function testMoveUSDCRoles() public {
+        _checkMove(false, USDC, 1000 ether);
+    }
+
+    function testMoveUSDTWard() public {
+        _checkMove(true, USDT, 1000 ether);
+    }
+
+    function testMoveUSDTRoles() public {
+        _checkMove(false, USDT, 1000 ether);
     }
 }

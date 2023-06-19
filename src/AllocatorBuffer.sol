@@ -18,6 +18,7 @@ pragma solidity ^0.8.16;
 
 interface TokenLike {
     function approve(address, uint256) external;
+    function transfer(address, uint256) external;
     function transferFrom(address, address, uint256) external;
 }
 
@@ -30,8 +31,9 @@ contract AllocatorBuffer {
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
-    event Approve(address indexed token, address indexed spender, uint256 amount);
-    event Deposit(address indexed token, address indexed sender, uint256 amount);
+    event Approve(address indexed asset, address indexed spender, uint256 amount);
+    event Deposit(address indexed asset, address indexed sender, uint256 amount);
+    event Withdraw(address indexed asset, address indexed destination, uint256 amount);
 
     // --- modifiers ---
 
@@ -61,17 +63,18 @@ contract AllocatorBuffer {
 
     // --- functions ---
 
-    function approve(
-        address token,
-        address spender,
-        uint256 amount
-    ) external auth {
-        TokenLike(token).approve(spender, amount);
-        emit Approve(token, spender, amount);
+    function approve(address asset, address spender, uint256 amount) external auth {
+        TokenLike(asset).approve(spender, amount);
+        emit Approve(asset, spender, amount);
     }
 
-    function deposit(address token, uint256 amount, address /* owner */) external {
-        TokenLike(token).transferFrom(msg.sender, address(this), amount);
-        emit Deposit(token, msg.sender, amount);
+    function deposit(bytes32 /*ilk*/, address asset, uint256 amount, address /* owner */) external {
+        TokenLike(asset).transferFrom(msg.sender, address(this), amount);
+        emit Deposit(asset, msg.sender, amount);
+    }
+
+    function withdraw(bytes32 /*ilk*/, address asset, address destination, uint256 amount) external auth {
+        TokenLike(asset).transfer(destination, amount);
+        emit Withdraw(asset, destination, amount);
     }
 }
