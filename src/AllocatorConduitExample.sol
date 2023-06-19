@@ -16,13 +16,14 @@
 
 pragma solidity ^0.8.16;
 
-import "./IAllocatorConduit.sol";
+import "./interfaces/IAllocatorConduit.sol";
+import "./interfaces/IFundsRequestable.sol";
 
 interface RolesLike {
     function canCall(bytes32, address, address, bytes4) external view returns (bool);
 }
 
-contract AllocatorConduitExample is IAllocatorConduit {
+contract AllocatorConduitExample is IAllocatorConduit, IFundsRequestable {
     // --- storage variables ---
 
     mapping(address => uint256) public wards;
@@ -69,16 +70,16 @@ contract AllocatorConduitExample is IAllocatorConduit {
         maxWithdraw_ = positions[domain][asset];
     }
 
-    function isCancelable(address asset, uint256 fundRequestId) external view returns (bool isCancelable_) {
+    function isCancelable(bytes32, address asset, uint256 fundRequestId) external view returns (bool isCancelable_) {
         FundRequest storage request = fundRequests[asset][fundRequestId];
         isCancelable_ = request.status != StatusEnum.CANCELLED && request.status != StatusEnum.COMPLETED;
     }
 
-    function fundRequestStatus(address asset, uint256 fundRequestId) external view returns (FundRequest memory fundRequest) {
+    function fundRequestStatus(bytes32, address asset, uint256 fundRequestId) external view returns (FundRequest memory fundRequest) {
         fundRequest = fundRequests[asset][fundRequestId];
     }
 
-    function activeFundRequests(address asset, bytes32 domain) external view returns (uint256[] memory fundRequestIds, uint256 totalAmount) {
+    function activeFundRequests(bytes32 domain, address asset) external view returns (uint256[] memory fundRequestIds, uint256 totalAmount) {
         fundRequestIds = new uint256[](totalFundRequests);
         uint256 count;
 
