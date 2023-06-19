@@ -22,7 +22,7 @@ contract AllocatorRoles
     // --- storage variables ---
 
     mapping(address => uint256) public wards;
-    mapping(bytes32 => address) public admins;
+    mapping(bytes32 => address) public ilkAdmins;
     mapping(bytes32 => mapping(address => bytes32)) public userRoles;
     mapping(bytes32 => mapping(address => mapping(bytes4 => bytes32))) public actionsRoles;
 
@@ -30,7 +30,7 @@ contract AllocatorRoles
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
-    event SetAdmin(bytes32 indexed ilk, address user);
+    event SetIlkAdmin(bytes32 indexed ilk, address user);
     event SetUserRole(address indexed who, uint8 indexed role, bool enabled);
     event SetRoleAction(uint8 indexed role, address indexed target, bytes4 indexed sig, bool enabled);
 
@@ -42,7 +42,7 @@ contract AllocatorRoles
     }
 
     modifier ilkAuth(bytes32 ilk) {
-        require(admins[ilk] == msg.sender, "AllocatorRoles/ilk-not-authorized");
+        require(ilkAdmins[ilk] == msg.sender, "AllocatorRoles/ilk-not-authorized");
         _;
     }
 
@@ -77,9 +77,9 @@ contract AllocatorRoles
         emit Deny(usr);
     }
 
-    function setAdmin(bytes32 ilk, address user) external auth {
-        admins[ilk] = user;
-        emit SetAdmin(ilk, user);
+    function setIlkAdmin(bytes32 ilk, address user) external auth {
+        ilkAdmins[ilk] = user;
+        emit SetIlkAdmin(ilk, user);
     }
 
     // --- ilk administration ---
