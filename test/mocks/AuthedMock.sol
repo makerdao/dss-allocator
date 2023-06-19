@@ -6,8 +6,11 @@ contract AuthedMock {
     address public roles;
     bool public flag;
 
-    constructor(address roles_) {
+    bytes32 public immutable domain;
+
+    constructor(address roles_, bytes32 domain_) {
         roles = roles_;
+        domain = domain_;
     }
 
     modifier auth() {
@@ -16,7 +19,8 @@ contract AuthedMock {
         if (roles_ != address(0)) {
             (bool ok, bytes memory ret) = roles_.call(
                                             abi.encodeWithSignature(
-                                                "canCall(address,address,bytes4)",
+                                                "canCall(bytes32,address,address,bytes4)",
+                                                domain,
                                                 msg.sender,
                                                 address(this),
                                                 msg.sig

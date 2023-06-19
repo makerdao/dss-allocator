@@ -22,6 +22,7 @@ contract AllocatorVaultTest is DssTest {
     GemMock         public nst;
     NstJoinMock     public nstJoin;
     AllocatorBuffer public buffer;
+    RolesMock       public roles;
     AllocatorVault  public vault;
     bytes32         public ilk;
 
@@ -40,7 +41,8 @@ contract AllocatorVaultTest is DssTest {
         nst     = new GemMock(0);
         nstJoin = new NstJoinMock(vat, nst);
         buffer  = new AllocatorBuffer();
-        vault   = new AllocatorVault(address(buffer), address(vat), address(gemJoin), address(nstJoin));
+        roles   = new RolesMock();
+        vault   = new AllocatorVault(address(roles), address(buffer), address(vat), address(gemJoin), address(nstJoin));
         buffer.approve(address(nst), address(vault), type(uint256).max);
         gem.transfer(address(vault), 1_000_000 * 10**18);
 
@@ -66,12 +68,10 @@ contract AllocatorVaultTest is DssTest {
     }
 
     function testFile() public {
-        checkFileAddress(address(vault), "AllocatorVault", ["roles", "jug"]);
+        checkFileAddress(address(vault), "AllocatorVault", ["jug"]);
     }
 
     function testRoles() public {
-        RolesMock roles = new RolesMock();
-        vault.file("roles", address(roles));
         vm.startPrank(address(0xBEEF));
         vm.expectRevert("AllocatorVault/not-authorized");
         vault.file("jug", address(0));
