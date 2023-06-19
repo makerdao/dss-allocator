@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.16;
 
-import "../../funnels/WhitelistedRouter.sol";
-import "../../AllocatorBuffer.sol";
 import "dss-test/DssTest.sol";
+import { WhitelistedRouter } from "src/WhitelistedRouter.sol";
+import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
+import { GemMock } from "./mocks/GemMock.sol";
 
 interface BalanceLike {
     function balanceOf(address) external view returns (uint256);
@@ -18,18 +19,18 @@ contract WhitelistedRouterTest is DssTest {
     WhitelistedRouter public router;
     address public box1;
     address public box2;
+    address public USDC;
+    address public USDT;
 
-    address constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-    address constant USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
     address constant FACILITATOR = address(0xb0b);
     address constant SUBDAO_PROXY = address(0xDA0);
 
     function setUp() public {
-        vm.createSelectFork(vm.envString("ETH_RPC_URL"));
-        
         router = new WhitelistedRouter();
         box1 = address(new AllocatorBuffer());
         box2 = address(new AllocatorBuffer());
+        USDC = address(new GemMock(1_000_000 ether));
+        USDT = address(new GemMock(1_000_000 ether));
         AllocatorBuffer(box1).approve(USDC, address(router), type(uint256).max);
         AllocatorBuffer(box2).approve(USDC, address(router), type(uint256).max);
         AllocatorBuffer(box1).approve(USDT, address(router), type(uint256).max);
