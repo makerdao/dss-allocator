@@ -30,7 +30,7 @@ contract AllocatorRoles
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
-    event SetAdmin(bytes32 indexed domain, address user);
+    event SetAdmin(bytes32 indexed ilk, address user);
     event SetUserRole(address indexed who, uint8 indexed role, bool enabled);
     event SetRoleAction(uint8 indexed role, address indexed target, bytes4 indexed sig, bool enabled);
 
@@ -41,8 +41,8 @@ contract AllocatorRoles
         _;
     }
 
-    modifier domainAuth(bytes32 domain) {
-        require(admins[domain] == msg.sender, "AllocatorRoles/domain-not-authorized");
+    modifier ilkAuth(bytes32 ilk) {
+        require(admins[ilk] == msg.sender, "AllocatorRoles/ilk-not-authorized");
         _;
     }
 
@@ -55,8 +55,8 @@ contract AllocatorRoles
 
     // --- getters ---
 
-    function hasUserRole(bytes32 domain, address who, uint8 role) external view returns (bool) {
-        return bytes32(0) != userRoles[domain][who] & bytes32(2 ** uint256(role));
+    function hasUserRole(bytes32 ilk, address who, uint8 role) external view returns (bool) {
+        return bytes32(0) != userRoles[ilk][who] & bytes32(2 ** uint256(role));
     }
 
     // --- internals ---
@@ -77,36 +77,36 @@ contract AllocatorRoles
         emit Deny(usr);
     }
 
-    function setAdmin(bytes32 domain, address user) external auth {
-        admins[domain] = user;
-        emit SetAdmin(domain, user);
+    function setAdmin(bytes32 ilk, address user) external auth {
+        admins[ilk] = user;
+        emit SetAdmin(ilk, user);
     }
 
-    // --- domain administration ---
+    // --- ilk administration ---
 
-    function setUserRole(bytes32 domain, address who, uint8 role, bool enabled) public domainAuth(domain) {
+    function setUserRole(bytes32 ilk, address who, uint8 role, bool enabled) public ilkAuth(ilk) {
         bytes32 mask = bytes32(2 ** uint256(role));
         if (enabled) {
-            userRoles[domain][who] |= mask;
+            userRoles[ilk][who] |= mask;
         } else {
-            userRoles[domain][who] &= _bitNot(mask);
+            userRoles[ilk][who] &= _bitNot(mask);
         }
         emit SetUserRole(who, role, enabled);
     }
 
-    function setRoleAction(bytes32 domain, uint8 role, address target, bytes4 sig, bool enabled) external domainAuth(domain) {
+    function setRoleAction(bytes32 ilk, uint8 role, address target, bytes4 sig, bool enabled) external ilkAuth(ilk) {
         bytes32 mask = bytes32(2 ** uint256(role));
         if (enabled) {
-            actionsRoles[domain][target][sig] |= mask;
+            actionsRoles[ilk][target][sig] |= mask;
         } else {
-            actionsRoles[domain][target][sig] &= _bitNot(mask);
+            actionsRoles[ilk][target][sig] &= _bitNot(mask);
         }
         emit SetRoleAction(role, target, sig, enabled);
     }
 
     // --- caller ---
 
-    function canCall(bytes32 domain, address caller, address target, bytes4 sig) external view returns (bool ok) {
-        ok = userRoles[domain][caller] & actionsRoles[domain][target][sig] != bytes32(0);
+    function canCall(bytes32 ilk, address caller, address target, bytes4 sig) external view returns (bool ok) {
+        ok = userRoles[ilk][caller] & actionsRoles[ilk][target][sig] != bytes32(0);
     }
 }

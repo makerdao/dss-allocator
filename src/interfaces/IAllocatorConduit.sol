@@ -24,52 +24,52 @@ interface IAllocatorConduit {
 
     /**
      *  @dev   Event emitted when a deposit is made to the Conduit.
-     *  @param domain The unique identifier of the domain.
+     *  @param ilk    The unique identifier of the ilk.
      *  @param asset  The address of the asset deposited.
      *  @param amount The amount of asset deposited.
      */
-    event Deposit(bytes32 indexed domain, address indexed asset, uint256 amount);
+    event Deposit(bytes32 indexed ilk, address indexed asset, uint256 amount);
 
     /**
      *  @dev   Event emitted when a withdrawal is made from the Conduit.
-     *  @param domain      The unique identifier of the domain.
+     *  @param ilk         The unique identifier of the ilk.
      *  @param asset       The address of the asset withdrawn.
      *  @param destination The address where the asset is sent.
      *  @param amount      The amount of asset withdrawn.
      */
-    event Withdraw(bytes32 indexed domain, address indexed asset, address destination, uint256 amount);
+    event Withdraw(bytes32 indexed ilk, address indexed asset, address destination, uint256 amount);
 
     /**
      *  @dev   Function for depositing tokens into a Fund Manager.
-     *  @param domain The unique identifier of the domain.
+     *  @param ilk    The unique identifier of the ilk.
      *  @param asset  The asset to deposit.
      *  @param amount The amount of tokens to deposit.
      */
-    function deposit(bytes32 domain, address asset, uint256 amount) external;
+    function deposit(bytes32 ilk, address asset, uint256 amount) external;
 
     /**
      *  @dev   Function for withdrawing tokens from a Fund Manager.
-     *  @param domain      The unique identifier of the domain.
+     *  @param ilk         The unique identifier of the ilk.
      *  @param asset       The asset to withdraw.
      *  @param destination The address to send the withdrawn tokens to.
      *  @param amount      The amount of tokens to withdraw.
      */
-    function withdraw(bytes32 domain, address asset, address destination, uint256 amount) external;
+    function withdraw(bytes32 ilk, address asset, address destination, uint256 amount) external;
 
     /**
-     *  @dev    Function to get the maximum deposit possible for a specific asset and domain.
-     *  @param  domain      The unique identifier of the domain.
+     *  @dev    Function to get the maximum deposit possible for a specific asset and ilk.
+     *  @param  ilk         The unique identifier of the ilk.
      *  @param  asset       The asset to check.
      *  @return maxDeposit_ The maximum possible deposit for the asset.
      */
-    function maxDeposit(bytes32 domain, address asset) external view returns (uint256 maxDeposit_);
+    function maxDeposit(bytes32 ilk, address asset) external view returns (uint256 maxDeposit_);
 
     /**
-     *  @dev    Function to get the maximum withdrawal possible for a specific asset and domain.
-     *  @param  domain       The unique identifier of the domain.
+     *  @dev    Function to get the maximum withdrawal possible for a specific asset and ilk.
+     *  @param  ilk          The unique identifier of the ilk.
      *  @param  asset        The asset to check.
      *  @return maxWithdraw_ The maximum possible withdrawal for the asset.
      */
-    function maxWithdraw(bytes32 domain, address asset) external view returns (uint256 maxWithdraw_);
+    function maxWithdraw(bytes32 ilk, address asset) external view returns (uint256 maxWithdraw_);
 
 }

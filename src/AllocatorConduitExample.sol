@@ -36,7 +36,7 @@ contract AllocatorConduitExample is IAllocatorConduit {
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
-    event SetRoles(bytes32 indexed domain, address roles_);
+    event SetRoles(bytes32 indexed ilk, address roles_);
 
     // --- modifiers ---
 
@@ -45,8 +45,8 @@ contract AllocatorConduitExample is IAllocatorConduit {
         _;
     }
 
-    modifier domainAuth(bytes32 domain) {
-        require(roles.canCall(domain, msg.sender, address(this), msg.sig), "AllocatorConduitExample/domain-not-authorized");
+    modifier ilkAuth(bytes32 ilk) {
+        require(roles.canCall(ilk, msg.sender, address(this), msg.sig), "AllocatorConduitExample/ilk-not-authorized");
         _;
     }
 
@@ -58,13 +58,13 @@ contract AllocatorConduitExample is IAllocatorConduit {
 
     // --- getters ---
 
-    function maxDeposit(bytes32 domain, address asset) external pure returns (uint256 maxDeposit_) {
-        domain;asset;
+    function maxDeposit(bytes32 ilk, address asset) external pure returns (uint256 maxDeposit_) {
+        ilk;asset;
         maxDeposit_ = type(uint256).max;
     }
 
-    function maxWithdraw(bytes32 domain, address asset) external view returns (uint256 maxWithdraw_) {
-        maxWithdraw_ = positions[domain][asset];
+    function maxWithdraw(bytes32 ilk, address asset) external view returns (uint256 maxWithdraw_) {
+        maxWithdraw_ = positions[ilk][asset];
     }
 
     // --- admininstration ---
@@ -81,15 +81,15 @@ contract AllocatorConduitExample is IAllocatorConduit {
 
     // --- functions ---
 
-    function deposit(bytes32 domain, address asset, uint256 amount) external domainAuth(domain) {
-        positions[domain][asset] += amount;
+    function deposit(bytes32 ilk, address asset, uint256 amount) external ilkAuth(ilk) {
+        positions[ilk][asset] += amount;
         // Implement the logic to deposit funds into the FundManager
-        emit Deposit(domain, asset, amount);
+        emit Deposit(ilk, asset, amount);
     }
 
-    function withdraw(bytes32 domain, address asset, address destination, uint256 amount) external domainAuth(domain) {
-        positions[domain][asset] -= amount;
+    function withdraw(bytes32 ilk, address asset, address destination, uint256 amount) external ilkAuth(ilk) {
+        positions[ilk][asset] -= amount;
         // Implement the logic to withdraw funds from the FundManager
-        emit Withdraw(domain, asset, destination, amount);
+        emit Withdraw(ilk, asset, destination, amount);
     }
 }
