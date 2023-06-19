@@ -22,22 +22,27 @@ contract AllocatorRoles
     // --- storage variables ---
 
     mapping(address => uint256) public wards;
-    mapping(address => bytes32) public userRoles;
-    mapping(address => mapping(bytes4 => bytes32)) public actionsRoles;
-    mapping(address => mapping(bytes4 => uint256)) public publicActions;
+    mapping(bytes32 => address) public ilkAdmins;
+    mapping(bytes32 => mapping(address => bytes32)) public userRoles;
+    mapping(bytes32 => mapping(address => mapping(bytes4 => bytes32))) public actionsRoles;
 
     // --- events ---
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
+    event SetIlkAdmin(bytes32 indexed ilk, address user);
     event SetUserRole(address indexed who, uint8 indexed role, bool enabled);
-    event SetPublicAction(address indexed target, bytes4 indexed sig, bool enabled);
     event SetRoleAction(uint8 indexed role, address indexed target, bytes4 indexed sig, bool enabled);
 
     // --- modifiers ---
 
     modifier auth() {
         require(wards[msg.sender] == 1, "AllocatorRoles/not-authorized");
+        _;
+    }
+
+    modifier ilkAuth(bytes32 ilk) {
+        require(ilkAdmins[ilk] == msg.sender, "AllocatorRoles/ilk-not-authorized");
         _;
     }
 
@@ -50,8 +55,8 @@ contract AllocatorRoles
 
     // --- getters ---
 
-    function hasUserRole(address who, uint8 role) external view returns (bool) {
-        return bytes32(0) != userRoles[who] & bytes32(2 ** uint256(role));
+    function hasUserRole(bytes32 ilk, address who, uint8 role) external view returns (bool) {
+        return bytes32(0) != userRoles[ilk][who] & bytes32(2 ** uint256(role));
     }
 
     // --- internals ---
@@ -60,7 +65,7 @@ contract AllocatorRoles
         output = (input ^ bytes32(type(uint256).max));
     }
 
-    // --- administration ---
+    // --- general administration ---
 
     function rely(address usr) external auth {
         wards[usr] = 1;
@@ -72,34 +77,36 @@ contract AllocatorRoles
         emit Deny(usr);
     }
 
-    function setUserRole(address who, uint8 role, bool enabled) public auth {
+    function setIlkAdmin(bytes32 ilk, address user) external auth {
+        ilkAdmins[ilk] = user;
+        emit SetIlkAdmin(ilk, user);
+    }
+
+    // --- ilk administration ---
+
+    function setUserRole(bytes32 ilk, address who, uint8 role, bool enabled) public ilkAuth(ilk) {
         bytes32 mask = bytes32(2 ** uint256(role));
         if (enabled) {
-            userRoles[who] |= mask;
+            userRoles[ilk][who] |= mask;
         } else {
-            userRoles[who] &= _bitNot(mask);
+            userRoles[ilk][who] &= _bitNot(mask);
         }
         emit SetUserRole(who, role, enabled);
     }
 
-    function setPublicAction(address target, bytes4 sig, bool enabled) external auth {
-        publicActions[target][sig] = enabled ? 1 : 0;
-        emit SetPublicAction(target, sig, enabled);
-    }
-
-    function setRoleAction(uint8 role, address target, bytes4 sig, bool enabled) external auth {
+    function setRoleAction(bytes32 ilk, uint8 role, address target, bytes4 sig, bool enabled) external ilkAuth(ilk) {
         bytes32 mask = bytes32(2 ** uint256(role));
         if (enabled) {
-            actionsRoles[target][sig] |= mask;
+            actionsRoles[ilk][target][sig] |= mask;
         } else {
-            actionsRoles[target][sig] &= _bitNot(mask);
+            actionsRoles[ilk][target][sig] &= _bitNot(mask);
         }
         emit SetRoleAction(role, target, sig, enabled);
     }
 
     // --- caller ---
 
-    function canCall(address caller, address target, bytes4 sig) external view returns (bool ok) {
-        ok = userRoles[caller] & actionsRoles[target][sig] != bytes32(0) || publicActions[target][sig] == 1;
+    function canCall(bytes32 ilk, address caller, address target, bytes4 sig) external view returns (bool ok) {
+        ok = userRoles[ilk][caller] & actionsRoles[ilk][target][sig] != bytes32(0);
     }
 }

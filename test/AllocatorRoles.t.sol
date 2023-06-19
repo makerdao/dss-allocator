@@ -9,10 +9,12 @@ import { AuthedMock } from "./mocks/AuthedMock.sol";
 contract AllocatorRolesTest is DssTest {
     AllocatorRoles roles;
     AuthedMock     authed;
+    bytes32        ilk;
 
     function setUp() public {
+        ilk = "aaa";
         roles = new AllocatorRoles();
-        authed = new AuthedMock(address(roles));
+        authed = new AuthedMock(address(roles), ilk);
     }
 
     function testAuth() public {
@@ -20,10 +22,8 @@ contract AllocatorRolesTest is DssTest {
     }
 
     function testModifiers() public {
-        bytes4[] memory authedMethods = new bytes4[](3);
-        authedMethods[0] = roles.setUserRole.selector;
-        authedMethods[1] = roles.setPublicAction.selector;
-        authedMethods[2] = roles.setRoleAction.selector;
+        bytes4[] memory authedMethods = new bytes4[](1);
+        authedMethods[0] = roles.setIlkAdmin.selector;
 
         vm.startPrank(address(0xBEEF));
         checkModifier(address(roles), "AllocatorRoles/not-authorized", authedMethods);
@@ -36,87 +36,73 @@ contract AllocatorRolesTest is DssTest {
         uint8 user_role = 2;
         uint8 max_role = 255;
 
-        assertTrue(!roles.hasUserRole(address(this), admin_role));
-        assertTrue(!roles.hasUserRole(address(this), mod_role));
-        assertTrue(!roles.hasUserRole(address(this), user_role));
-        assertTrue(!roles.hasUserRole(address(this), max_role));
-        assertEq32(bytes32(hex"0000000000000000000000000000000000000000000000000000000000000000"), roles.userRoles(address(this)));
+        assertTrue(!roles.hasUserRole(ilk, address(this), admin_role));
+        assertTrue(!roles.hasUserRole(ilk, address(this), mod_role));
+        assertTrue(!roles.hasUserRole(ilk, address(this), user_role));
+        assertTrue(!roles.hasUserRole(ilk, address(this), max_role));
+        assertEq32(bytes32(hex"0000000000000000000000000000000000000000000000000000000000000000"), roles.userRoles(ilk, address(this)));
 
-        roles.setUserRole(address(this), admin_role, true);
+        vm.expectRevert("AllocatorRoles/ilk-not-authorized");
+        roles.setUserRole(ilk, address(this), admin_role, true);
 
-        assertTrue( roles.hasUserRole(address(this), admin_role));
-        assertTrue(!roles.hasUserRole(address(this), mod_role));
-        assertTrue(!roles.hasUserRole(address(this), user_role));
-        assertTrue(!roles.hasUserRole(address(this), max_role));
-        assertEq32(bytes32(hex"0000000000000000000000000000000000000000000000000000000000000001"), roles.userRoles(address(this)));
+        roles.setIlkAdmin(ilk, address(this));
+        roles.setUserRole(ilk, address(this), admin_role, true);
 
-        assertTrue(!roles.canCall(address(this), address(authed), bytes4(keccak256("exec()"))));
+        assertTrue( roles.hasUserRole(ilk, address(this), admin_role));
+        assertTrue(!roles.hasUserRole(ilk, address(this), mod_role));
+        assertTrue(!roles.hasUserRole(ilk, address(this), user_role));
+        assertTrue(!roles.hasUserRole(ilk, address(this), max_role));
+        assertEq32(bytes32(hex"0000000000000000000000000000000000000000000000000000000000000001"), roles.userRoles(ilk, address(this)));
+
+        assertTrue(!roles.canCall(ilk, address(this), address(authed), bytes4(keccak256("exec()"))));
         vm.expectRevert("AuthedMock/not-authorized");
         authed.exec();
 
-        roles.setRoleAction(admin_role, address(authed), bytes4(keccak256("exec()")), true);
+        roles.setRoleAction(ilk, admin_role, address(authed), bytes4(keccak256("exec()")), true);
 
-        assertTrue(roles.canCall(address(this), address(authed), bytes4(keccak256("exec()"))));
+        assertTrue(roles.canCall(ilk, address(this), address(authed), bytes4(keccak256("exec()"))));
         authed.exec();
         assertTrue(authed.flag());
 
-        roles.setRoleAction(admin_role, address(authed), bytes4(keccak256("exec()")), false);
-        assertTrue(!roles.canCall(address(this), address(authed), bytes4(keccak256("exec()"))));
+        roles.setRoleAction(ilk, admin_role, address(authed), bytes4(keccak256("exec()")), false);
+        assertTrue(!roles.canCall(ilk, address(this), address(authed), bytes4(keccak256("exec()"))));
         vm.expectRevert("AuthedMock/not-authorized");
         authed.exec();
 
-        roles.setUserRole(address(this), mod_role, true);
+        roles.setUserRole(ilk, address(this), mod_role, true);
 
-        assertTrue( roles.hasUserRole(address(this), admin_role));
-        assertTrue( roles.hasUserRole(address(this), mod_role));
-        assertTrue(!roles.hasUserRole(address(this), user_role));
-        assertTrue(!roles.hasUserRole(address(this), max_role));
-        assertEq32(bytes32(hex"0000000000000000000000000000000000000000000000000000000000000003"), roles.userRoles(address(this)));
+        assertTrue( roles.hasUserRole(ilk, address(this), admin_role));
+        assertTrue( roles.hasUserRole(ilk, address(this), mod_role));
+        assertTrue(!roles.hasUserRole(ilk, address(this), user_role));
+        assertTrue(!roles.hasUserRole(ilk, address(this), max_role));
+        assertEq32(bytes32(hex"0000000000000000000000000000000000000000000000000000000000000003"), roles.userRoles(ilk, address(this)));
 
-        roles.setUserRole(address(this), user_role, true);
+        roles.setUserRole(ilk, address(this), user_role, true);
 
-        assertTrue( roles.hasUserRole(address(this), admin_role));
-        assertTrue( roles.hasUserRole(address(this), mod_role));
-        assertTrue( roles.hasUserRole(address(this), user_role));
-        assertTrue(!roles.hasUserRole(address(this), max_role));
-        assertEq32(bytes32(hex"0000000000000000000000000000000000000000000000000000000000000007"), roles.userRoles(address(this)));
+        assertTrue( roles.hasUserRole(ilk, address(this), admin_role));
+        assertTrue( roles.hasUserRole(ilk, address(this), mod_role));
+        assertTrue( roles.hasUserRole(ilk, address(this), user_role));
+        assertTrue(!roles.hasUserRole(ilk, address(this), max_role));
+        assertEq32(bytes32(hex"0000000000000000000000000000000000000000000000000000000000000007"), roles.userRoles(ilk, address(this)));
 
-        roles.setUserRole(address(this), mod_role, false);
+        roles.setUserRole(ilk, address(this), mod_role, false);
 
-        assertTrue( roles.hasUserRole(address(this), admin_role));
-        assertTrue(!roles.hasUserRole(address(this), mod_role));
-        assertTrue( roles.hasUserRole(address(this), user_role));
-        assertTrue(!roles.hasUserRole(address(this), max_role));
-        assertEq32(bytes32(hex"0000000000000000000000000000000000000000000000000000000000000005"), roles.userRoles(address(this)));
+        assertTrue( roles.hasUserRole(ilk, address(this), admin_role));
+        assertTrue(!roles.hasUserRole(ilk, address(this), mod_role));
+        assertTrue( roles.hasUserRole(ilk, address(this), user_role));
+        assertTrue(!roles.hasUserRole(ilk, address(this), max_role));
+        assertEq32(bytes32(hex"0000000000000000000000000000000000000000000000000000000000000005"), roles.userRoles(ilk, address(this)));
 
-        roles.setUserRole(address(this), max_role, true);
+        roles.setUserRole(ilk, address(this), max_role, true);
 
-        assertTrue( roles.hasUserRole(address(this), admin_role));
-        assertTrue(!roles.hasUserRole(address(this), mod_role));
-        assertTrue( roles.hasUserRole(address(this), user_role));
-        assertTrue( roles.hasUserRole(address(this), max_role));
-        assertEq32(bytes32(hex"8000000000000000000000000000000000000000000000000000000000000005"), roles.userRoles(address(this)));
+        assertTrue( roles.hasUserRole(ilk, address(this), admin_role));
+        assertTrue(!roles.hasUserRole(ilk, address(this), mod_role));
+        assertTrue( roles.hasUserRole(ilk, address(this), user_role));
+        assertTrue( roles.hasUserRole(ilk, address(this), max_role));
+        assertEq32(bytes32(hex"8000000000000000000000000000000000000000000000000000000000000005"), roles.userRoles(ilk, address(this)));
 
-        roles.setRoleAction(max_role, address(authed), bytes4(keccak256("exec()")), true);
-        assertTrue(roles.canCall(address(this), address(authed), bytes4(keccak256("exec()"))));
-        authed.exec();
-    }
-
-    function testPublicActions() public {
-        assertEq(roles.publicActions(address(authed), bytes4(keccak256("exec()"))), 0);
-        assertTrue(!roles.canCall(address(this), address(authed), bytes4(keccak256("exec()"))));
-        vm.expectRevert("AuthedMock/not-authorized");
-        authed.exec();
-
-        roles.setPublicAction(address(authed), bytes4(keccak256("exec()")), true);
-        assertEq(roles.publicActions(address(authed), bytes4(keccak256("exec()"))), 1);
-        assertTrue(roles.canCall(address(this), address(authed), bytes4(keccak256("exec()"))));
-        authed.exec();
-
-        roles.setPublicAction(address(authed), bytes4(keccak256("exec()")), false);
-        assertEq(roles.publicActions(address(authed), bytes4(keccak256("exec()"))), 0);
-        assertTrue(!roles.canCall(address(this), address(authed), bytes4(keccak256("exec()"))));
-        vm.expectRevert("AuthedMock/not-authorized");
+        roles.setRoleAction(ilk, max_role, address(authed), bytes4(keccak256("exec()")), true);
+        assertTrue(roles.canCall(ilk, address(this), address(authed), bytes4(keccak256("exec()"))));
         authed.exec();
     }
 }

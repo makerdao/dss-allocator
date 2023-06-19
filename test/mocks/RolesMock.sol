@@ -9,7 +9,7 @@ contract RolesMock {
         ok = ok_;
     }
 
-    function canCall(address, address, bytes4) external view returns (bool) {
+    function canCall(bytes32, address, address, bytes4) external view returns (bool) {
         return ok;
     }
 }
