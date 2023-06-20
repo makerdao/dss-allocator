@@ -26,11 +26,7 @@ contract StableSwapper {
     mapping (address => uint256) public buds;                           // whitelisted keepers
     mapping (address => mapping (address => uint256)) public counts;    // counts[src][dst] is the remaining number of times that a src-to-dst swap can be performed by keepers
     mapping (address => mapping (address => uint256)) public lots;      // [token weis] lots[src][dst] is the amount swapped by keepers from src to dst every hop
-    mapping (address => mapping (address => uint256)) public minPrices; // [WAD] minPrices[src][dst] is the minimum price to insist on in the swap form src to dst.
-                                                                        //       This needs to take into account any difference in decimals between src and dst.
-                                                                        //       Example 1: a max loss of 1% when swapping  USDC to DAI corresponds to minPrices[src][dst] = 99 * WAD / 100 * 10**(18-6)
-                                                                        //       Example 2: a max loss of 1% when swapping  DAI to USDC corresponds to minPrices[src][dst] = 99 * WAD / 100 / 10**(18-6)
-                                                                        //       Example 3: a max loss of 1% when swapping USDT to USDC corresponds to minPrices[src][dst] = 99 * WAD / 100
+    mapping (address => mapping (address => uint256)) public reqOuts;   // [token weis] reqOuts[src][dst] is the minimal out amount to insist on in the swap form src to dst.
 
     address public swapper;                                             // Swapper for this StableSwapper
 
@@ -65,9 +61,9 @@ contract StableSwapper {
     function diss(address usr) external auth {  buds[usr] = 0; emit Dissed(usr); }
 
     function file(bytes32 what, address src, address dst, uint256 data) external auth {
-        if      (what == "count")        counts[src][dst] = data;
-        else if (what == "lot")            lots[src][dst] = data;
-        else if (what == "minPrice")  minPrices[src][dst] = data;
+        if      (what == "count")         counts[src][dst] = data;
+        else if (what == "lot")             lots[src][dst] = data;
+        else if (what == "reqOut")       reqOuts[src][dst] = data;
         else revert("StableSwapper/file-unrecognized-param");
         emit File(what, src, dst, data);
     }
@@ -84,9 +80,9 @@ contract StableSwapper {
         counts[src][dst] = cnt - 1;
 
         require(_lot == lots[src][dst], "StableSwapper/lot-mismatch");
-        uint256 reqOut = _lot * minPrices[src][dst] / WAD;
-        if(minOut == 0) minOut = reqOut;
-        require(minOut >= reqOut, "SwapperRunner/min-too-small");
+        uint256 reqOut = reqOuts[src][dst];
+        if (minOut == 0) minOut = reqOut;
+        require (minOut >= reqOut, "SwapperRunner/min-too-small");
 
         out = SwapperLike(swapper).swap(src, dst, _lot, minOut, callee, data);
     }

@@ -55,8 +55,8 @@ contract SwapperTest is DssTest {
         runner.file("count", USDC, DAI, 10);
         runner.file("lot", DAI, USDC, 10_000 * WAD);
         runner.file("lot", USDC, DAI, 10_000 * 10**6);
-        runner.file("minPrice", DAI, USDC, 99 * WAD / 100 / 10**(18-6));
-        runner.file("minPrice", USDC, DAI, 99 * WAD / 100 * 10**(18-6));
+        runner.file("reqOut", DAI, USDC, 10_000 * 10**6 * 99 / 100);
+        runner.file("reqOut", USDC, DAI, 10_000 * WAD * 99 / 100);
         runner.kiss(KEEPER);
         vm.stopPrank();
 
