@@ -78,16 +78,16 @@ contract StableSwapper {
         emit File(what, data);
     }
 
-    function swap(address src, address dst, uint256 minOut, address callee, bytes calldata data) toll external returns (uint256 out) {
+    function swap(address src, address dst, uint256 _lot, uint256 minOut, address callee, bytes calldata data) toll external returns (uint256 out) {
         uint256 cnt = counts[src][dst];
         require(cnt > 0, "StableSwapper/exceeds-count");
         counts[src][dst] = cnt - 1;
 
-        uint256 lot = lots[src][dst];
-        uint256 reqOut = lot * minPrices[src][dst] / WAD;
+        require(_lot == lots[src][dst], "StableSwapper/lot-mismatch");
+        uint256 reqOut = _lot * minPrices[src][dst] / WAD;
         if(minOut == 0) minOut = reqOut;
         require(minOut >= reqOut, "SwapperRunner/min-too-small");
 
-        out = SwapperLike(swapper).swap(src, dst, lot, minOut, callee, data);
+        out = SwapperLike(swapper).swap(src, dst, _lot, minOut, callee, data);
     }
 }

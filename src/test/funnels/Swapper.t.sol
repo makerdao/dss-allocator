@@ -78,13 +78,13 @@ contract SwapperTest is DssTest {
         vm.warp(block.timestamp + 3600);
         bytes memory path = abi.encodePacked(USDC, uint24(100), DAI);
         uint256 prevDst = SwappedGemLike(DAI).balanceOf(address(buffer));
-        vm.prank(KEEPER); uint256 out = runner.swap(USDC, DAI, 9900 * WAD, address(uniV3Callee), path);
+        vm.prank(KEEPER); uint256 out = runner.swap(USDC, DAI, 10_000 * 10**6, 9900 * WAD, address(uniV3Callee), path);
         assertGe(SwappedGemLike(DAI).balanceOf(address(buffer)), prevDst + 9900 * WAD);
 
         vm.warp(block.timestamp + 3600);
         path = abi.encodePacked(DAI, uint24(100), USDC);
         prevDst = SwappedGemLike(USDC).balanceOf(address(buffer));
-        vm.prank(KEEPER); out = runner.swap(DAI, USDC, 9900 * 10**6, address(uniV3Callee), path);
+        vm.prank(KEEPER); out = runner.swap(DAI, USDC, 10_000 * WAD, 9900 * 10**6, address(uniV3Callee), path);
         assertGe(SwappedGemLike(USDC).balanceOf(address(buffer)), prevDst + 9900 * 10**6);
     }
 
