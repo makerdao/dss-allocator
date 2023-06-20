@@ -27,6 +27,8 @@ contract WhitelistedRouterTest is DssTest {
 
     address constant FACILITATOR = address(0xb0b);
 
+    event Move(address sender, address indexed asset, address indexed from, address to, uint256 amt);
+
     function setUp() public {
         ilk    = "TEST-ILK";
         roles  = new RolesMock();
@@ -52,12 +54,16 @@ contract WhitelistedRouterTest is DssTest {
         assertEq(BalanceLike(gem).balanceOf(box1), amt);
         assertEq(BalanceLike(gem).balanceOf(box2), 0);
         vm.startPrank(FACILITATOR); 
-        
+
+        vm.expectEmit(true, true, true, true);
+        emit Move(FACILITATOR, gem, box1, box2, amt);
         router.move(gem, box1, box2, amt);
 
         assertEq(BalanceLike(gem).balanceOf(box1), 0);
         assertEq(BalanceLike(gem).balanceOf(box2), amt);
 
+        vm.expectEmit(true, true, true, true);
+        emit Move(FACILITATOR, gem, box2, box1, amt);
         router.move(gem, box2, box1, amt);
 
         assertEq(BalanceLike(gem).balanceOf(box1), amt);

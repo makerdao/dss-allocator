@@ -31,8 +31,8 @@ contract AllocatorRoles
     event Rely(address indexed usr);
     event Deny(address indexed usr);
     event SetIlkAdmin(bytes32 indexed ilk, address user);
-    event SetUserRole(address indexed who, uint8 indexed role, bool enabled);
-    event SetRoleAction(uint8 indexed role, address indexed target, bytes4 indexed sig, bool enabled);
+    event SetUserRole(bytes32 indexed ilk, address indexed who, uint8 indexed role, bool enabled);
+    event SetRoleAction(bytes32 indexed ilk, uint8 indexed role, address indexed target, bytes4 sig, bool enabled);
 
     // --- modifiers ---
 
@@ -91,7 +91,7 @@ contract AllocatorRoles
         } else {
             userRoles[ilk][who] &= _bitNot(mask);
         }
-        emit SetUserRole(who, role, enabled);
+        emit SetUserRole(ilk, who, role, enabled);
     }
 
     function setRoleAction(bytes32 ilk, uint8 role, address target, bytes4 sig, bool enabled) external ilkAuth(ilk) {
@@ -101,7 +101,7 @@ contract AllocatorRoles
         } else {
             actionsRoles[ilk][target][sig] &= _bitNot(mask);
         }
-        emit SetRoleAction(role, target, sig, enabled);
+        emit SetRoleAction(ilk, role, target, sig, enabled);
     }
 
     // --- caller ---

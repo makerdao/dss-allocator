@@ -13,6 +13,10 @@ contract AllocatorBufferTest is DssTest {
     GemMock         public gem;
     AllocatorBuffer public buffer;
 
+    event Approve(address indexed asset, address indexed spender, uint256 amount);
+    event Deposit(bytes32 indexed ilk, address indexed asset, uint256 amount);
+    event Withdraw(bytes32 indexed ilk, address indexed asset, address destination, uint256 amount);
+
     function setUp() public {
         gem    = new GemMock(1_000_000 * 10**18);
         buffer = new AllocatorBuffer(ilk);
@@ -41,6 +45,8 @@ contract AllocatorBufferTest is DssTest {
 
     function testApprove() public {
         assertEq(gem.allowance(address(buffer), address(0xBEEF)), 0);
+        vm.expectEmit(true, true, true, true);
+        emit Approve(address(gem), address(0xBEEF), 10);
         buffer.approve(address(gem), address(0xBEEF), 10);
         assertEq(gem.allowance(address(buffer), address(0xBEEF)), 10);
     }
@@ -49,9 +55,13 @@ contract AllocatorBufferTest is DssTest {
         assertEq(gem.balanceOf(address(this)),   gem.totalSupply());
         assertEq(gem.balanceOf(address(buffer)), 0);
         gem.approve(address(buffer), 10);
+        vm.expectEmit(true, true, true, true);
+        emit Deposit(buffer.ilk(), address(gem), 10);
         buffer.deposit(bytes32(0), address(gem), 10);
         assertEq(gem.balanceOf(address(this)),   gem.totalSupply() - 10);
         assertEq(gem.balanceOf(address(buffer)), 10);
+        vm.expectEmit(true, true, true, true);
+        emit Withdraw(buffer.ilk(), address(gem), address(123), 4);
         buffer.withdraw(bytes32(0), address(gem), address(123), 4);
         assertEq(gem.balanceOf(address(buffer)), 6);
         assertEq(gem.balanceOf(address(123)),    4);

@@ -80,9 +80,9 @@ contract AllocatorVault {
     event Rely(address indexed usr);
     event Deny(address indexed usr);
     event File(bytes32 indexed what, address data);
-    event Draw(address indexed funnel, address indexed to, uint256 wad);
-    event Take(address indexed funnel, address indexed to, uint256 wad);
-    event Wipe(address indexed funnel, uint256 wad);
+    event Init(uint256 supply);
+    event Draw(address indexed sender, address indexed to, uint256 wad);
+    event Wipe(address indexed sender, address indexed from, uint256 wad);
 
     // --- modifiers ---
 
@@ -154,6 +154,8 @@ contract AllocatorVault {
         gem.approve(address(gemJoin), supply);
         gemJoin.join(address(this), supply);
         vat.frob(ilk, address(this), address(this), address(0), int256(supply), 0);
+
+        emit Init(supply);
     }
 
     function rely(address usr) external auth {
@@ -195,7 +197,7 @@ contract AllocatorVault {
         uint256 dart = wad * RAY / rate;
         require(dart <= uint256(type(int256).max), "AllocatorVault/overflow");
         vat.frob(ilk, address(this), address(this), address(this), 0, -int256(dart));
-        emit Wipe(msg.sender, wad);
+        emit Wipe(msg.sender, from, wad);
     }
 
     function wipe(uint256 wad) external {
