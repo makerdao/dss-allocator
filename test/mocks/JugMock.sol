@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.16;
 
-import { VatMock } from "./VatMock.sol";
+import { VatMock } from "test/mocks/VatMock.sol";
 
 contract JugMock {
     VatMock vat;

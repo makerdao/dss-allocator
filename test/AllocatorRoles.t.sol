@@ -3,8 +3,8 @@
 pragma solidity ^0.8.16;
 
 import "dss-test/DssTest.sol";
-import "../AllocatorRoles.sol";
-import { AuthedMock } from "./mocks/AuthedMock.sol";
+import "src/AllocatorRoles.sol";
+import { AuthedMock } from "test/mocks/AuthedMock.sol";
 
 contract AllocatorRolesTest is DssTest {
     AllocatorRoles roles;

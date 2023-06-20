@@ -3,14 +3,14 @@
 pragma solidity ^0.8.16;
 
 import "dss-test/DssTest.sol";
-import { AllocatorVault } from "../AllocatorVault.sol";
-import { AllocatorBuffer } from "../AllocatorBuffer.sol";
-import { RolesMock } from "./mocks/RolesMock.sol";
-import { VatMock } from "./mocks/VatMock.sol";
-import { JugMock } from "./mocks/JugMock.sol";
-import { GemMock } from "./mocks/GemMock.sol";
-import { GemJoinMock } from "./mocks/GemJoinMock.sol";
-import { NstJoinMock } from "./mocks/NstJoinMock.sol";
+import { AllocatorVault } from "src/AllocatorVault.sol";
+import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
+import { RolesMock } from "test/mocks/RolesMock.sol";
+import { VatMock } from "test/mocks/VatMock.sol";
+import { JugMock } from "test/mocks/JugMock.sol";
+import { GemMock } from "test/mocks/GemMock.sol";
+import { GemJoinMock } from "test/mocks/GemJoinMock.sol";
+import { NstJoinMock } from "test/mocks/NstJoinMock.sol";
 
 contract AllocatorVaultTest is DssTest {
     using stdStorage for StdStorage;

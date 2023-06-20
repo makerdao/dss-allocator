@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.16;
 
-import { VatMock } from "./VatMock.sol";
-import { GemMock } from "./GemMock.sol";
+import { VatMock } from "test/mocks/VatMock.sol";
+import { GemMock } from "test/mocks/GemMock.sol";
 
 contract NstJoinMock {
     VatMock public vat;

@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.16;
 
-import "../../funnels/Swapper.sol";
-import "../../funnels/StableSwapper.sol";
-import "../../funnels/UniV3SwapperCallee.sol";
-import "../../AllocatorRoles.sol";
-import "../../AllocatorBuffer.sol";
 import "dss-test/DssTest.sol";
+import "src/funnels/Swapper.sol";
+import "src/funnels/StableSwapper.sol";
+import "src/funnels/UniV3SwapperCallee.sol";
+import "src/AllocatorRoles.sol";
+import "src/AllocatorBuffer.sol";
 
 contract SwapperTest is DssTest {
     AllocatorBuffer public buffer;
