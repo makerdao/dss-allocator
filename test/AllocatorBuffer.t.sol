@@ -31,6 +31,14 @@ contract AllocatorBufferTest is DssTest {
         vm.stopPrank();
     }
 
+    function testGetters() public {
+        assertEq(buffer.maxDeposit(bytes32(0), address(0)), type(uint256).max);
+        assertEq(buffer.maxWithdraw(bytes32(0), address(gem)), 0);
+        gem.approve(address(buffer), 10);
+        buffer.deposit(bytes32(0), address(gem), 10);
+        assertEq(buffer.maxWithdraw(bytes32(0), address(gem)), 10);
+    }
+
     function testApprove() public {
         assertEq(gem.allowance(address(buffer), address(0xBEEF)), 0);
         buffer.approve(address(gem), address(0xBEEF), 10);
