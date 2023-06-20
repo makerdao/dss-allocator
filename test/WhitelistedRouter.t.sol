@@ -31,8 +31,8 @@ contract WhitelistedRouterTest is DssTest {
         ilk    = "TEST-ILK";
         roles  = new RolesMock();
         router = new WhitelistedRouter(address(roles), ilk);
-        box1 = address(new AllocatorBuffer());
-        box2 = address(new AllocatorBuffer());
+        box1 = address(new AllocatorBuffer(ilk));
+        box2 = address(new AllocatorBuffer(ilk));
         USDC = address(new GemMock(0));
         USDT = address(new GemMock(0));
         AllocatorBuffer(box1).rely(address(router));

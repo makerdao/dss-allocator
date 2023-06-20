@@ -40,7 +40,7 @@ contract AllocatorVaultTest is DssTest {
         gemJoin = new GemJoinMock(vat, ilk, gem);
         nst     = new GemMock(0);
         nstJoin = new NstJoinMock(vat, nst);
-        buffer  = new AllocatorBuffer();
+        buffer  = new AllocatorBuffer(ilk);
         roles   = new RolesMock();
         vault   = new AllocatorVault(address(roles), address(buffer), address(vat), address(gemJoin), address(nstJoin));
         buffer.approve(address(nst), address(vault), type(uint256).max);

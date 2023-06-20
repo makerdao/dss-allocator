@@ -30,6 +30,9 @@ contract AllocatorBuffer is IAllocatorConduit {
 
     mapping(address => uint256) public wards;
 
+    // --- immutables ---
+    bytes32 immutable public ilk;
+
     // --- events ---
 
     event Rely(address indexed usr);
@@ -45,7 +48,9 @@ contract AllocatorBuffer is IAllocatorConduit {
 
     // --- constructor ---
 
-    constructor() {
+    constructor(bytes32 ilk_) {
+        ilk = ilk_;
+
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
     }
@@ -79,12 +84,12 @@ contract AllocatorBuffer is IAllocatorConduit {
         emit Approve(asset, spender, amount);
     }
 
-    function deposit(bytes32 ilk, address asset, uint256 amount) external {
+    function deposit(bytes32, address asset, uint256 amount) external {
         TokenLike(asset).transferFrom(msg.sender, address(this), amount);
         emit Deposit(ilk, asset, amount);
     }
 
-    function withdraw(bytes32 ilk, address asset, address destination, uint256 amount) external auth {
+    function withdraw(bytes32, address asset, address destination, uint256 amount) external auth {
         TokenLike(asset).transfer(destination, amount);
         emit Withdraw(ilk, asset, destination, amount);
     }

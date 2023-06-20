@@ -9,12 +9,13 @@ import { GemMock } from "./mocks/GemMock.sol";
 contract AllocatorBufferTest is DssTest {
     using stdStorage for StdStorage;
 
+    bytes32         public ilk = "aaa";
     GemMock         public gem;
     AllocatorBuffer public buffer;
 
     function setUp() public {
         gem    = new GemMock(1_000_000 * 10**18);
-        buffer = new AllocatorBuffer();
+        buffer = new AllocatorBuffer(ilk);
     }
 
     function testAuth() public {
