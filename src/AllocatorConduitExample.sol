@@ -16,7 +16,7 @@
 
 pragma solidity ^0.8.16;
 
-import "./interfaces/IAllocatorConduit.sol";
+import "src/interfaces/IAllocatorConduit.sol";
 
 interface RolesLike {
     function canCall(bytes32, address, address, bytes4) external view returns (bool);

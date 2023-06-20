@@ -16,7 +16,7 @@
 
 pragma solidity ^0.8.16;
 
-import "./interfaces/IAllocatorConduit.sol";
+import "src/interfaces/IAllocatorConduit.sol";
 
 interface TokenLike {
     function balanceOf(address) external view returns (uint256);

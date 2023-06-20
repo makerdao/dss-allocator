@@ -4,8 +4,8 @@ pragma solidity ^0.8.16;
 import "dss-test/DssTest.sol";
 import { WhitelistedRouter } from "src/WhitelistedRouter.sol";
 import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
-import { GemMock } from "./mocks/GemMock.sol";
-import { RolesMock } from "./mocks/RolesMock.sol";
+import { GemMock } from "test/mocks/GemMock.sol";
+import { RolesMock } from "test/mocks/RolesMock.sol";
 
 interface BalanceLike {
     function balanceOf(address) external view returns (uint256);

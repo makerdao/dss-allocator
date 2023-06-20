@@ -3,8 +3,8 @@
 pragma solidity ^0.8.16;
 
 import "dss-test/DssTest.sol";
-import { AllocatorBuffer } from "../src/AllocatorBuffer.sol";
-import { GemMock } from "./mocks/GemMock.sol";
+import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
+import { GemMock } from "test/mocks/GemMock.sol";
 
 contract AllocatorBufferTest is DssTest {
     using stdStorage for StdStorage;
