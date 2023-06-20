@@ -16,22 +16,28 @@
 
 pragma solidity ^0.8.16;
 
+import "./interfaces/IAllocatorConduit.sol";
+
 interface TokenLike {
+    function balanceOf(address) external view returns (uint256);
     function approve(address, uint256) external;
+    function transfer(address, uint256) external;
     function transferFrom(address, address, uint256) external;
 }
 
-contract AllocatorBuffer {
+contract AllocatorBuffer is IAllocatorConduit {
     // --- storage variables ---
 
     mapping(address => uint256) public wards;
+
+    // --- immutables ---
+    bytes32 immutable public ilk;
 
     // --- events ---
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
-    event Approve(address indexed token, address indexed spender, uint256 amount);
-    event Deposit(address indexed token, address indexed sender, uint256 amount);
+    event Approve(address indexed asset, address indexed spender, uint256 amount);
 
     // --- modifiers ---
 
@@ -42,9 +48,21 @@ contract AllocatorBuffer {
 
     // --- constructor ---
 
-    constructor() {
+    constructor(bytes32 ilk_) {
+        ilk = ilk_;
+
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
+    }
+
+    // --- getters ---
+
+    function maxDeposit(bytes32, address) external pure returns (uint256 maxDeposit_) {
+        maxDeposit_ = type(uint256).max;
+    }
+
+    function maxWithdraw(bytes32, address asset) external view returns (uint256 maxWithdraw_) {
+        maxWithdraw_ = TokenLike(asset).balanceOf(address(this));
     }
 
     // --- administration ---
@@ -61,17 +79,18 @@ contract AllocatorBuffer {
 
     // --- functions ---
 
-    function approve(
-        address token,
-        address spender,
-        uint256 amount
-    ) external auth {
-        TokenLike(token).approve(spender, amount);
-        emit Approve(token, spender, amount);
+    function approve(address asset, address spender, uint256 amount) external auth {
+        TokenLike(asset).approve(spender, amount);
+        emit Approve(asset, spender, amount);
     }
 
-    function deposit(address token, uint256 amount, address /* owner */) external {
-        TokenLike(token).transferFrom(msg.sender, address(this), amount);
-        emit Deposit(token, msg.sender, amount);
+    function deposit(bytes32, address asset, uint256 amount) external {
+        TokenLike(asset).transferFrom(msg.sender, address(this), amount);
+        emit Deposit(ilk, asset, amount);
+    }
+
+    function withdraw(bytes32, address asset, address destination, uint256 amount) external auth {
+        TokenLike(asset).transfer(destination, amount);
+        emit Withdraw(ilk, asset, destination, amount);
     }
 }
