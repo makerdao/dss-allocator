@@ -2,17 +2,19 @@
 pragma solidity ^0.8.16;
 
 import "dss-test/DssTest.sol";
-import "src/funnels/Swapper.sol";
-import "src/funnels/StableSwapper.sol";
-import "src/funnels/UniV3SwapperCallee.sol";
-import "src/AllocatorRoles.sol";
-import "src/AllocatorBuffer.sol";
+import { Swapper, SwappedGemLike } from "src/funnels/Swapper.sol";
+import { StableSwapper } from "src/funnels/StableSwapper.sol";
+import { UniV3SwapperCallee } from "src/funnels/UniV3SwapperCallee.sol";
+import { AllocatorRoles } from "src/AllocatorRoles.sol";
+import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
 
 contract SwapperTest is DssTest {
     AllocatorBuffer public buffer;
     Swapper public swapper;
     StableSwapper public runner;
     UniV3SwapperCallee public uniV3Callee;
+
+    bytes32 constant ilk = "aaa";
 
     address constant DAI          = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address constant USDC         = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
@@ -27,18 +29,18 @@ contract SwapperTest is DssTest {
     function setUp() public {
         vm.createSelectFork(vm.envString("ETH_RPC_URL"));
 
-        buffer = new AllocatorBuffer();
-        swapper = new Swapper();
-        uniV3Callee = new UniV3SwapperCallee(UNIV3_ROUTER);
+        buffer = new AllocatorBuffer(ilk);
         AllocatorRoles roles = new AllocatorRoles();
+        swapper = new Swapper(address(roles), ilk);
+        uniV3Callee = new UniV3SwapperCallee(UNIV3_ROUTER);
         vm.prank(FACILITATOR); runner = new StableSwapper();
 
-        roles.setRoleAction(SWAPPER_ROLE, address(swapper), swapper.swap.selector, true);
-        roles.setUserRole(FACILITATOR, SWAPPER_ROLE, true);
-        roles.setUserRole(address(runner), SWAPPER_ROLE, true);
+        roles.setIlkAdmin(ilk, address(this));
+        roles.setRoleAction(ilk, SWAPPER_ROLE, address(swapper), swapper.swap.selector, true);
+        roles.setUserRole(ilk, FACILITATOR, SWAPPER_ROLE, true);
+        roles.setUserRole(ilk, address(runner), SWAPPER_ROLE, true);
 
         swapper.file("buffer", address(buffer));
-        swapper.file("roles", address(roles));
         swapper.file("maxSrcAmt", DAI, USDC, 10_000 * WAD);
         swapper.file("maxSrcAmt", USDC, DAI, 10_000 * 10**6);
         swapper.file("hop", DAI, USDC, 3600);

@@ -17,12 +17,15 @@
 
 pragma solidity ^0.8.16;
 
+interface RolesLike {
+    function canCall(bytes32, address, address, bytes4) external view returns (bool);
+}
+
 interface DepositedGemLike {
     function approve(address, uint256) external;
     function transfer(address, uint256) external;
     function transferFrom(address, address, uint256) external;
 }
-
 
 // https://github.com/Uniswap/v3-periphery/blob/464a8a49611272f7349c970e0fadb7ec1d3c1086/contracts/interfaces/INonfungiblePositionManager.sol#L17
 interface PositionManagerLike {
@@ -134,8 +137,9 @@ contract Depositor {
     mapping (bytes32 => uint256) public positions;  // key = keccak256(abi.encode(gem0, gem1, fee, tickLower, tickUpper)) => tokenId of the liquidity position
 
     address public buffer;                          // Escrow contract from/to which the two tokens that make up the liquidity position are pulled/pushed
-    address public roles;                           // Contract managing access control for this Depositor
 
+    RolesLike public immutable roles;                 // Contract managing access control for this Depositor
+    bytes32   public immutable ilk;
     address internal immutable uniV3PositionManager;  // 0xC36442b4a4522E871399CD717aBDD847Ab11FE88
 
     event Rely (address indexed usr);
@@ -145,27 +149,16 @@ contract Depositor {
     event Deposit(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1);
     event Withdraw(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1);
 
-    constructor(address _uniV3PositionManager) {
+    constructor(address roles_, bytes32 ilk_, address _uniV3PositionManager) {
+        roles = RolesLike(roles_);
+        ilk = ilk_;
         uniV3PositionManager = _uniV3PositionManager;
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
     }
 
     modifier auth() {
-        address roles_ = roles;
-        bool access;
-        if (roles_ != address(0)) {
-            (bool ok, bytes memory ret) = roles_.call(
-                                            abi.encodeWithSignature(
-                                                "canCall(address,address,bytes4)",
-                                                msg.sender,
-                                                address(this),
-                                                msg.sig
-                                            )
-            );
-            access = ok && ret.length == 32 && abi.decode(ret, (bool));
-        }
-        require(access || wards[msg.sender] == 1, "Depositor/not-authorized");
+        require(roles.canCall(ilk, msg.sender, address(this), msg.sig) || wards[msg.sender] == 1, "Depositor/not-authorized");
         _;
     }
 
@@ -174,7 +167,6 @@ contract Depositor {
 
     function file(bytes32 what, address data) external auth {
         if      (what == "buffer")   buffer  = data;
-        else if (what == "roles")    roles   = data;
         else revert("Depositor/file-unrecognized-param");
         emit File(what, data);
     }
