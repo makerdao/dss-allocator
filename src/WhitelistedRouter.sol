@@ -22,11 +22,11 @@ interface RolesLike {
 }
 
 interface BoxLike {
+    function deposit(bytes32, address, uint256) external;
     function withdraw(bytes32, address, address, uint256) external;
 }
 
 interface GemLike {
-    function transferFrom(address, address, uint256) external;
     function approve(address, uint256) external;
 }
 
@@ -90,7 +90,9 @@ contract WhitelistedRouter {
     function move(address asset, address from, address to, uint256 amt) external auth {
         require(boxes[from] == 1, "WhitelistedRouter/invalid-from");
         require(boxes[to] == 1, "WhitelistedRouter/invalid-to");
-        BoxLike(from).withdraw(ilk, asset, to, amt);
+        BoxLike(from).withdraw(ilk, asset, address(this), amt);
+        GemLike(asset).approve(address(to), amt);
+        BoxLike(to).deposit(ilk, asset, amt);
         emit Move(msg.sender, asset, from, to, amt);
     }
 }

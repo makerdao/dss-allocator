@@ -40,7 +40,7 @@ contract AllocatorBufferTest is DssTest {
         assertEq(gem.balanceOf(address(this)),   gem.totalSupply());
         assertEq(gem.balanceOf(address(buffer)), 0);
         gem.approve(address(buffer), 10);
-        buffer.deposit(bytes32(0), address(gem), 10, address(0));
+        buffer.deposit(bytes32(0), address(gem), 10);
         assertEq(gem.balanceOf(address(this)),   gem.totalSupply() - 10);
         assertEq(gem.balanceOf(address(buffer)), 10);
         buffer.withdraw(bytes32(0), address(gem), address(123), 4);

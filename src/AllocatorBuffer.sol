@@ -68,7 +68,7 @@ contract AllocatorBuffer {
         emit Approve(asset, spender, amount);
     }
 
-    function deposit(bytes32 /*ilk*/, address asset, uint256 amount, address /* owner */) external {
+    function deposit(bytes32 /*ilk*/, address asset, uint256 amount) external {
         TokenLike(asset).transferFrom(msg.sender, address(this), amount);
         emit Deposit(asset, msg.sender, amount);
     }
