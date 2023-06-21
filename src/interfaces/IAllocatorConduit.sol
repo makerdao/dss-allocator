@@ -52,7 +52,7 @@ interface IAllocatorConduit {
      *  @param  ilk         The unique identifier of the ilk.
      *  @param  asset       The asset to withdraw.
      *  @param  destination The address to send the withdrawn tokens to.
-     *  @param  maxAmount   The max amount of tokens to withdraw.
+     *  @param  maxAmount   The max amount of tokens to withdraw. Setting to "type(uint256).max" will ensure to withdraw all available liquidity.
      *  @return amount      The amount of tokens withdrawn.
      */
     function withdraw(bytes32 ilk, address asset, address destination, uint256 maxAmount) external returns (uint256 amount);
