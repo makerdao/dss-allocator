@@ -89,7 +89,9 @@ contract AllocatorBuffer is IAllocatorConduit {
         emit Deposit(ilk, asset, amount);
     }
 
-    function withdraw(bytes32, address asset, address destination, uint256 amount) external auth {
+    function withdraw(bytes32, address asset, address destination, uint256 maxAmount) external auth returns (uint256 amount) {
+        uint256 balance = TokenLike(asset).balanceOf(address(this));
+        amount = balance < maxAmount ? balance : maxAmount;
         TokenLike(asset).transfer(destination, amount);
         emit Withdraw(ilk, asset, destination, amount);
     }

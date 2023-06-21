@@ -87,8 +87,10 @@ contract AllocatorConduitExample is IAllocatorConduit {
         emit Deposit(ilk, asset, amount);
     }
 
-    function withdraw(bytes32 ilk, address asset, address destination, uint256 amount) external ilkAuth(ilk) {
-        positions[ilk][asset] -= amount;
+    function withdraw(bytes32 ilk, address asset, address destination, uint256 maxAmount) external ilkAuth(ilk) returns (uint256 amount) {
+        uint256 balance = positions[ilk][asset];
+        amount = balance < maxAmount ? balance : maxAmount;
+        positions[ilk][asset] = balance - amount;
         // Implement the logic to withdraw funds from the FundManager
         emit Withdraw(ilk, asset, destination, amount);
     }

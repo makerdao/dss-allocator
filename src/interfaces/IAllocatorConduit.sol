@@ -49,12 +49,13 @@ interface IAllocatorConduit {
 
     /**
      *  @dev   Function for withdrawing tokens from a Fund Manager.
-     *  @param ilk         The unique identifier of the ilk.
-     *  @param asset       The asset to withdraw.
-     *  @param destination The address to send the withdrawn tokens to.
-     *  @param amount      The amount of tokens to withdraw.
+     *  @param  ilk         The unique identifier of the ilk.
+     *  @param  asset       The asset to withdraw.
+     *  @param  destination The address to send the withdrawn tokens to.
+     *  @param  maxAmount   The max amount of tokens to withdraw.
+     *  @return amount      The amount of tokens withdrawn.
      */
-    function withdraw(bytes32 ilk, address asset, address destination, uint256 amount) external;
+    function withdraw(bytes32 ilk, address asset, address destination, uint256 maxAmount) external returns (uint256 amount);
 
     /**
      *  @dev    Function to get the maximum deposit possible for a specific asset and ilk.

@@ -65,5 +65,10 @@ contract AllocatorBufferTest is DssTest {
         buffer.withdraw(bytes32(0), address(gem), address(123), 4);
         assertEq(gem.balanceOf(address(buffer)), 6);
         assertEq(gem.balanceOf(address(123)),    4);
+        vm.expectEmit(true, true, true, true);
+        emit Withdraw(buffer.ilk(), address(gem), address(123), 6);
+        buffer.withdraw(bytes32(0), address(gem), address(123), 7);
+        assertEq(gem.balanceOf(address(buffer)), 0);
+        assertEq(gem.balanceOf(address(123)),    10);
     }
 }
