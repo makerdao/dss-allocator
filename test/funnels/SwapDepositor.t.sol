@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.16;
 
-import "../../funnels/SwapDepositor.sol";
-import "../../funnels/Swapper.sol";
-import "../../funnels/UniV3SwapperCallee.sol";
-import "../../AllocatorRoles.sol";
-import "../../AllocatorBuffer.sol";
 import "dss-test/DssTest.sol";
+import { SwapDepositor } from "src/funnels/SwapDepositor.sol";
+import { Swapper } from "src/funnels/Swapper.sol";
+import { Depositor } from "src/funnels/Depositor.sol";
+import { UniV3SwapperCallee } from "src/funnels/UniV3SwapperCallee.sol";
+import { AllocatorRoles } from "src/AllocatorRoles.sol";
+import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
 
 interface TestGemLike {
     function balanceOf(address) external view returns (uint256);
@@ -18,6 +19,8 @@ contract SwapDepositorTest is DssTest {
     Depositor public depositor;
     SwapDepositor public swapDepositor;
     UniV3SwapperCallee public uniV3Callee;
+
+    bytes32 constant ilk = "aaa";
 
     address constant DAI           = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address constant USDC          = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
@@ -34,35 +37,33 @@ contract SwapDepositorTest is DssTest {
     function setUp() public {
         vm.createSelectFork(vm.envString("ETH_RPC_URL"));
         
-        buffer = new AllocatorBuffer();
-        swapper = new Swapper();
-        depositor = new Depositor(UNIV3_POS_MGR);
-        swapDepositor = new SwapDepositor(UNIV3_FACTORY);
-        uniV3Callee = new UniV3SwapperCallee(UNIV3_ROUTER);
+        buffer = new AllocatorBuffer(ilk);
         AllocatorRoles roles = new AllocatorRoles();
+        swapper = new Swapper(address(roles), ilk);
+        depositor = new Depositor(address(roles), ilk, UNIV3_POS_MGR);
+        swapDepositor = new SwapDepositor(address(roles), ilk, UNIV3_FACTORY);
+        uniV3Callee = new UniV3SwapperCallee(UNIV3_ROUTER);
 
-        roles.setRoleAction(SWAPPER_ROLE, address(swapper), swapper.swap.selector, true);
-        roles.setRoleAction(DEPOSITOR_ROLE, address(depositor), depositor.deposit.selector, true);
-        roles.setRoleAction(DEPOSITOR_ROLE, address(depositor), depositor.withdraw.selector, true);
-        roles.setRoleAction(SWAP_DEPOSITOR_ROLE, address(swapDepositor), swapDepositor.deposit.selector, true);
-        roles.setRoleAction(SWAP_DEPOSITOR_ROLE, address(swapDepositor), swapDepositor.withdraw.selector, true);
-        roles.setUserRole(address(swapDepositor), SWAPPER_ROLE, true);
-        roles.setUserRole(address(swapDepositor), DEPOSITOR_ROLE, true);
-        roles.setUserRole(FACILITATOR, SWAP_DEPOSITOR_ROLE, true);
+        roles.setIlkAdmin(ilk, address(this));
+        roles.setRoleAction(ilk, SWAPPER_ROLE, address(swapper), swapper.swap.selector, true);
+        roles.setRoleAction(ilk, DEPOSITOR_ROLE, address(depositor), depositor.deposit.selector, true);
+        roles.setRoleAction(ilk, DEPOSITOR_ROLE, address(depositor), depositor.withdraw.selector, true);
+        roles.setRoleAction(ilk, SWAP_DEPOSITOR_ROLE, address(swapDepositor), swapDepositor.deposit.selector, true);
+        roles.setRoleAction(ilk, SWAP_DEPOSITOR_ROLE, address(swapDepositor), swapDepositor.withdraw.selector, true);
+        roles.setUserRole(ilk, address(swapDepositor), SWAPPER_ROLE, true);
+        roles.setUserRole(ilk, address(swapDepositor), DEPOSITOR_ROLE, true);
+        roles.setUserRole(ilk, FACILITATOR, SWAP_DEPOSITOR_ROLE, true);
 
-        swapper.file("roles", address(roles));
         swapper.file("buffer", address(buffer));
         swapper.file("maxSrcAmt", DAI, USDC, 10_000 * WAD);
         swapper.file("maxSrcAmt", USDC, DAI, 10_000 * 10**6);
         swapper.file("hop", DAI, USDC, 3600);
         swapper.file("hop", USDC, DAI, 3600);
 
-        depositor.file("roles", address(roles));
         depositor.file("buffer", address(buffer));
         depositor.file("cap", DAI, USDC, 10_000 * WAD * 10_000 * 10**6);
         depositor.file("hop", DAI, USDC, 3600);
 
-        swapDepositor.file("roles", address(roles));
         swapDepositor.file("swapper", address(swapper));
         swapDepositor.file("depositor", address(depositor));
         swapDepositor.file("gap", DAI, 10 * WAD);

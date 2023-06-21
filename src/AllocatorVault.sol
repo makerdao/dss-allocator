@@ -17,6 +17,10 @@
 
 pragma solidity ^0.8.16;
 
+interface RolesLike {
+    function canCall(bytes32, address, address, bytes4) external view returns (bool);
+}
+
 interface VatLike {
     function ilks(bytes32) external view returns (uint256, uint256, uint256, uint256, uint256);
     function live() external view returns (uint256);
@@ -54,7 +58,6 @@ contract AllocatorVault {
     // --- storage variables ---
 
     mapping(address => uint256) public wards;
-    address public roles;
     JugLike public jug;
 
     // --- constants ---
@@ -64,6 +67,7 @@ contract AllocatorVault {
 
     // --- immutables ---
 
+    RolesLike   immutable public roles;
     address     immutable public buffer;
     VatLike     immutable public vat;
     bytes32     immutable public ilk;
@@ -76,33 +80,23 @@ contract AllocatorVault {
     event Rely(address indexed usr);
     event Deny(address indexed usr);
     event File(bytes32 indexed what, address data);
-    event Draw(address indexed funnel, address indexed to, uint256 wad);
-    event Take(address indexed funnel, address indexed to, uint256 wad);
-    event Wipe(address indexed funnel, uint256 wad);
+    event Init(uint256 supply);
+    event Draw(address indexed sender, address indexed to, uint256 wad);
+    event Wipe(address indexed sender, address indexed from, uint256 wad);
 
     // --- modifiers ---
 
     modifier auth() {
-        address roles_ = roles;
-        bool access;
-        if (roles_ != address(0)) {
-            (bool ok, bytes memory ret) = roles_.call(
-                                            abi.encodeWithSignature(
-                                                "canCall(address,address,bytes4)",
-                                                msg.sender,
-                                                address(this),
-                                                msg.sig
-                                            )
-            );
-            access = ok && ret.length == 32 && abi.decode(ret, (bool));
-        }
-        require(access || wards[msg.sender] == 1, "AllocatorVault/not-authorized");
+        require(roles.canCall(ilk, msg.sender, address(this), msg.sig) ||
+                wards[msg.sender] == 1, "AllocatorVault/not-authorized");
         _;
     }
 
     // --- constructor ---
 
-    constructor(address buffer_, address vat_, address gemJoin_, address nstJoin_) {
+    constructor(address roles_, address buffer_, address vat_, address gemJoin_, address nstJoin_) {
+        roles = RolesLike(roles_);
+
         buffer = buffer_;
         vat = VatLike(vat_);
 
@@ -160,6 +154,8 @@ contract AllocatorVault {
         gem.approve(address(gemJoin), supply);
         gemJoin.join(address(this), supply);
         vat.frob(ilk, address(this), address(this), address(0), int256(supply), 0);
+
+        emit Init(supply);
     }
 
     function rely(address usr) external auth {
@@ -173,9 +169,7 @@ contract AllocatorVault {
     }
 
     function file(bytes32 what, address data) external auth {
-        if (what == "roles") {
-            roles = data;
-        } else if (what == "jug") {
+        if (what == "jug") {
             jug = JugLike(data);
         } else revert("AllocatorVault/file-unrecognized-param");
         emit File(what, data);
@@ -203,7 +197,7 @@ contract AllocatorVault {
         uint256 dart = wad * RAY / rate;
         require(dart <= uint256(type(int256).max), "AllocatorVault/overflow");
         vat.frob(ilk, address(this), address(this), address(this), 0, -int256(dart));
-        emit Wipe(msg.sender, wad);
+        emit Wipe(msg.sender, from, wad);
     }
 
     function wipe(uint256 wad) external {

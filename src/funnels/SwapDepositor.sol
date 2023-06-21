@@ -17,8 +17,12 @@
 
 pragma solidity ^0.8.16;
 
-import "./Swapper.sol";
-import "./Depositor.sol";
+import { Swapper } from "src/funnels/Swapper.sol";
+import { Depositor } from "src/funnels/Depositor.sol";
+
+interface RolesLike {
+    function canCall(bytes32, address, address, bytes4) external view returns (bool);
+}
 
 interface UniV3PoolLike {
     function slot0() external view returns (
@@ -36,12 +40,13 @@ contract SwapDepositor {
     mapping (address => uint256) public wards;
     mapping (address => uint256) public gaps;     // gaps[gem0] is the maximum acceptable difference between the values of the tokens added as liquidity (calculated in terms of gem0), over which the excess token is sold prior to adding liquidity
 
-    address public roles;                           // Contract managing access control for this SwapDepositor
     address public swapper;                         // Swapper contract
     address public depositor;                       // Depositor contract
 
     uint256 internal constant WAD = 10 ** 18;
 
+    RolesLike public immutable roles;                 // Contract managing access control for this Depositor
+    bytes32   public immutable ilk;
     address internal immutable uniV3Factory; // 0x1F98431c8aD98523631AE4a59f267346ea31F984
 
     event Rely (address indexed usr);
@@ -49,27 +54,16 @@ contract SwapDepositor {
     event File (bytes32 indexed what, address data);
     event File (bytes32 indexed what, address gem, uint256 data);
 
-    constructor(address _uniV3Factory) {
-        uniV3Factory = _uniV3Factory;
+    constructor(address roles_, bytes32 ilk_, address uniV3Factory_) {
+        roles = RolesLike(roles_);
+        ilk = ilk_;
+        uniV3Factory = uniV3Factory_;
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
     }
 
     modifier auth() {
-        address roles_ = roles;
-        bool access;
-        if (roles_ != address(0)) {
-            (bool ok, bytes memory ret) = roles_.call(
-                                            abi.encodeWithSignature(
-                                                "canCall(address,address,bytes4)",
-                                                msg.sender,
-                                                address(this),
-                                                msg.sig
-                                            )
-            );
-            access = ok && ret.length == 32 && abi.decode(ret, (bool));
-        }
-        require(access || wards[msg.sender] == 1, "SwapDepositor/not-authorized");
+        require(roles.canCall(ilk, msg.sender, address(this), msg.sig) || wards[msg.sender] == 1, "SwapDepositor/not-authorized");
         _;
     }
 
@@ -77,8 +71,7 @@ contract SwapDepositor {
     function deny(address usr) external auth { wards[usr] = 0; emit Deny(usr); }
 
     function file(bytes32 what, address data) external auth {
-        if      (what == "roles")      roles     = data;
-        else if (what == "swapper")    swapper   = data;
+        if (what == "swapper")    swapper   = data;
         else if (what == "depositor")  depositor = data;
         else revert("SwapDepositor/file-unrecognized-param");
         emit File(what, data);

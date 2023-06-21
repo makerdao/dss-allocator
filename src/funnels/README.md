@@ -30,9 +30,3 @@ Facilitators are also authorised to whitelist permissionned keepers to perform t
 ## Escrow
 
 The escrow is the contract in which GEM (e.g. USDC or USDT) sits while not being allocated to any particular scheme. In particular, GEM is expected to sit in the `Escrow` before and after a swap. Maker governance can approve other contracts to transfer funds from the `Escrow`. The `Swapper` described above will be one such contract.
-
-## WhitelistedRouter
-
-The `WhitelistedRouter` is a contract that allows whitelisted facilitators to move GEM (e.g. USDC or USDT) between multiple authorised locations (referred to as `box`es in the `Router`. Box examples include the SubDAO proxy, the Escrow described above, or a RWA conduit) without requiring the execution of a spell by Maker governance. They do so by interpreting the SubDAO Scope Artifacts and operating the `WhitelistedRouter` accordingly. These facilitators are whitelisted by Maker Governance.
-
-The `WhitelistedRouter` contract also includes logic to enable facilitators to handle the withdrawal of funds from RWA conduits, which may require the ability to (1) initiate a withdrawal request and (2) finalize that same withdrawal after a delay.
