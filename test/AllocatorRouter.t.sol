@@ -2,7 +2,7 @@
 pragma solidity ^0.8.16;
 
 import "dss-test/DssTest.sol";
-import { WhitelistedRouter } from "src/WhitelistedRouter.sol";
+import { AllocatorRouter } from "src/AllocatorRouter.sol";
 import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
 import { GemMock } from "test/mocks/GemMock.sol";
 import { RolesMock } from "test/mocks/RolesMock.sol";
@@ -16,10 +16,10 @@ interface GemLikeLike {
     function transferFrom(address, address, uint256) external;
 }
 
-contract WhitelistedRouterTest is DssTest {
+contract AllocatorRouterTest is DssTest {
     bytes32           public ilk;
     RolesMock         public roles;
-    WhitelistedRouter public router;
+    AllocatorRouter   public router;
     address           public box1;
     address           public box2;
     address           public USDC;
@@ -32,7 +32,7 @@ contract WhitelistedRouterTest is DssTest {
     function setUp() public {
         ilk    = "TEST-ILK";
         roles  = new RolesMock();
-        router = new WhitelistedRouter(address(roles), ilk);
+        router = new AllocatorRouter(address(roles), ilk);
         box1 = address(new AllocatorBuffer(ilk));
         box2 = address(new AllocatorBuffer(ilk));
         USDC = address(new GemMock(0));

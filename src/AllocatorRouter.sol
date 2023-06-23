@@ -30,7 +30,7 @@ interface GemLike {
     function approve(address, uint256) external;
 }
 
-contract WhitelistedRouter {
+contract AllocatorRouter {
 
     // --- storage variables ---
 
@@ -53,7 +53,7 @@ contract WhitelistedRouter {
 
     modifier auth() {
         require(roles.canCall(ilk, msg.sender, address(this), msg.sig) ||
-                wards[msg.sender] == 1, "WhitelistedRouter/not-authorized");
+                wards[msg.sender] == 1, "AllocatorRouter/not-authorized");
         _;
     }
 
@@ -81,15 +81,15 @@ contract WhitelistedRouter {
 
     function file(bytes32 what, address data, uint256 val) external auth {
         if (what == "box") boxes[data] = val;
-        else revert("WhitelistedRouter/file-unrecognized-param");
+        else revert("AllocatorRouter/file-unrecognized-param");
         emit File(what, data, val);
     }
 
     // --- move execution ---
 
     function move(address asset, address from, address to, uint256 amt) external auth {
-        require(boxes[from] == 1, "WhitelistedRouter/invalid-from");
-        require(boxes[to] == 1, "WhitelistedRouter/invalid-to");
+        require(boxes[from] == 1, "AllocatorRouter/invalid-from");
+        require(boxes[to] == 1, "AllocatorRouter/invalid-to");
         BoxLike(from).withdraw(ilk, asset, address(this), amt);
         GemLike(asset).approve(address(to), amt);
         BoxLike(to).deposit(ilk, asset, amt);
