@@ -21,7 +21,7 @@ interface RolesLike {
     function canCall(bytes32, address, address, bytes4) external view returns (bool);
 }
 
-interface DepositedGemLike {
+interface GemLike {
     function approve(address, uint256) external;
     function transfer(address, uint256) external;
     function transferFrom(address, address, uint256) external;
@@ -223,8 +223,8 @@ contract Depositor {
         }
         
         // Send leftover tokens back to buffer
-        if(amt0 < p.amt0) DepositedGemLike(p.gem0).transfer(to, p.amt0 - amt0);
-        if(amt1 < p.amt1) DepositedGemLike(p.gem1).transfer(to, p.amt1 - amt1);
+        if(amt0 < p.amt0) GemLike(p.gem0).transfer(to, p.amt0 - amt0);
+        if(amt1 < p.amt1) GemLike(p.gem1).transfer(to, p.amt1 - amt1);
     }
 
     function deposit(DepositParams memory p) external auth returns (uint128 liquidity, uint256 amt0, uint256 amt1) {
@@ -234,10 +234,10 @@ contract Depositor {
         zzz[p.gem0][p.gem1] = block.timestamp;
 
         address buffer_ = buffer;
-        DepositedGemLike(p.gem0).transferFrom(buffer_, address(this), p.amt0);
-        DepositedGemLike(p.gem1).transferFrom(buffer_, address(this), p.amt1);
-        DepositedGemLike(p.gem0).approve(uniV3PositionManager, p.amt0); // TODO: cheaper to SLOAD allowance to check if we need to approve max?
-        DepositedGemLike(p.gem1).approve(uniV3PositionManager, p.amt1);
+        GemLike(p.gem0).transferFrom(buffer_, address(this), p.amt0);
+        GemLike(p.gem1).transferFrom(buffer_, address(this), p.amt1);
+        GemLike(p.gem0).approve(uniV3PositionManager, p.amt0); // TODO: cheaper to SLOAD allowance to check if we need to approve max?
+        GemLike(p.gem1).approve(uniV3PositionManager, p.amt1);
 
         (liquidity, amt0, amt1) = addLiquidity(p, buffer_);
         require(amt0 * amt1 <= caps[p.gem0][p.gem1], "Depositor/exceeds-cap");
