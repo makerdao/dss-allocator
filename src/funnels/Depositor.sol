@@ -191,7 +191,7 @@ contract Depositor {
         int24 tickUpper;
     }
 
-    function addLiquidity(DepositParams memory p, address to) internal returns (uint128 liquidity, uint256 amt0, uint256 amt1) {
+    function _addLiquidity(DepositParams memory p, address to) internal returns (uint128 liquidity, uint256 amt0, uint256 amt1) {
         bytes32 key = keccak256(abi.encode(p.gem0, p.gem1, p.fee, p.tickLower, p.tickUpper));
         uint256 tokenId = positions[key];
         if (tokenId == 0) {
@@ -239,7 +239,7 @@ contract Depositor {
         GemLike(p.gem0).approve(uniV3PositionManager, p.amt0); // TODO: cheaper to SLOAD allowance to check if we need to approve max?
         GemLike(p.gem1).approve(uniV3PositionManager, p.amt1);
 
-        (liquidity, amt0, amt1) = addLiquidity(p, buffer_);
+        (liquidity, amt0, amt1) = _addLiquidity(p, buffer_);
         require(amt0 * amt1 <= caps[p.gem0][p.gem1], "Depositor/exceeds-cap");
 
         emit Deposit(msg.sender, p.gem0, p.gem1, liquidity, amt0, amt1);
@@ -256,7 +256,7 @@ contract Depositor {
         int24 tickUpper;
     }
 
-    function removeLiquidity(WithdrawParams memory p) internal returns (uint256 amt0, uint256 amt1) {
+    function _removeLiquidity(WithdrawParams memory p) internal returns (uint256 amt0, uint256 amt1) {
         bytes32 key = keccak256(abi.encode(p.gem0, p.gem1, p.fee, p.tickLower, p.tickUpper));
         uint256 tokenId = positions[key];
         require(tokenId > 0, "Depositor/no-position");
@@ -285,7 +285,7 @@ contract Depositor {
         require(block.timestamp >= zzz[p.gem0][p.gem1] + hops[p.gem0][p.gem1], "Depositor/too-soon");
         zzz[p.gem0][p.gem1] = block.timestamp;
 
-        (amt0, amt1) = removeLiquidity(p);
+        (amt0, amt1) = _removeLiquidity(p);
         require(amt0 * amt1 <= caps[p.gem0][p.gem1], "Depositor/exceeds-cap");
 
         emit Withdraw(msg.sender, p.gem0, p.gem1, p.liquidity, amt0, amt1);
