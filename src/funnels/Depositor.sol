@@ -261,14 +261,16 @@ contract Depositor {
         uint256 tokenId = positions[key];
         require(tokenId > 0, "Depositor/no-position");
         
-        PositionManagerLike.DecreaseLiquidityParams memory params = PositionManagerLike.DecreaseLiquidityParams({
-            tokenId: tokenId,
-            liquidity: p.liquidity,
-            amount0Min: p.minAmt0,
-            amount1Min: p.minAmt1,
-            deadline: block.timestamp
-        });
-        (amt0, amt1) = PositionManagerLike(uniV3PositionManager).decreaseLiquidity(params);
+        if(p.liquidity > 0) {
+            PositionManagerLike.DecreaseLiquidityParams memory params = PositionManagerLike.DecreaseLiquidityParams({
+                tokenId: tokenId,
+                liquidity: p.liquidity,
+                amount0Min: p.minAmt0,
+                amount1Min: p.minAmt1,
+                deadline: block.timestamp
+            });
+            (amt0, amt1) = PositionManagerLike(uniV3PositionManager).decreaseLiquidity(params);
+        }
 
         PositionManagerLike.CollectParams memory collection = PositionManagerLike.CollectParams({
             tokenId: tokenId,
