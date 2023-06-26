@@ -221,10 +221,6 @@ contract Depositor {
             });
             (liquidity, amt0, amt1) = PositionManagerLike(uniV3PositionManager).increaseLiquidity(params);
         }
-        
-        // Send leftover tokens back to buffer
-        if(amt0 < p.amt0) GemLike(p.gem0).transfer(to, p.amt0 - amt0);
-        if(amt1 < p.amt1) GemLike(p.gem1).transfer(to, p.amt1 - amt1);
     }
 
     function deposit(DepositParams memory p) external auth returns (uint128 liquidity, uint256 amt0, uint256 amt1) {
@@ -241,6 +237,10 @@ contract Depositor {
 
         (liquidity, amt0, amt1) = _addLiquidity(p, buffer_);
         require(amt0 * amt1 <= caps[p.gem0][p.gem1], "Depositor/exceeds-cap");
+
+        // Send leftover tokens back to buffer
+        if(amt0 < p.amt0) GemLike(p.gem0).transfer(buffer_, p.amt0 - amt0);
+        if(amt1 < p.amt1) GemLike(p.gem1).transfer(buffer_, p.amt1 - amt1);
 
         emit Deposit(msg.sender, p.gem0, p.gem1, liquidity, amt0, amt1);
     }
