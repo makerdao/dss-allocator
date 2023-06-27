@@ -39,7 +39,7 @@ contract DepositorTest is DssTest {
         roles.setUserRole(ilk, FACILITATOR, DEPOSITOR_ROLE, true);
 
         depositor.file("buffer", address(buffer));
-        depositor.file("cap", DAI, USDC, 10_000 * WAD * 10_000 * 10**6);
+        depositor.file("cap", DAI, USDC, uint128(10_000 * WAD), 10_000 * 10**6);
         depositor.file("hop", DAI, USDC, 3600);
 
         deal(DAI,  address(buffer), 1_000_000 * WAD,   true);
@@ -107,5 +107,21 @@ contract DepositorTest is DssTest {
         assertEq(TestGemLike(DAI).balanceOf(address(depositor)), 0);
         assertEq(TestGemLike(USDC).balanceOf(address(depositor)), 0);
         assertEq(TestGemLike(UNIV3_POS_MGR).balanceOf(address(buffer)), 1);
+
+        // // Collect Fees
+        // path = abi.encodePacked(USDC, uint24(100), DAI);
+        // wp = Depositor.WithdrawParams({ 
+        //     gem0: DAI,
+        //     gem1: USDC,
+        //     liquidity: 0,
+        //     minAmt0: 0 * WAD, 
+        //     minAmt1: 0 * 10**6,
+        //     fee: uint24(100), 
+        //     tickLower: refTick-100, 
+        //     tickUpper: refTick+100
+        // });
+        // vm.warp(block.timestamp + 3600);
+        // vm.prank(FACILITATOR); depositor.withdraw(wp);
+        
     }
 }

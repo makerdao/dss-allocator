@@ -132,7 +132,7 @@ contract Depositor {
     mapping (address => uint256) public wards;
     mapping (address => mapping (address => uint256)) public hops;       // [seconds]   hops[gem0][gem1] is the cooldown one has to wait between changes to the liquidity of a (gem0, gem1) pool
     mapping (address => mapping (address => uint256)) public zzz;        // [seconds]    zzz[gem0][gem1] is the timestamp of the last liquidity change for a (gem0, gem1) pool
-    mapping (address => mapping (address => uint256)) public caps;       // [amount]    caps[gem0][gem1] is the maximum amount of squared-liquidity (defined as amt0 * amt1) that can be added each hop for a (gem0, gem1) pool
+    mapping (address => mapping (address => Cap)) public caps;           // [amount]    caps[gem0][gem1] is the tuple (cap0, cap1) indicating the maximum amount of (gem0, gem1) that can be added as liquidity each hop for a (gem0, gem1) pool
 
     mapping (bytes32 => uint256) public positions;  // key = keccak256(abi.encode(gem0, gem1, fee, tickLower, tickUpper)) => tokenId of the liquidity position
 
@@ -142,9 +142,15 @@ contract Depositor {
     bytes32   public immutable ilk;
     address internal immutable uniV3PositionManager;  // 0xC36442b4a4522E871399CD717aBDD847Ab11FE88
 
+    struct Cap {
+        uint128 cap0;
+        uint128 cap1;
+    }
+
     event Rely (address indexed usr);
     event Deny (address indexed usr);
     event File (bytes32 indexed what, address indexed gem0, address indexed gem1, uint256 data);
+    event File (bytes32 indexed what, address indexed gem0, address indexed gem1, uint128 data0, uint128 data1);
     event File (bytes32 indexed what, address data);
     event Deposit(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1);
     event Withdraw(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1);
@@ -166,17 +172,23 @@ contract Depositor {
     function deny(address usr) external auth { wards[usr] = 0; emit Deny(usr); }
 
     function file(bytes32 what, address data) external auth {
-        if      (what == "buffer")   buffer  = data;
+        if (what == "buffer") buffer = data;
         else revert("Depositor/file-unrecognized-param");
         emit File(what, data);
     }
 
     function file(bytes32 what, address gem0, address gem1, uint256 data) external auth {
         (gem0, gem1) = gem0 < gem1 ? (gem0, gem1) : (gem1, gem0);
-        if      (what == "cap")  caps[gem0][gem1] = data;
-        else if (what == "hop")  hops[gem0][gem1] = data;
+        if (what == "hop") hops[gem0][gem1] = data;
         else revert("Depositor/file-unrecognized-param");
         emit File(what, gem0, gem1, data);
+    }
+
+    function file(bytes32 what, address gem0, address gem1, uint128 data0, uint128 data1) external auth {
+        (gem0, gem1, data0, data1) = gem0 < gem1 ? (gem0, gem1, data0, data1) : (gem1, gem0, data1, data0);
+        if (what == "cap") caps[gem0][gem1] = Cap({ cap0: data0, cap1: data1 });
+        else revert("Depositor/file-unrecognized-param");
+        emit File(what, gem0, gem1, data0, data1);
     }
 
     struct DepositParams {
@@ -236,7 +248,8 @@ contract Depositor {
         GemLike(p.gem1).approve(uniV3PositionManager, p.amt1);
 
         (liquidity, amt0, amt1) = _addLiquidity(p, buffer_);
-        require(amt0 * amt1 <= caps[p.gem0][p.gem1], "Depositor/exceeds-cap");
+        Cap memory cap = caps[p.gem0][p.gem1];
+        require(amt0 <= cap.cap0 && amt1 <= cap.cap1, "Depositor/exceeds-cap");
 
         // Send leftover tokens back to buffer
         if(amt0 < p.amt0) GemLike(p.gem0).transfer(buffer_, p.amt0 - amt0);
@@ -288,7 +301,8 @@ contract Depositor {
         zzz[p.gem0][p.gem1] = block.timestamp;
 
         (amt0, amt1) = _removeLiquidity(p);
-        require(amt0 * amt1 <= caps[p.gem0][p.gem1], "Depositor/exceeds-cap");
+        Cap memory cap = caps[p.gem0][p.gem1];
+        require(amt0 <= cap.cap0 && amt1 <= cap.cap1, "Depositor/exceeds-cap");
 
         emit Withdraw(msg.sender, p.gem0, p.gem1, p.liquidity, amt0, amt1);
     }
