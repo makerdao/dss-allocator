@@ -16,30 +16,22 @@
 
 pragma solidity ^0.8.16;
 
-interface TokenLike {
-    function balanceOf(address) external view returns (uint256);
-    function approve(address, uint256) external;
-    function transfer(address, uint256) external;
-    function transferFrom(address, address, uint256) external;
-}
-
-contract AllocatorBuffer {
+contract AllocatorRegistry {
     // --- storage variables ---
 
     mapping(address => uint256) public wards;
+    mapping(bytes32 => address) public buffers;
 
     // --- events ---
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
-    event Approve(address indexed asset, address indexed spender, uint256 amount);
-    event Deposit(address indexed asset, address indexed from,  uint256 amount);
-    event Withdraw(address indexed asset, address indexed to, uint256 amount);
+    event File(bytes32 indexed ilk, bytes32 indexed what, address data);
 
     // --- modifiers ---
 
     modifier auth() {
-        require(wards[msg.sender] == 1, "AllocatorBuffer/not-authorized");
+        require(wards[msg.sender] == 1, "AllocatorRegistry/not-authorized");
         _;
     }
 
@@ -62,20 +54,10 @@ contract AllocatorBuffer {
         emit Deny(usr);
     }
 
-    // --- functions ---
-
-    function approve(address asset, address spender, uint256 amount) external auth {
-        TokenLike(asset).approve(spender, amount);
-        emit Approve(asset, spender, amount);
-    }
-
-    function deposit(address asset, uint256 amount) external {
-        TokenLike(asset).transferFrom(msg.sender, address(this), amount);
-        emit Deposit(asset, msg.sender, amount);
-    }
-
-    function withdraw(address asset, address to, uint256 amount) external auth {
-        TokenLike(asset).transfer(to, amount);
-        emit Withdraw(asset, to, amount);
-    }
+    function file(bytes32 ilk, bytes32 what, address data) external auth {
+        if (what == "buffer") {
+            buffers[ilk] = data;
+        } else revert("AllocatorRegistry/file-unrecognized-param");
+        emit File(ilk, what, data);
+    } 
 }

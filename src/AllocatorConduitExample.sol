@@ -22,6 +22,10 @@ interface RolesLike {
     function canCall(bytes32, address, address, bytes4) external view returns (bool);
 }
 
+interface RegistryLike {
+    function buffers(bytes32) external view returns (address);
+}
+
 contract AllocatorConduitExample is IAllocatorConduit {
     // --- storage variables ---
 
@@ -30,7 +34,8 @@ contract AllocatorConduitExample is IAllocatorConduit {
 
     // --- immutables ---
 
-    RolesLike public immutable roles;
+    RolesLike    public immutable roles;
+    RegistryLike public immutable registry;
 
     // --- events ---
 
@@ -52,8 +57,9 @@ contract AllocatorConduitExample is IAllocatorConduit {
 
     // --- constructor ---
 
-    constructor(address roles_) {
+    constructor(address roles_, address registry_) {
         roles = RolesLike(roles_);
+        registry = RegistryLike(registry_);
     }
 
     // --- getters ---
@@ -82,16 +88,18 @@ contract AllocatorConduitExample is IAllocatorConduit {
     // --- functions ---
 
     function deposit(bytes32 ilk, address asset, uint256 amount) external ilkAuth(ilk) {
+        address buffer = registry.buffers(ilk);
+        // Implement the logic to deposit funds from the Buffer into the FundManager
         positions[ilk][asset] += amount;
-        // Implement the logic to deposit funds into the FundManager
-        emit Deposit(ilk, asset, amount);
+        emit Deposit(ilk, asset, buffer, amount);
     }
 
-    function withdraw(bytes32 ilk, address asset, address destination, uint256 maxAmount) external ilkAuth(ilk) returns (uint256 amount) {
+    function withdraw(bytes32 ilk, address asset, uint256 maxAmount) external ilkAuth(ilk) returns (uint256 amount) {
         uint256 balance = positions[ilk][asset];
         amount = balance < maxAmount ? balance : maxAmount;
         positions[ilk][asset] = balance - amount;
-        // Implement the logic to withdraw funds from the FundManager
-        emit Withdraw(ilk, asset, destination, amount);
+        address buffer = registry.buffers(ilk);
+        // Implement the logic to withdraw funds from the FundManager to the Buffer
+        emit Withdraw(ilk, asset, buffer, amount);
     }
 }
