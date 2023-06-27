@@ -3,8 +3,8 @@ pragma solidity ^0.8.16;
 
 import "dss-test/DssTest.sol";
 import { Swapper, GemLike } from "src/funnels/Swapper.sol";
-import { StableSwapper } from "src/funnels/StableSwapper.sol";
-import { UniV3SwapperCallee } from "src/funnels/UniV3SwapperCallee.sol";
+import { StableSwapper } from "src/funnels/automation/StableSwapper.sol";
+import { UniV3SwapperCallee } from "src/funnels/callees/UniV3SwapperCallee.sol";
 import { AllocatorRoles } from "src/AllocatorRoles.sol";
 import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
 
