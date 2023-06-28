@@ -7,11 +7,12 @@ import { StableSwapper } from "src/funnels/automation/StableSwapper.sol";
 import { UniV3SwapperCallee } from "src/funnels/callees/UniV3SwapperCallee.sol";
 import { AllocatorRoles } from "src/AllocatorRoles.sol";
 import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
+import { TestUtils } from "test/utils/TestUtils.sol";
 
-contract StableSwapperTest is DssTest {
+contract StableSwapperTest is DssTest, TestUtils {
     AllocatorBuffer public buffer;
     Swapper public swapper;
-    StableSwapper public runner;
+    StableSwapper public stableSwapper;
     UniV3SwapperCallee public uniV3Callee;
 
     bytes32 constant ilk = "aaa";
@@ -33,12 +34,12 @@ contract StableSwapperTest is DssTest {
         AllocatorRoles roles = new AllocatorRoles();
         swapper = new Swapper(address(roles), ilk);
         uniV3Callee = new UniV3SwapperCallee(UNIV3_ROUTER);
-        vm.prank(FACILITATOR); runner = new StableSwapper();
+        vm.prank(FACILITATOR); stableSwapper = new StableSwapper();
 
         roles.setIlkAdmin(ilk, address(this));
         roles.setRoleAction(ilk, SWAPPER_ROLE, address(swapper), swapper.swap.selector, true);
         roles.setUserRole(ilk, FACILITATOR, SWAPPER_ROLE, true);
-        roles.setUserRole(ilk, address(runner), SWAPPER_ROLE, true);
+        roles.setUserRole(ilk, address(stableSwapper), SWAPPER_ROLE, true);
 
         swapper.file("buffer", address(buffer));
         swapper.file("cap", DAI, USDC, 10_000 * WAD);
@@ -52,29 +53,45 @@ contract StableSwapperTest is DssTest {
         buffer.approve(DAI,  address(swapper), type(uint256).max);
 
         vm.startPrank(FACILITATOR); 
-        runner.file("swapper", address(swapper));
-        runner.file("count", DAI, USDC, 10);
-        runner.file("count", USDC, DAI, 10);
-        runner.file("lot", DAI, USDC, 10_000 * WAD);
-        runner.file("lot", USDC, DAI, 10_000 * 10**6);
-        runner.file("minPrice", DAI, USDC, 99 * WAD / 100 / 10**(18-6));
-        runner.file("minPrice", USDC, DAI, 99 * WAD / 100 * 10**(18-6));
-        runner.kiss(KEEPER);
+        stableSwapper.file("swapper", address(swapper));
+        stableSwapper.setConfig(DAI, USDC, StableSwapper.PairConfig({ 
+               count: 10,
+                 lot: uint96(10_000 * WAD), 
+            minPrice: uint128(99 * WAD / 100 / 10**(18-6))
+        }));
+        stableSwapper.setConfig(USDC, DAI, StableSwapper.PairConfig({ 
+               count: 10,
+                 lot: uint96(10_000 * 10**6), 
+            minPrice: uint128(99 * WAD / 100 * 10**(18-6))
+        }));
+        stableSwapper.kiss(KEEPER);
         vm.stopPrank();
+    }
 
+    function testConstructor() public {
+        StableSwapper s = new StableSwapper();
+        assertEq(s.wards(address(this)), 1);
+    }
+
+    function testAuth() public {
+        checkAuth(address(stableSwapper), "StableSwapper");
+    }
+
+    function testFile() public {
+        checkFileAddress(address(stableSwapper), "StableSwapper", ["swapper"]);
     }
 
     function testSwapByKeeper() public {
         vm.warp(block.timestamp + 3600);
         bytes memory path = abi.encodePacked(USDC, uint24(100), DAI);
         uint256 prevDst = GemLike(DAI).balanceOf(address(buffer));
-        vm.prank(KEEPER); uint256 out = runner.swap(USDC, DAI, 9900 * WAD, address(uniV3Callee), path);
+        vm.prank(KEEPER); uint256 out = stableSwapper.swap(USDC, DAI, 9900 * WAD, address(uniV3Callee), path);
         assertGe(GemLike(DAI).balanceOf(address(buffer)), prevDst + 9900 * WAD);
 
         vm.warp(block.timestamp + 3600);
         path = abi.encodePacked(DAI, uint24(100), USDC);
         prevDst = GemLike(USDC).balanceOf(address(buffer));
-        vm.prank(KEEPER); out = runner.swap(DAI, USDC, 9900 * 10**6, address(uniV3Callee), path);
+        vm.prank(KEEPER); out = stableSwapper.swap(DAI, USDC, 9900 * 10**6, address(uniV3Callee), path);
         assertGe(GemLike(USDC).balanceOf(address(buffer)), prevDst + 9900 * 10**6);
     }
 

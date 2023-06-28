@@ -22,15 +22,15 @@ interface SwapperLike {
 }
 
 contract StableSwapper {
-    mapping (address => uint256) public wards;                          // facilitators
-    mapping (address => uint256) public buds;                           // whitelisted keepers
-    mapping (address => mapping (address => uint256)) public counts;    // counts[src][dst] is the remaining number of times that a src-to-dst swap can be performed by keepers
-    mapping (address => mapping (address => uint256)) public lots;      // [token weis] lots[src][dst] is the amount swapped by keepers from src to dst every hop
-    mapping (address => mapping (address => uint256)) public minPrices; // [WAD] minPrices[src][dst] is the minimum price to insist on in the swap form src to dst.
-                                                                        //       This needs to take into account any difference in decimals between src and dst.
-                                                                        //       Example 1: a max loss of 1% when swapping  USDC to DAI corresponds to minPrices[src][dst] = 99 * WAD / 100 * 10**(18-6)
-                                                                        //       Example 2: a max loss of 1% when swapping  DAI to USDC corresponds to minPrices[src][dst] = 99 * WAD / 100 / 10**(18-6)
-                                                                        //       Example 3: a max loss of 1% when swapping USDT to USDC corresponds to minPrices[src][dst] = 99 * WAD / 100
+    mapping (address => uint256) public wards;                           // facilitators
+    mapping (address => uint256) public buds;                            // whitelisted keepers
+    mapping (address => mapping (address => PairConfig)) public configs; // configs[src][dst].count is the remaining number of times that a src-to-dst swap can be performed by keepers
+                                                                        //  configs[src][dst].lot [token weis] is the amount swapped by keepers from src to dst every hop
+                                                                        //  configs[src][dst].minPrice [WAD] is the minimum price to insist on in the swap form src to dst.
+                                                                        //       minPrice needs to take into account any difference in decimals between src and dst.
+                                                                        //       Example 1: a max loss of 1% when swapping  USDC to DAI corresponds to minPrice = 99 * WAD / 100 * 10**(18-6)
+                                                                        //       Example 2: a max loss of 1% when swapping  DAI to USDC corresponds to minPrice = 99 * WAD / 100 / 10**(18-6)
+                                                                        //       Example 3: a max loss of 1% when swapping USDT to USDC corresponds to minPrice = 99 * WAD / 100
 
     address public swapper;                                             // Swapper for this StableSwapper
 
@@ -39,7 +39,7 @@ contract StableSwapper {
     event Kissed (address indexed usr);
     event Dissed (address indexed usr);
     event File   (bytes32 indexed what, address data);
-    event File   (bytes32 indexed what, address indexed src, address indexed dst, uint256 data);
+    event Config (address indexed src, address indexed dst, PairConfig data);
 
     constructor() {
         wards[msg.sender] = 1;
@@ -64,12 +64,15 @@ contract StableSwapper {
     function kiss(address usr) external auth {  buds[usr] = 1; emit Kissed(usr); }
     function diss(address usr) external auth {  buds[usr] = 0; emit Dissed(usr); }
 
-    function file(bytes32 what, address src, address dst, uint256 data) external auth {
-        if      (what == "count")        counts[src][dst] = data;
-        else if (what == "lot")            lots[src][dst] = data;
-        else if (what == "minPrice")  minPrices[src][dst] = data;
-        else revert("StableSwapper/file-unrecognized-param");
-        emit File(what, src, dst, data);
+    struct PairConfig {
+        uint32 count;
+        uint96 lot;
+        uint128 minPrice;
+    }
+
+    function setConfig(address src, address dst, PairConfig memory cfg) external auth {
+        configs[src][dst] = cfg;
+        emit Config(src, dst, cfg);
     }
 
     function file(bytes32 what, address data) external auth {
@@ -79,15 +82,15 @@ contract StableSwapper {
     }
 
     function swap(address src, address dst, uint256 minOut, address callee, bytes calldata data) toll external returns (uint256 out) {
-        uint256 cnt = counts[src][dst];
-        require(cnt > 0, "StableSwapper/exceeds-count");
-        counts[src][dst] = cnt - 1;
+        PairConfig memory cfg = configs[src][dst];
 
-        uint256 lot = lots[src][dst];
-        uint256 reqOut = lot * minPrices[src][dst] / WAD;
+        require(cfg.count > 0, "StableSwapper/exceeds-count");
+        configs[src][dst].count = cfg.count - 1;
+
+        uint256 reqOut = uint256(cfg.lot) * uint256(cfg.minPrice) / WAD;
         if(minOut == 0) minOut = reqOut;
         require(minOut >= reqOut, "SwapperRunner/min-too-small");
 
-        out = SwapperLike(swapper).swap(src, dst, lot, minOut, callee, data);
+        out = SwapperLike(swapper).swap(src, dst, cfg.lot, minOut, callee, data);
     }
 }
