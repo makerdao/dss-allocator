@@ -6,8 +6,10 @@ import { Swapper, GemLike } from "src/funnels/Swapper.sol";
 import { UniV3SwapperCallee } from "src/funnels/callees/UniV3SwapperCallee.sol";
 import { AllocatorRoles } from "src/AllocatorRoles.sol";
 import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
+import { TestUtils } from "test/utils/TestUtils.sol";
 
-contract SwapperTest is DssTest {
+contract SwapperTest is DssTest, TestUtils {
+    AllocatorRoles public roles;
     AllocatorBuffer public buffer;
     Swapper public swapper;
     UniV3SwapperCallee public uniV3Callee;
@@ -27,7 +29,7 @@ contract SwapperTest is DssTest {
         vm.createSelectFork(vm.envString("ETH_RPC_URL"));
 
         buffer = new AllocatorBuffer(ilk);
-        AllocatorRoles roles = new AllocatorRoles();
+        roles = new AllocatorRoles();
         swapper = new Swapper(address(roles), ilk);
         uniV3Callee = new UniV3SwapperCallee(UNIV3_ROUTER);
 
@@ -45,6 +47,39 @@ contract SwapperTest is DssTest {
         deal(USDC, address(buffer), 1_000_000 * 10**6, true);
         buffer.approve(USDC, address(swapper), type(uint256).max);
         buffer.approve(DAI,  address(swapper), type(uint256).max);
+    }
+
+    function testConstructor() public {
+        Swapper s = new Swapper(address(0xBEEF), "SubDAO 1");
+        assertEq(address(s.roles()),  address(0xBEEF));
+        assertEq(s.ilk(), "SubDAO 1");
+        assertEq(s.wards(address(this)), 1);
+    }
+
+    function testAuth() public {
+        checkAuth(address(swapper), "Swapper");
+    }
+
+    function testModifiers() public {
+        bytes4[] memory authedMethods = new bytes4[](1);
+        authedMethods[0] = swapper.swap.selector;
+
+        vm.startPrank(address(0xBEEF));
+        checkModifier(address(swapper), "Swapper/not-authorized", authedMethods);
+        vm.stopPrank();
+    }
+
+    function testFile() public {
+        checkFileAddress(address(swapper), "Swapper", ["buffer"]);
+        checkFileUintForGemPair(address(swapper), "Swapper", ["cap", "hop"]);
+    }
+
+    function testRoles() public {
+        vm.expectRevert("Swapper/not-authorized");
+        vm.prank(address(0xBEEF)); swapper.file("buffer", address(0));
+        roles.setRoleAction(ilk, uint8(0xF1), address(swapper), bytes4(keccak256("file(bytes32,address)")), true);
+        roles.setUserRole(ilk, address(0xBEEF), uint8(0xF1), true);
+        vm.prank(address(0xBEEF)); swapper.file("buffer", address(0));
     }
 
     function testSwap() public {

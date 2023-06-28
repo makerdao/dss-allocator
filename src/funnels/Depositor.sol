@@ -140,7 +140,7 @@ contract Depositor {
 
     RolesLike public immutable roles;                 // Contract managing access control for this Depositor
     bytes32   public immutable ilk;
-    address internal immutable uniV3PositionManager;  // 0xC36442b4a4522E871399CD717aBDD847Ab11FE88
+    address   public immutable uniV3PositionManager;  // 0xC36442b4a4522E871399CD717aBDD847Ab11FE88
 
     struct Cap {
         uint128 amt0;

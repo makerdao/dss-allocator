@@ -70,7 +70,7 @@ contract Swapper {
     }
 
     function file(bytes32 what, address data) external auth {
-        if      (what == "buffer") buffer = data;
+        if (what == "buffer") buffer = data;
         else revert("Swapper/file-unrecognized-param");
         emit File(what, data);
     }

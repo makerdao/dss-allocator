@@ -6,6 +6,7 @@ import { Depositor } from "src/funnels/Depositor.sol";
 import { UniV3SwapperCallee } from "src/funnels/callees/UniV3SwapperCallee.sol";
 import { AllocatorRoles } from "src/AllocatorRoles.sol";
 import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
+import { TestUtils } from "test/utils/TestUtils.sol";
 
 interface GemLike {
     function approve(address, uint256) external;
@@ -24,7 +25,8 @@ interface SwapRouterLike {
     }
 }
 
-contract DepositorTest is DssTest {
+contract DepositorTest is DssTest, TestUtils {
+    AllocatorRoles public roles;
     AllocatorBuffer public buffer;
     Depositor public depositor;
     UniV3SwapperCallee public uniV3Callee;
@@ -44,7 +46,7 @@ contract DepositorTest is DssTest {
         vm.createSelectFork(vm.envString("ETH_RPC_URL"));
         
         buffer = new AllocatorBuffer(ilk);
-        AllocatorRoles roles = new AllocatorRoles();
+        roles = new AllocatorRoles();
         depositor = new Depositor(address(roles), ilk, UNIV3_POS_MGR);
 
         roles.setIlkAdmin(ilk, address(this));
@@ -62,6 +64,43 @@ contract DepositorTest is DssTest {
         buffer.approve(USDC, address(depositor), type(uint256).max);
         buffer.approve(DAI,  address(depositor), type(uint256).max);
         buffer.setApprovalForAll(UNIV3_POS_MGR,  address(depositor), true);
+    }
+
+    function testConstructor() public {
+        Depositor d = new Depositor(address(0xBEEF), "SubDAO 1", address(0xABC));
+        assertEq(address(d.roles()),  address(0xBEEF));
+        assertEq(d.ilk(), "SubDAO 1");
+        assertEq(d.uniV3PositionManager(), address(0xABC));
+        assertEq(d.wards(address(this)), 1);
+    }
+
+    function testAuth() public {
+        checkAuth(address(depositor), "Depositor");
+    }
+
+    function testModifiers() public {
+        bytes4[] memory authedMethods = new bytes4[](3);
+        authedMethods[0] = depositor.deposit.selector;
+        authedMethods[1] = depositor.withdraw.selector;
+        authedMethods[2] = depositor.collect.selector;
+
+        vm.startPrank(address(0xBEEF));
+        checkModifierForLargeArgs(address(depositor), "Depositor/not-authorized", authedMethods);
+        vm.stopPrank();
+    }
+
+    function testFile() public {
+        checkFileAddress(address(depositor), "Depositor", ["buffer"]);
+        checkFileUintForGemPair(address(depositor), "Depositor", ["hop"]);
+        checkFileUint128PairForGemPair(address(depositor), "Depositor", ["cap"]);
+    }
+
+    function testRoles() public {
+        vm.expectRevert("Depositor/not-authorized");
+        vm.prank(address(0xBEEF)); depositor.file("buffer", address(0));
+        roles.setRoleAction(ilk, uint8(0xF1), address(depositor), bytes4(keccak256("file(bytes32,address)")), true);
+        roles.setUserRole(ilk, address(0xBEEF), uint8(0xF1), true);
+        vm.prank(address(0xBEEF)); depositor.file("buffer", address(0));
     }
 
     function testDepositor() public {
