@@ -21,7 +21,7 @@ interface RolesLike {
     function canCall(bytes32, address, address, bytes4) external view returns (bool);
 }
 
-interface DepositedGemLike {
+interface GemLike {
     function approve(address, uint256) external;
     function transfer(address, uint256) external;
     function transferFrom(address, address, uint256) external;
@@ -132,7 +132,7 @@ contract Depositor {
     mapping (address => uint256) public wards;
     mapping (address => mapping (address => uint256)) public hops;       // [seconds]   hops[gem0][gem1] is the cooldown one has to wait between changes to the liquidity of a (gem0, gem1) pool
     mapping (address => mapping (address => uint256)) public zzz;        // [seconds]    zzz[gem0][gem1] is the timestamp of the last liquidity change for a (gem0, gem1) pool
-    mapping (address => mapping (address => uint256)) public caps;       // [amount]    caps[gem0][gem1] is the maximum amount of squared-liquidity (defined as amt0 * amt1) that can be added each hop for a (gem0, gem1) pool
+    mapping (address => mapping (address => Cap)) public caps;           // [amount]    caps[gem0][gem1] is the tuple (amt0, amt1) indicating the maximum amount of (gem0, gem1) that can be added as liquidity each hop for a (gem0, gem1) pool
 
     mapping (bytes32 => uint256) public positions;  // key = keccak256(abi.encode(gem0, gem1, fee, tickLower, tickUpper)) => tokenId of the liquidity position
 
@@ -140,14 +140,21 @@ contract Depositor {
 
     RolesLike public immutable roles;                 // Contract managing access control for this Depositor
     bytes32   public immutable ilk;
-    address internal immutable uniV3PositionManager;  // 0xC36442b4a4522E871399CD717aBDD847Ab11FE88
+    address   public immutable uniV3PositionManager;  // 0xC36442b4a4522E871399CD717aBDD847Ab11FE88
+
+    struct Cap {
+        uint128 amt0;
+        uint128 amt1;
+    }
 
     event Rely (address indexed usr);
     event Deny (address indexed usr);
     event File (bytes32 indexed what, address indexed gem0, address indexed gem1, uint256 data);
+    event File (bytes32 indexed what, address indexed gem0, address indexed gem1, uint128 data0, uint128 data1);
     event File (bytes32 indexed what, address data);
     event Deposit(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1);
     event Withdraw(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1);
+    event Collect(address indexed sender, address indexed gem0, address indexed gem1, uint256 amt0, uint256 amt1);
 
     constructor(address roles_, bytes32 ilk_, address _uniV3PositionManager) {
         roles = RolesLike(roles_);
@@ -166,17 +173,23 @@ contract Depositor {
     function deny(address usr) external auth { wards[usr] = 0; emit Deny(usr); }
 
     function file(bytes32 what, address data) external auth {
-        if      (what == "buffer")   buffer  = data;
+        if (what == "buffer") buffer = data;
         else revert("Depositor/file-unrecognized-param");
         emit File(what, data);
     }
 
     function file(bytes32 what, address gem0, address gem1, uint256 data) external auth {
         (gem0, gem1) = gem0 < gem1 ? (gem0, gem1) : (gem1, gem0);
-        if      (what == "cap")  caps[gem0][gem1] = data;
-        else if (what == "hop")  hops[gem0][gem1] = data;
+        if (what == "hop") hops[gem0][gem1] = data;
         else revert("Depositor/file-unrecognized-param");
         emit File(what, gem0, gem1, data);
+    }
+
+    function file(bytes32 what, address gem0, address gem1, uint128 data0, uint128 data1) external auth {
+        (gem0, gem1, data0, data1) = gem0 < gem1 ? (gem0, gem1, data0, data1) : (gem1, gem0, data1, data0);
+        if (what == "cap") caps[gem0][gem1] = Cap({ amt0: data0, amt1: data1 });
+        else revert("Depositor/file-unrecognized-param");
+        emit File(what, gem0, gem1, data0, data1);
     }
 
     struct DepositParams {
@@ -191,7 +204,7 @@ contract Depositor {
         int24 tickUpper;
     }
 
-    function addLiquidity(DepositParams memory p, address to) internal returns (uint128 liquidity, uint256 amt0, uint256 amt1) {
+    function _addLiquidity(DepositParams memory p, address to) internal returns (uint128 liquidity, uint256 amt0, uint256 amt1) {
         bytes32 key = keccak256(abi.encode(p.gem0, p.gem1, p.fee, p.tickLower, p.tickUpper));
         uint256 tokenId = positions[key];
         if (tokenId == 0) {
@@ -221,10 +234,6 @@ contract Depositor {
             });
             (liquidity, amt0, amt1) = PositionManagerLike(uniV3PositionManager).increaseLiquidity(params);
         }
-        
-        // Send leftover tokens back to buffer
-        if(amt0 < p.amt0) DepositedGemLike(p.gem0).transfer(to, p.amt0 - amt0);
-        if(amt1 < p.amt1) DepositedGemLike(p.gem1).transfer(to, p.amt1 - amt1);
     }
 
     function deposit(DepositParams memory p) external auth returns (uint128 liquidity, uint256 amt0, uint256 amt1) {
@@ -234,13 +243,18 @@ contract Depositor {
         zzz[p.gem0][p.gem1] = block.timestamp;
 
         address buffer_ = buffer;
-        DepositedGemLike(p.gem0).transferFrom(buffer_, address(this), p.amt0);
-        DepositedGemLike(p.gem1).transferFrom(buffer_, address(this), p.amt1);
-        DepositedGemLike(p.gem0).approve(uniV3PositionManager, p.amt0); // TODO: cheaper to SLOAD allowance to check if we need to approve max?
-        DepositedGemLike(p.gem1).approve(uniV3PositionManager, p.amt1);
+        GemLike(p.gem0).transferFrom(buffer_, address(this), p.amt0);
+        GemLike(p.gem1).transferFrom(buffer_, address(this), p.amt1);
+        GemLike(p.gem0).approve(uniV3PositionManager, p.amt0); // TODO: cheaper to SLOAD allowance to check if we need to approve max?
+        GemLike(p.gem1).approve(uniV3PositionManager, p.amt1);
 
-        (liquidity, amt0, amt1) = addLiquidity(p, buffer_);
-        require(amt0 * amt1 <= caps[p.gem0][p.gem1], "Depositor/exceeds-cap");
+        (liquidity, amt0, amt1) = _addLiquidity(p, buffer_);
+        Cap memory cap = caps[p.gem0][p.gem1];
+        require(amt0 <= cap.amt0 && amt1 <= cap.amt1, "Depositor/exceeds-cap");
+
+        // Send leftover tokens back to buffer
+        if(amt0 < p.amt0) GemLike(p.gem0).transfer(buffer_, p.amt0 - amt0);
+        if(amt1 < p.amt1) GemLike(p.gem1).transfer(buffer_, p.amt1 - amt1);
 
         emit Deposit(msg.sender, p.gem0, p.gem1, liquidity, amt0, amt1);
     }
@@ -256,7 +270,7 @@ contract Depositor {
         int24 tickUpper;
     }
 
-    function removeLiquidity(WithdrawParams memory p) internal returns (uint256 amt0, uint256 amt1) {
+    function _removeLiquidity(WithdrawParams memory p) internal returns (uint256 amt0, uint256 amt1) {
         bytes32 key = keccak256(abi.encode(p.gem0, p.gem1, p.fee, p.tickLower, p.tickUpper));
         uint256 tokenId = positions[key];
         require(tokenId > 0, "Depositor/no-position");
@@ -268,15 +282,15 @@ contract Depositor {
             amount1Min: p.minAmt1,
             deadline: block.timestamp
         });
-        (amt0, amt1) = PositionManagerLike(uniV3PositionManager).decreaseLiquidity(params);
+        PositionManagerLike(uniV3PositionManager).decreaseLiquidity(params);
 
         PositionManagerLike.CollectParams memory collection = PositionManagerLike.CollectParams({
             tokenId: tokenId,
             recipient: address(buffer),
-            amount0Max: type(uint128).max, // using max instead of amt0 so as to also collect fees
-            amount1Max: type(uint128).max  // using max instead of amt1 so as to also collect fees
+            amount0Max: type(uint128).max, // using max to also collect fees
+            amount1Max: type(uint128).max  // using max to also collect fees
         });
-        PositionManagerLike(uniV3PositionManager).collect(collection);
+        (amt0, amt1) = PositionManagerLike(uniV3PositionManager).collect(collection);
     }
         
     function withdraw(WithdrawParams memory p) external auth returns (uint256 amt0, uint256 amt1) {
@@ -285,9 +299,36 @@ contract Depositor {
         require(block.timestamp >= zzz[p.gem0][p.gem1] + hops[p.gem0][p.gem1], "Depositor/too-soon");
         zzz[p.gem0][p.gem1] = block.timestamp;
 
-        (amt0, amt1) = removeLiquidity(p);
-        require(amt0 * amt1 <= caps[p.gem0][p.gem1], "Depositor/exceeds-cap");
+        (amt0, amt1) = _removeLiquidity(p);
+        Cap memory cap = caps[p.gem0][p.gem1];
+        require(amt0 <= cap.amt0 && amt1 <= cap.amt1, "Depositor/exceeds-cap");
 
         emit Withdraw(msg.sender, p.gem0, p.gem1, p.liquidity, amt0, amt1);
+    }
+
+    struct CollectParams {
+        address gem0;
+        address gem1;
+        uint24 fee;
+        int24 tickLower;
+        int24 tickUpper;
+    }
+
+    function collect(CollectParams memory p) external auth returns (uint256 amt0, uint256 amt1) {
+        require(p.gem0 < p.gem1, "Depositor/wrong-gem-order");
+
+        bytes32 key = keccak256(abi.encode(p.gem0, p.gem1, p.fee, p.tickLower, p.tickUpper));
+        uint256 tokenId = positions[key];
+        require(tokenId > 0, "Depositor/no-position");
+        
+        PositionManagerLike.CollectParams memory collection = PositionManagerLike.CollectParams({
+            tokenId: tokenId,
+            recipient: address(buffer),
+            amount0Max: type(uint128).max,
+            amount1Max: type(uint128).max
+        });
+        (amt0, amt1) = PositionManagerLike(uniV3PositionManager).collect(collection);
+
+        emit Collect(msg.sender, p.gem0, p.gem1, amt0, amt1);
     }
 }

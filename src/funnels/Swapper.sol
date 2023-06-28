@@ -21,7 +21,7 @@ interface RolesLike {
     function canCall(bytes32, address, address, bytes4) external view returns (bool);
 }
 
-interface SwappedGemLike {
+interface GemLike {
     function balanceOf(address) external view returns (uint256);
     function transferFrom(address, address, uint256) external;
 }
@@ -34,7 +34,7 @@ contract Swapper {
     mapping (address => uint256) public wards;
     mapping (address => mapping (address => uint256)) public hops;       // [seconds]        hops[src][dst] is the swap cooldown when swapping `src` to `dst`.
     mapping (address => mapping (address => uint256)) public zzz;        // [seconds]         zzz[src][dst] is the timestamp of the last swap from `src` to `dst`.
-    mapping (address => mapping (address => uint256)) public maxSrcAmts; // [weis]     maxSrcAmts[src][dst] is the maximum amount that can be swapped each hop when swapping `src` to `dst`.
+    mapping (address => mapping (address => uint256)) public caps; // [weis]     caps[src][dst] is the maximum amount that can be swapped each hop when swapping `src` to `dst`.
 
     address public buffer;                                               // Escrow contract from which the GEM to sell is pulled and to which the bought GEM is pushed
 
@@ -63,14 +63,14 @@ contract Swapper {
     function deny(address usr) external auth { wards[usr] = 0; emit Deny(usr); }
 
     function file(bytes32 what, address src, address dst, uint256 data) external auth {
-        if      (what == "maxSrcAmt")  maxSrcAmts[src][dst] = data;
-        else if (what == "hop")              hops[src][dst] = data;
+        if      (what == "cap")  caps[src][dst] = data;
+        else if (what == "hop")  hops[src][dst] = data;
         else revert("Swapper/file-unrecognized-param");
         emit File(what, src, dst, data);
     }
 
     function file(bytes32 what, address data) external auth {
-        if      (what == "buffer") buffer = data;
+        if (what == "buffer") buffer = data;
         else revert("Swapper/file-unrecognized-param");
         emit File(what, data);
     }
@@ -79,13 +79,13 @@ contract Swapper {
         require(block.timestamp >= zzz[src][dst] + hops[src][dst], "Swapper/too-soon");
         zzz[src][dst] = block.timestamp;
 
-        require(amt <= maxSrcAmts[src][dst], "Swapper/exceeds-max-amt");
+        require(amt <= caps[src][dst], "Swapper/exceeds-max-amt");
 
         address buffer_ = buffer;
-        uint256 prevDstBalance = SwappedGemLike(dst).balanceOf(buffer_);
-        SwappedGemLike(src).transferFrom(buffer_, callee, amt);
+        uint256 prevDstBalance = GemLike(dst).balanceOf(buffer_);
+        GemLike(src).transferFrom(buffer_, callee, amt);
         CalleeLike(callee).swap(src, dst, amt, minOut, buffer_, data);
-        uint256 dstBalance = SwappedGemLike(dst).balanceOf(buffer_);
+        uint256 dstBalance = GemLike(dst).balanceOf(buffer_);
         require(dstBalance >= prevDstBalance + minOut, "Swapper/too-few-dst-received");
         out = dstBalance - prevDstBalance;
 
