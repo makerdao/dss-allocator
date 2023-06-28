@@ -13,8 +13,6 @@ contract AllocatorBufferTest is DssTest {
     AllocatorBuffer public buffer;
 
     event Approve(address indexed asset, address indexed spender, uint256 amount);
-    event Deposit(address indexed asset, address indexed from, uint256 amount);
-    event Withdraw(address indexed asset, address indexed to, uint256 amount);
 
     function setUp() public {
         gem    = new GemMock(1_000_000 * 10**18);
@@ -34,26 +32,18 @@ contract AllocatorBufferTest is DssTest {
         vm.stopPrank();
     }
 
-    function testApprove() public {
-        assertEq(gem.allowance(address(buffer), address(0xBEEF)), 0);
-        vm.expectEmit(true, true, true, true);
-        emit Approve(address(gem), address(0xBEEF), 10);
-        buffer.approve(address(gem), address(0xBEEF), 10);
-        assertEq(gem.allowance(address(buffer), address(0xBEEF)), 10);
-    }
-
-    function testDepositWithdraw() public {
+    function testTransferApproveWithdraw() public {
         assertEq(gem.balanceOf(address(this)),   gem.totalSupply());
         assertEq(gem.balanceOf(address(buffer)), 0);
-        gem.approve(address(buffer), 10);
-        vm.expectEmit(true, true, true, true);
-        emit Deposit(address(gem), address(this), 10);
-        buffer.deposit(address(gem), 10);
+        gem.transfer(address(buffer), 10);
         assertEq(gem.balanceOf(address(this)),   gem.totalSupply() - 10);
         assertEq(gem.balanceOf(address(buffer)), 10);
+        assertEq(gem.allowance(address(buffer), address(this)), 0);
         vm.expectEmit(true, true, true, true);
-        emit Withdraw(address(gem), address(123), 4);
-        buffer.withdraw(address(gem), address(123), 4);
+        emit Approve(address(gem), address(this), 4);
+        buffer.approve(address(gem), address(this), 4);
+        assertEq(gem.allowance(address(buffer), address(this)), 4);
+        gem.transferFrom(address(buffer), address(123), 4);
         assertEq(gem.balanceOf(address(buffer)), 6);
         assertEq(gem.balanceOf(address(123)),    4);
     }

@@ -26,6 +26,15 @@ interface RegistryLike {
     function buffers(bytes32) external view returns (address);
 }
 
+interface BufferLike {
+    function approve(address, address, uint256) external;
+}
+
+interface TokenLike {
+    function transfer(address, uint256) external;
+    function transferFrom(address, address, uint256) external;
+}
+
 contract AllocatorConduitExample is IAllocatorConduit {
     // --- storage variables ---
 
@@ -89,7 +98,9 @@ contract AllocatorConduitExample is IAllocatorConduit {
 
     function deposit(bytes32 ilk, address asset, uint256 amount) external ilkAuth(ilk) {
         address buffer = registry.buffers(ilk);
-        // Implement the logic to deposit funds from the Buffer into the FundManager
+        address manager; // Implement destination logic
+        BufferLike(buffer).approve(asset, address(this), amount);
+        TokenLike(asset).transferFrom(buffer, manager, amount);
         positions[ilk][asset] += amount;
         emit Deposit(ilk, asset, buffer, amount);
     }
@@ -99,7 +110,8 @@ contract AllocatorConduitExample is IAllocatorConduit {
         amount = balance < maxAmount ? balance : maxAmount;
         positions[ilk][asset] = balance - amount;
         address buffer = registry.buffers(ilk);
-        // Implement the logic to withdraw funds from the FundManager to the Buffer
+        address manager; // Implement source logic
+        TokenLike(asset).transferFrom(manager, buffer, amount);
         emit Withdraw(ilk, asset, buffer, amount);
     }
 }

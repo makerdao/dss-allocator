@@ -33,8 +33,6 @@ contract AllocatorBuffer {
     event Rely(address indexed usr);
     event Deny(address indexed usr);
     event Approve(address indexed asset, address indexed spender, uint256 amount);
-    event Deposit(address indexed asset, address indexed from,  uint256 amount);
-    event Withdraw(address indexed asset, address indexed to, uint256 amount);
 
     // --- modifiers ---
 
@@ -67,15 +65,5 @@ contract AllocatorBuffer {
     function approve(address asset, address spender, uint256 amount) external auth {
         TokenLike(asset).approve(spender, amount);
         emit Approve(asset, spender, amount);
-    }
-
-    function deposit(address asset, uint256 amount) external {
-        TokenLike(asset).transferFrom(msg.sender, address(this), amount);
-        emit Deposit(asset, msg.sender, amount);
-    }
-
-    function withdraw(address asset, address to, uint256 amount) external auth {
-        TokenLike(asset).transfer(to, amount);
-        emit Withdraw(asset, to, amount);
     }
 }
