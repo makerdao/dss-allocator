@@ -34,7 +34,7 @@ contract Swapper {
     mapping (address => uint256) public wards;
     mapping (address => mapping (address => uint256)) public hops;       // [seconds]        hops[src][dst] is the swap cooldown when swapping `src` to `dst`.
     mapping (address => mapping (address => uint256)) public zzz;        // [seconds]         zzz[src][dst] is the timestamp of the last swap from `src` to `dst`.
-    mapping (address => mapping (address => uint256)) public maxSrcAmts; // [weis]     maxSrcAmts[src][dst] is the maximum amount that can be swapped each hop when swapping `src` to `dst`.
+    mapping (address => mapping (address => uint256)) public caps; // [weis]     caps[src][dst] is the maximum amount that can be swapped each hop when swapping `src` to `dst`.
 
     address public buffer;                                               // Escrow contract from which the GEM to sell is pulled and to which the bought GEM is pushed
 
@@ -63,8 +63,8 @@ contract Swapper {
     function deny(address usr) external auth { wards[usr] = 0; emit Deny(usr); }
 
     function file(bytes32 what, address src, address dst, uint256 data) external auth {
-        if      (what == "maxSrcAmt")  maxSrcAmts[src][dst] = data;
-        else if (what == "hop")              hops[src][dst] = data;
+        if      (what == "cap")  caps[src][dst] = data;
+        else if (what == "hop")  hops[src][dst] = data;
         else revert("Swapper/file-unrecognized-param");
         emit File(what, src, dst, data);
     }
@@ -79,7 +79,7 @@ contract Swapper {
         require(block.timestamp >= zzz[src][dst] + hops[src][dst], "Swapper/too-soon");
         zzz[src][dst] = block.timestamp;
 
-        require(amt <= maxSrcAmts[src][dst], "Swapper/exceeds-max-amt");
+        require(amt <= caps[src][dst], "Swapper/exceeds-max-amt");
 
         address buffer_ = buffer;
         uint256 prevDstBalance = GemLike(dst).balanceOf(buffer_);
