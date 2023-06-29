@@ -54,13 +54,13 @@ contract StableSwapperTest is DssTest, TestUtils {
         vm.startPrank(FACILITATOR); 
         stableSwapper.setConfig(DAI, USDC, StableSwapper.PairConfig({ 
                count: 10,
-                 lot: uint96(10_000 * WAD), 
-            minPrice: uint128(99 * WAD / 100 / 10**(18-6))
+                 lot: uint112(10_000 * WAD), 
+              reqOut: uint112(9900 * 10**6)
         }));
         stableSwapper.setConfig(USDC, DAI, StableSwapper.PairConfig({ 
                count: 10,
                  lot: uint96(10_000 * 10**6), 
-            minPrice: uint128(99 * WAD / 100 * 10**(18-6))
+              reqOut: uint112(9900 * WAD)
         }));
         stableSwapper.kiss(KEEPER);
         vm.stopPrank();

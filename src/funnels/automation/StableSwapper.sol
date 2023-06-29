@@ -25,12 +25,8 @@ contract StableSwapper {
     mapping (address => uint256) public wards;                           // facilitators
     mapping (address => uint256) public buds;                            // whitelisted keepers
     mapping (address => mapping (address => PairConfig)) public configs; // configs[src][dst].count is the remaining number of times that a src-to-dst swap can be performed by keepers
-                                                                        //  configs[src][dst].lot [token weis] is the amount swapped by keepers from src to dst every hop
-                                                                        //  configs[src][dst].minPrice [WAD] is the minimum price to insist on in the swap form src to dst.
-                                                                        //       minPrice needs to take into account any difference in decimals between src and dst.
-                                                                        //       Example 1: a max loss of 1% when swapping  USDC to DAI corresponds to minPrice = 99 * WAD / 100 * 10**(18-6)
-                                                                        //       Example 2: a max loss of 1% when swapping  DAI to USDC corresponds to minPrice = 99 * WAD / 100 / 10**(18-6)
-                                                                        //       Example 3: a max loss of 1% when swapping USDT to USDC corresponds to minPrice = 99 * WAD / 100
+                                                                        //  configs[src][dst].lot    [token weis] is the amount swapped by keepers from src to dst every hop
+                                                                        //  configs[src][dst].reqOut [token weis] is the minimum output amount to insist on in the swap form src to dst
 
     address public immutable swapper;                                   // Swapper for this StableSwapper
 
@@ -67,8 +63,8 @@ contract StableSwapper {
 
     struct PairConfig {
         uint32 count;
-        uint96 lot;
-        uint128 minPrice;
+        uint112 lot;
+        uint112 reqOut;
     }
 
     function setConfig(address src, address dst, PairConfig memory cfg) external auth {
@@ -82,9 +78,8 @@ contract StableSwapper {
         require(cfg.count > 0, "StableSwapper/exceeds-count");
         configs[src][dst].count = cfg.count - 1;
 
-        uint256 reqOut = uint256(cfg.lot) * uint256(cfg.minPrice) / WAD;
-        if (minOut == 0) minOut = reqOut;
-        require(minOut >= reqOut, "StableSwapper/min-too-small");
+        if (minOut == 0) minOut = cfg.reqOut;
+        require(minOut >= cfg.reqOut, "StableSwapper/min-too-small");
 
         out = SwapperLike(swapper).swap(src, dst, cfg.lot, minOut, callee, data);
     }
