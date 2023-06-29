@@ -32,16 +32,15 @@ contract StableSwapperTest is DssTest, TestUtils {
 
         buffer = new AllocatorBuffer(ilk);
         AllocatorRoles roles = new AllocatorRoles();
-        swapper = new Swapper(address(roles), ilk);
+        swapper = new Swapper(address(roles), ilk, address(buffer));
         uniV3Callee = new UniV3SwapperCallee(UNIV3_ROUTER);
-        vm.prank(FACILITATOR); stableSwapper = new StableSwapper();
+        vm.prank(FACILITATOR); stableSwapper = new StableSwapper(address(swapper));
 
         roles.setIlkAdmin(ilk, address(this));
         roles.setRoleAction(ilk, SWAPPER_ROLE, address(swapper), swapper.swap.selector, true);
         roles.setUserRole(ilk, FACILITATOR, SWAPPER_ROLE, true);
         roles.setUserRole(ilk, address(stableSwapper), SWAPPER_ROLE, true);
 
-        swapper.file("buffer", address(buffer));
         swapper.file("cap", DAI, USDC, 10_000 * WAD);
         swapper.file("cap", USDC, DAI, 10_000 * 10**6);
         swapper.file("hop", DAI, USDC, 3600);
@@ -53,7 +52,6 @@ contract StableSwapperTest is DssTest, TestUtils {
         buffer.approve(DAI,  address(swapper), type(uint256).max);
 
         vm.startPrank(FACILITATOR); 
-        stableSwapper.file("swapper", address(swapper));
         stableSwapper.setConfig(DAI, USDC, StableSwapper.PairConfig({ 
                count: 10,
                  lot: uint96(10_000 * WAD), 
@@ -69,16 +67,13 @@ contract StableSwapperTest is DssTest, TestUtils {
     }
 
     function testConstructor() public {
-        StableSwapper s = new StableSwapper();
+        StableSwapper s = new StableSwapper(address(0xABC));
+        assertEq(address(s.swapper()),  address(0xABC));
         assertEq(s.wards(address(this)), 1);
     }
 
     function testAuth() public {
         checkAuth(address(stableSwapper), "StableSwapper");
-    }
-
-    function testFile() public {
-        checkFileAddress(address(stableSwapper), "StableSwapper", ["swapper"]);
     }
 
     function testSwapByKeeper() public {

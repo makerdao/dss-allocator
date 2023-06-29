@@ -36,20 +36,20 @@ contract Swapper {
     mapping (address => mapping (address => uint256)) public zzz;        // [seconds]         zzz[src][dst] is the timestamp of the last swap from `src` to `dst`.
     mapping (address => mapping (address => uint256)) public caps; // [weis]     caps[src][dst] is the maximum amount that can be swapped each hop when swapping `src` to `dst`.
 
-    address public buffer;                                               // Escrow contract from which the GEM to sell is pulled and to which the bought GEM is pushed
 
+    address   public immutable buffer;                // Contract from which the GEM to sell is pulled and to which the bought GEM is pushed
     RolesLike public immutable roles;                 // Contract managing access control for this Depositor
     bytes32   public immutable ilk;
 
     event Rely (address indexed usr);
     event Deny (address indexed usr);
     event File (bytes32 indexed what, address indexed src, address indexed dst, uint256 data);
-    event File (bytes32 indexed what, address data);
     event Swap (address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
 
-    constructor(address roles_, bytes32 ilk_) {
+    constructor(address roles_, bytes32 ilk_, address buffer_) {
         roles = RolesLike(roles_);
         ilk = ilk_;
+        buffer = buffer_;
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
     }
@@ -67,12 +67,6 @@ contract Swapper {
         else if (what == "hop")  hops[src][dst] = data;
         else revert("Swapper/file-unrecognized-param");
         emit File(what, src, dst, data);
-    }
-
-    function file(bytes32 what, address data) external auth {
-        if (what == "buffer") buffer = data;
-        else revert("Swapper/file-unrecognized-param");
-        emit File(what, data);
     }
 
     function swap(address src, address dst, uint256 amt, uint256 minOut, address callee, bytes calldata data) external auth returns (uint256 out) {

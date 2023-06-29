@@ -134,10 +134,9 @@ contract Depositor {
     mapping (address => mapping (address => uint256)) public zzz;        // [seconds]    zzz[gem0][gem1] is the timestamp of the last liquidity change for a (gem0, gem1) pool
     mapping (address => mapping (address => Cap)) public caps;           // [amount]    caps[gem0][gem1] is the tuple (amt0, amt1) indicating the maximum amount of (gem0, gem1) that can be added as liquidity each hop for a (gem0, gem1) pool
 
-    mapping (bytes32 => uint256) public positions;  // key = keccak256(abi.encode(gem0, gem1, fee, tickLower, tickUpper)) => tokenId of the liquidity position
+    mapping (bytes32 => uint256) public tokenIds;  // key = keccak256(abi.encode(gem0, gem1, fee, tickLower, tickUpper)) => tokenId of the liquidity position
 
-    address public buffer;                          // Escrow contract from/to which the two tokens that make up the liquidity position are pulled/pushed
-
+    address   public immutable buffer;                // Contract from/to which the two tokens that make up the liquidity position are pulled/pushed
     RolesLike public immutable roles;                 // Contract managing access control for this Depositor
     bytes32   public immutable ilk;
     address   public immutable uniV3PositionManager;  // 0xC36442b4a4522E871399CD717aBDD847Ab11FE88
@@ -156,10 +155,11 @@ contract Depositor {
     event Withdraw(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1);
     event Collect(address indexed sender, address indexed gem0, address indexed gem1, uint256 amt0, uint256 amt1);
 
-    constructor(address roles_, bytes32 ilk_, address _uniV3PositionManager) {
+    constructor(address roles_, bytes32 ilk_, address uniV3PositionManager_, address buffer_) {
         roles = RolesLike(roles_);
         ilk = ilk_;
-        uniV3PositionManager = _uniV3PositionManager;
+        uniV3PositionManager = uniV3PositionManager_;
+        buffer = buffer_;
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
     }
@@ -171,12 +171,6 @@ contract Depositor {
 
     function rely(address usr) external auth { wards[usr] = 1; emit Rely(usr); }
     function deny(address usr) external auth { wards[usr] = 0; emit Deny(usr); }
-
-    function file(bytes32 what, address data) external auth {
-        if (what == "buffer") buffer = data;
-        else revert("Depositor/file-unrecognized-param");
-        emit File(what, data);
-    }
 
     function file(bytes32 what, address gem0, address gem1, uint256 data) external auth {
         (gem0, gem1) = gem0 < gem1 ? (gem0, gem1) : (gem1, gem0);
@@ -206,7 +200,7 @@ contract Depositor {
 
     function _addLiquidity(DepositParams memory p, address to) internal returns (uint128 liquidity, uint256 amt0, uint256 amt1) {
         bytes32 key = keccak256(abi.encode(p.gem0, p.gem1, p.fee, p.tickLower, p.tickUpper));
-        uint256 tokenId = positions[key];
+        uint256 tokenId = tokenIds[key];
         if (tokenId == 0) {
             PositionManagerLike.MintParams memory params = PositionManagerLike.MintParams({
                 token0: p.gem0,
@@ -222,7 +216,7 @@ contract Depositor {
                 deadline: block.timestamp
             });
             (tokenId, liquidity, amt0, amt1) = PositionManagerLike(uniV3PositionManager).mint(params);
-            positions[key] = tokenId;
+            tokenIds[key] = tokenId;
         } else {
             PositionManagerLike.IncreaseLiquidityParams memory params = PositionManagerLike.IncreaseLiquidityParams({
                 tokenId: tokenId,
@@ -272,7 +266,7 @@ contract Depositor {
 
     function _removeLiquidity(WithdrawParams memory p) internal returns (uint256 amt0, uint256 amt1) {
         bytes32 key = keccak256(abi.encode(p.gem0, p.gem1, p.fee, p.tickLower, p.tickUpper));
-        uint256 tokenId = positions[key];
+        uint256 tokenId = tokenIds[key];
         require(tokenId > 0, "Depositor/no-position");
         
         PositionManagerLike.DecreaseLiquidityParams memory params = PositionManagerLike.DecreaseLiquidityParams({
@@ -318,7 +312,7 @@ contract Depositor {
         require(p.gem0 < p.gem1, "Depositor/wrong-gem-order");
 
         bytes32 key = keccak256(abi.encode(p.gem0, p.gem1, p.fee, p.tickLower, p.tickUpper));
-        uint256 tokenId = positions[key];
+        uint256 tokenId = tokenIds[key];
         require(tokenId > 0, "Depositor/no-position");
         
         PositionManagerLike.CollectParams memory collection = PositionManagerLike.CollectParams({

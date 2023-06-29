@@ -47,7 +47,7 @@ contract DepositorTest is DssTest, TestUtils {
         
         buffer = new AllocatorBuffer(ilk);
         roles = new AllocatorRoles();
-        depositor = new Depositor(address(roles), ilk, UNIV3_POS_MGR);
+        depositor = new Depositor(address(roles), ilk, UNIV3_POS_MGR, address(buffer));
 
         roles.setIlkAdmin(ilk, address(this));
         roles.setRoleAction(ilk, DEPOSITOR_ROLE, address(depositor), depositor.deposit.selector, true);
@@ -55,7 +55,6 @@ contract DepositorTest is DssTest, TestUtils {
         roles.setRoleAction(ilk, DEPOSITOR_ROLE, address(depositor), depositor.collect.selector, true);
         roles.setUserRole(ilk, FACILITATOR, DEPOSITOR_ROLE, true);
 
-        depositor.file("buffer", address(buffer));
         depositor.file("cap", DAI, USDC, uint128(10_000 * WAD), 10_000 * 10**6);
         depositor.file("hop", DAI, USDC, 3600);
 
@@ -67,7 +66,7 @@ contract DepositorTest is DssTest, TestUtils {
     }
 
     function testConstructor() public {
-        Depositor d = new Depositor(address(0xBEEF), "SubDAO 1", address(0xABC));
+        Depositor d = new Depositor(address(0xBEEF), "SubDAO 1", address(0xABC), address(0xAAA));
         assertEq(address(d.roles()),  address(0xBEEF));
         assertEq(d.ilk(), "SubDAO 1");
         assertEq(d.uniV3PositionManager(), address(0xABC));
@@ -90,17 +89,16 @@ contract DepositorTest is DssTest, TestUtils {
     }
 
     function testFile() public {
-        checkFileAddress(address(depositor), "Depositor", ["buffer"]);
         checkFileUintForGemPair(address(depositor), "Depositor", ["hop"]);
         checkFileUint128PairForGemPair(address(depositor), "Depositor", ["cap"]);
     }
 
     function testRoles() public {
         vm.expectRevert("Depositor/not-authorized");
-        vm.prank(address(0xBEEF)); depositor.file("buffer", address(0));
-        roles.setRoleAction(ilk, uint8(0xF1), address(depositor), bytes4(keccak256("file(bytes32,address)")), true);
+        vm.prank(address(0xBEEF)); depositor.file("hop", address(0), address(0), 0);
+        roles.setRoleAction(ilk, uint8(0xF1), address(depositor), bytes4(keccak256("file(bytes32,address,address,uint256)")), true);
         roles.setUserRole(ilk, address(0xBEEF), uint8(0xF1), true);
-        vm.prank(address(0xBEEF)); depositor.file("buffer", address(0));
+        vm.prank(address(0xBEEF)); depositor.file("hop", address(0), address(0), 0);
     }
 
     function testDepositor() public {

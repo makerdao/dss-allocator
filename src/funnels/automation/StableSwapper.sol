@@ -32,7 +32,7 @@ contract StableSwapper {
                                                                         //       Example 2: a max loss of 1% when swapping  DAI to USDC corresponds to minPrice = 99 * WAD / 100 / 10**(18-6)
                                                                         //       Example 3: a max loss of 1% when swapping USDT to USDC corresponds to minPrice = 99 * WAD / 100
 
-    address public swapper;                                             // Swapper for this StableSwapper
+    address public immutable swapper;                                   // Swapper for this StableSwapper
 
     event Rely   (address indexed usr);
     event Deny   (address indexed usr);
@@ -41,7 +41,8 @@ contract StableSwapper {
     event File   (bytes32 indexed what, address data);
     event Config (address indexed src, address indexed dst, PairConfig data);
 
-    constructor() {
+    constructor(address swapper_) {
+        swapper = swapper_;
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
     }
@@ -73,12 +74,6 @@ contract StableSwapper {
     function setConfig(address src, address dst, PairConfig memory cfg) external auth {
         configs[src][dst] = cfg;
         emit Config(src, dst, cfg);
-    }
-
-    function file(bytes32 what, address data) external auth {
-        if (what == "swapper") swapper = data;
-        else revert("StableSwapper/file-unrecognized-param");
-        emit File(what, data);
     }
 
     function swap(address src, address dst, uint256 minOut, address callee, bytes calldata data) toll external returns (uint256 out) {

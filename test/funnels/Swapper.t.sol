@@ -30,14 +30,13 @@ contract SwapperTest is DssTest, TestUtils {
 
         buffer = new AllocatorBuffer(ilk);
         roles = new AllocatorRoles();
-        swapper = new Swapper(address(roles), ilk);
+        swapper = new Swapper(address(roles), ilk, address(buffer));
         uniV3Callee = new UniV3SwapperCallee(UNIV3_ROUTER);
 
         roles.setIlkAdmin(ilk, address(this));
         roles.setRoleAction(ilk, SWAPPER_ROLE, address(swapper), swapper.swap.selector, true);
         roles.setUserRole(ilk, FACILITATOR, SWAPPER_ROLE, true);
 
-        swapper.file("buffer", address(buffer));
         swapper.file("cap", DAI, USDC, 10_000 * WAD);
         swapper.file("cap", USDC, DAI, 10_000 * 10**6);
         swapper.file("hop", DAI, USDC, 3600);
@@ -50,7 +49,7 @@ contract SwapperTest is DssTest, TestUtils {
     }
 
     function testConstructor() public {
-        Swapper s = new Swapper(address(0xBEEF), "SubDAO 1");
+        Swapper s = new Swapper(address(0xBEEF), "SubDAO 1", address(0xAAA));
         assertEq(address(s.roles()),  address(0xBEEF));
         assertEq(s.ilk(), "SubDAO 1");
         assertEq(s.wards(address(this)), 1);
@@ -70,16 +69,15 @@ contract SwapperTest is DssTest, TestUtils {
     }
 
     function testFile() public {
-        checkFileAddress(address(swapper), "Swapper", ["buffer"]);
         checkFileUintForGemPair(address(swapper), "Swapper", ["cap", "hop"]);
     }
 
     function testRoles() public {
         vm.expectRevert("Swapper/not-authorized");
-        vm.prank(address(0xBEEF)); swapper.file("buffer", address(0));
-        roles.setRoleAction(ilk, uint8(0xF1), address(swapper), bytes4(keccak256("file(bytes32,address)")), true);
+        vm.prank(address(0xBEEF)); swapper.file("hop", address(0), address(0), 0);
+        roles.setRoleAction(ilk, uint8(0xF1), address(swapper), bytes4(keccak256("file(bytes32,address,address,uint256)")), true);
         roles.setUserRole(ilk, address(0xBEEF), uint8(0xF1), true);
-        vm.prank(address(0xBEEF)); swapper.file("buffer", address(0));
+        vm.prank(address(0xBEEF)); swapper.file("hop", address(0), address(0), 0);
     }
 
     function testSwap() public {
