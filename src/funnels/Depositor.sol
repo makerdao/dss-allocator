@@ -253,8 +253,8 @@ contract Depositor {
         require(amt0 <= cap.amt0 && amt1 <= cap.amt1, "Depositor/exceeds-cap");
 
         // Send leftover tokens back to buffer
-        if(amt0 < p.amt0) GemLike(p.gem0).transfer(buffer_, p.amt0 - amt0);
-        if(amt1 < p.amt1) GemLike(p.gem1).transfer(buffer_, p.amt1 - amt1);
+        if (amt0 < p.amt0) GemLike(p.gem0).transfer(buffer_, p.amt0 - amt0);
+        if (amt1 < p.amt1) GemLike(p.gem1).transfer(buffer_, p.amt1 - amt1);
 
         emit Deposit(msg.sender, p.gem0, p.gem1, liquidity, amt0, amt1);
     }

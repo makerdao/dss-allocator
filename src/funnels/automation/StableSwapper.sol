@@ -76,7 +76,7 @@ contract StableSwapper {
     }
 
     function file(bytes32 what, address data) external auth {
-        if   (what == "swapper") swapper = data;
+        if (what == "swapper") swapper = data;
         else revert("StableSwapper/file-unrecognized-param");
         emit File(what, data);
     }
@@ -88,8 +88,8 @@ contract StableSwapper {
         configs[src][dst].count = cfg.count - 1;
 
         uint256 reqOut = uint256(cfg.lot) * uint256(cfg.minPrice) / WAD;
-        if(minOut == 0) minOut = reqOut;
-        require(minOut >= reqOut, "SwapperRunner/min-too-small");
+        if (minOut == 0) minOut = reqOut;
+        require(minOut >= reqOut, "StableSwapper/min-too-small");
 
         out = SwapperLike(swapper).swap(src, dst, cfg.lot, minOut, callee, data);
     }
