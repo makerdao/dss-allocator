@@ -75,11 +75,10 @@ contract Swapper {
 
         require(amt <= caps[src][dst], "Swapper/exceeds-max-amt");
 
-        address buffer_ = buffer;
-        uint256 prevDstBalance = GemLike(dst).balanceOf(buffer_);
-        GemLike(src).transferFrom(buffer_, callee, amt);
-        CalleeLike(callee).swap(src, dst, amt, minOut, buffer_, data);
-        uint256 dstBalance = GemLike(dst).balanceOf(buffer_);
+        uint256 prevDstBalance = GemLike(dst).balanceOf(buffer);
+        GemLike(src).transferFrom(buffer, callee, amt);
+        CalleeLike(callee).swap(src, dst, amt, minOut, buffer, data);
+        uint256 dstBalance = GemLike(dst).balanceOf(buffer);
         require(dstBalance >= prevDstBalance + minOut, "Swapper/too-few-dst-received");
         out = dstBalance - prevDstBalance;
 

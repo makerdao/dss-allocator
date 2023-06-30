@@ -332,9 +332,8 @@ contract Depositor {
         require(amt0 <= cap.amt0 && amt1 <= cap.amt1, "Depositor/exceeds-cap");
         require(amt0 >= p.minAmt0 && amt1 >= p.minAmt1, 'Depositor/exceeds-slippage'); // Saves gas by reverting early if slippage check fails
 
-        address buffer_ = buffer;
-        GemLike(p.gem0).transferFrom(buffer_, address(this), amt0);
-        GemLike(p.gem1).transferFrom(buffer_, address(this), amt1);
+        GemLike(p.gem0).transferFrom(buffer, address(this), amt0);
+        GemLike(p.gem1).transferFrom(buffer, address(this), amt1);
         
         // Note: approving type(uint256).max reduces the cumulated gas cost after calling deposit() 3 times or more for the same gem pair
         if (GemLike(p.gem0).allowance(address(this), uniV3PositionManager) < type(uint256).max) {
@@ -344,7 +343,7 @@ contract Depositor {
             GemLike(p.gem1).approve(uniV3PositionManager, type(uint256).max);
         }
 
-        (liquidity,,) = _addLiquidity(p, buffer_);
+        (liquidity,,) = _addLiquidity(p, buffer);
 
         emit Deposit(msg.sender, p.gem0, p.gem1, liquidity, amt0, amt1);
     }
