@@ -165,8 +165,8 @@ contract Depositor {
 
     event Rely (address indexed usr);
     event Deny (address indexed usr);
-    event File (bytes32 indexed what, address indexed gem0, address indexed gem1, uint256 data);
-    event File (bytes32 indexed what, address indexed gem0, address indexed gem1, uint128 data0, uint128 data1);
+    event File (bytes32 indexed what, address indexed gemA, address indexed gemB, uint256 data);
+    event File (bytes32 indexed what, address indexed gemA, address indexed gemB, uint128 dataA, uint128 dataB);
     event File (bytes32 indexed what, address data);
     event Deposit(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1);
     event Withdraw(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1);
@@ -190,18 +190,18 @@ contract Depositor {
     function rely(address usr) external auth { wards[usr] = 1; emit Rely(usr); }
     function deny(address usr) external auth { wards[usr] = 0; emit Deny(usr); }
 
-    function file(bytes32 what, address gem0, address gem1, uint256 data) external auth {
-        (gem0, gem1) = gem0 < gem1 ? (gem0, gem1) : (gem1, gem0);
+    function file(bytes32 what, address gemA, address gemB, uint256 data) external auth {
+        (address gem0, address gem1) = gemA < gemB ? (gemA, gemB) : (gemB, gemA);
         if (what == "hop") hops[gem0][gem1] = data;
         else revert("Depositor/file-unrecognized-param");
-        emit File(what, gem0, gem1, data);
+        emit File(what, gemA, gemB, data);
     }
 
-    function file(bytes32 what, address gem0, address gem1, uint128 data0, uint128 data1) external auth {
-        (gem0, gem1, data0, data1) = gem0 < gem1 ? (gem0, gem1, data0, data1) : (gem1, gem0, data1, data0);
+    function file(bytes32 what, address gemA, address gemB, uint128 dataA, uint128 dataB) external auth {
+        (address gem0, address gem1, uint128 data0, uint128 data1) = gemA < gemB ? (gemA, gemB, dataA, dataB) : (gemB, gemA, dataB, dataA);
         if (what == "cap") caps[gem0][gem1] = Cap({ amt0: data0, amt1: data1 });
         else revert("Depositor/file-unrecognized-param");
-        emit File(what, gem0, gem1, data0, data1);
+        emit File(what, gemA, gemB, dataA, dataB);
     }
 
     // https://github.com/Uniswap/v3-periphery/blob/464a8a49611272f7349c970e0fadb7ec1d3c1086/contracts/libraries/PoolAddress.sol#L33
@@ -327,10 +327,10 @@ contract Depositor {
         require(block.timestamp >= zzz[p.gem0][p.gem1] + hops[p.gem0][p.gem1], "Depositor/too-soon");
         zzz[p.gem0][p.gem1] = block.timestamp;
 
-        (amt0, amt1) = _getOptimalDepositAmounts(p);
+        (amt0, amt1) = _getOptimalDepositAmounts(p); // Pre-calculating the exact amounts to deposit avoids having to send leftover tokens back to the buffer, saving ~40k gas
         Cap memory cap = caps[p.gem0][p.gem1];
         require(amt0 <= cap.amt0 && amt1 <= cap.amt1, "Depositor/exceeds-cap");
-        require(amt0 >= p.minAmt0 && amt1 >= p.minAmt1, 'Depositor/exceeds-slippage'); // save gas by reverting early if slippage check fails
+        require(amt0 >= p.minAmt0 && amt1 >= p.minAmt1, 'Depositor/exceeds-slippage'); // Saves gas by reverting early if slippage check fails
 
         address buffer_ = buffer;
         GemLike(p.gem0).transferFrom(buffer_, address(this), amt0);
