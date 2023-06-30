@@ -22,6 +22,19 @@ interface RolesLike {
     function canCall(bytes32, address, address, bytes4) external view returns (bool);
 }
 
+interface RegistryLike {
+    function buffers(bytes32) external view returns (address);
+}
+
+interface BufferLike {
+    function approve(address, address, uint256) external;
+}
+
+interface TokenLike {
+    function transfer(address, uint256) external;
+    function transferFrom(address, address, uint256) external;
+}
+
 contract AllocatorConduitExample is IAllocatorConduit {
     // --- storage variables ---
 
@@ -30,7 +43,8 @@ contract AllocatorConduitExample is IAllocatorConduit {
 
     // --- immutables ---
 
-    RolesLike public immutable roles;
+    RolesLike    public immutable roles;
+    RegistryLike public immutable registry;
 
     // --- events ---
 
@@ -52,8 +66,9 @@ contract AllocatorConduitExample is IAllocatorConduit {
 
     // --- constructor ---
 
-    constructor(address roles_) {
+    constructor(address roles_, address registry_) {
         roles = RolesLike(roles_);
+        registry = RegistryLike(registry_);
     }
 
     // --- getters ---
@@ -82,16 +97,21 @@ contract AllocatorConduitExample is IAllocatorConduit {
     // --- functions ---
 
     function deposit(bytes32 ilk, address asset, uint256 amount) external ilkAuth(ilk) {
+        address buffer = registry.buffers(ilk);
+        address manager; // Implement destination logic
+        BufferLike(buffer).approve(asset, address(this), amount);
+        TokenLike(asset).transferFrom(buffer, manager, amount);
         positions[ilk][asset] += amount;
-        // Implement the logic to deposit funds into the FundManager
-        emit Deposit(ilk, asset, amount);
+        emit Deposit(ilk, asset, buffer, amount);
     }
 
-    function withdraw(bytes32 ilk, address asset, address destination, uint256 maxAmount) external ilkAuth(ilk) returns (uint256 amount) {
+    function withdraw(bytes32 ilk, address asset, uint256 maxAmount) external ilkAuth(ilk) returns (uint256 amount) {
         uint256 balance = positions[ilk][asset];
         amount = balance < maxAmount ? balance : maxAmount;
         positions[ilk][asset] = balance - amount;
-        // Implement the logic to withdraw funds from the FundManager
-        emit Withdraw(ilk, asset, destination, amount);
+        address buffer = registry.buffers(ilk);
+        address manager; // Implement source logic
+        TokenLike(asset).transferFrom(manager, buffer, amount);
+        emit Withdraw(ilk, asset, buffer, amount);
     }
 }
