@@ -37,6 +37,7 @@ contract DepositorTest is DssTest, TestUtils {
     address constant USDC          = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address constant UNIV3_POS_MGR = 0xC36442b4a4522E871399CD717aBDD847Ab11FE88;
     address constant UNIV3_ROUTER  = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
+    address constant UNIV3_FACTORY = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
 
     address constant FACILITATOR = address(0x1337);
 
@@ -47,7 +48,7 @@ contract DepositorTest is DssTest, TestUtils {
         
         buffer = new AllocatorBuffer(ilk);
         roles = new AllocatorRoles();
-        depositor = new Depositor(address(roles), ilk, UNIV3_POS_MGR, address(buffer));
+        depositor = new Depositor(address(roles), ilk, UNIV3_FACTORY, UNIV3_POS_MGR, address(buffer));
 
         roles.setIlkAdmin(ilk, address(this));
         roles.setRoleAction(ilk, DEPOSITOR_ROLE, address(depositor), depositor.deposit.selector, true);
@@ -66,10 +67,12 @@ contract DepositorTest is DssTest, TestUtils {
     }
 
     function testConstructor() public {
-        Depositor d = new Depositor(address(0xBEEF), "SubDAO 1", address(0xABC), address(0xAAA));
+        Depositor d = new Depositor(address(0xBEEF), "SubDAO 1", address(0xAAA), address(0xBBB), address(0xCCC));
         assertEq(address(d.roles()),  address(0xBEEF));
         assertEq(d.ilk(), "SubDAO 1");
-        assertEq(d.uniV3PositionManager(), address(0xABC));
+        assertEq(d.uniV3Factory(), address(0xAAA));
+        assertEq(d.uniV3PositionManager(), address(0xBBB));
+        assertEq(d.buffer(), address(0xCCC));
         assertEq(d.wards(address(this)), 1);
     }
 
