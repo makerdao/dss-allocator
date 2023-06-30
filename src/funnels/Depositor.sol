@@ -358,6 +358,7 @@ contract Depositor {
         uint24 fee;
         int24 tickLower;
         int24 tickUpper;
+        bool collectFees;
     }
 
     function _removeLiquidity(WithdrawParams memory p) internal returns (uint256 amt0, uint256 amt1) {
@@ -372,13 +373,13 @@ contract Depositor {
             amount1Min: p.minAmt1,
             deadline: block.timestamp
         });
-        PositionManagerLike(uniV3PositionManager).decreaseLiquidity(params);
+        (amt0, amt1) = PositionManagerLike(uniV3PositionManager).decreaseLiquidity(params);
 
         PositionManagerLike.CollectParams memory collection = PositionManagerLike.CollectParams({
             tokenId: tokenId,
             recipient: address(buffer),
-            amount0Max: type(uint128).max, // using max to also collect fees
-            amount1Max: type(uint128).max  // using max to also collect fees
+            amount0Max: p.collectFees ? type(uint128).max : uint128(amt0),
+            amount1Max: p.collectFees ? type(uint128).max : uint128(amt1)
         });
         (amt0, amt1) = PositionManagerLike(uniV3PositionManager).collect(collection);
     }

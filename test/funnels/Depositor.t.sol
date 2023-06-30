@@ -173,7 +173,8 @@ contract DepositorTest is DssTest, TestUtils {
             minAmt1: 880 * 10**6,
             fee: uint24(100), 
             tickLower: refTick-100, 
-            tickUpper: refTick+100
+            tickUpper: refTick+100,
+            collectFees: true
         });
         vm.warp(block.timestamp + 3600);
         vm.prank(FACILITATOR); depositor.withdraw(wp);

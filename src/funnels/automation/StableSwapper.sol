@@ -72,6 +72,8 @@ contract StableSwapper {
         emit Config(src, dst, cfg);
     }
 
+    // Note: the keeper's minOut value must be updated whenever configs[src][dst] is changed.
+    // Failing to do so may result in this call reverting or in taking on more slippage than intended (up to a limit controlled by configs[src][dst].reqOut).
     function swap(address src, address dst, uint256 minOut, address callee, bytes calldata data) toll external returns (uint256 out) {
         PairConfig memory cfg = configs[src][dst];
 
