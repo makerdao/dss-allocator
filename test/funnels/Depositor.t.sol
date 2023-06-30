@@ -13,6 +13,11 @@ interface GemLike {
     function balanceOf(address) external view returns (uint256);
 }
 
+interface NftLike {
+    function balanceOf(address) external view returns (uint256);
+    function transferFrom(address, address, uint256) external;
+}
+
 interface SwapRouterLike {
     function exactInput(ExactInputParams calldata params) external returns (uint256 amountOut);
 
@@ -39,9 +44,10 @@ contract DepositorTest is DssTest, TestUtils {
     address constant UNIV3_ROUTER  = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
     address constant UNIV3_FACTORY = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
 
-    address constant FACILITATOR = address(0x1337);
+    address constant FACILITATOR    = address(0x1337);
+    uint8   constant DEPOSITOR_ROLE = uint8(2);
 
-    uint8 constant DEPOSITOR_ROLE = uint8(2);
+    int24 constant REF_TICK = -276324; // tick corresponding to 1 DAI = 1 USDC calculated as ~= math.log(10**(-12))/math.log(1.0001)
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETH_RPC_URL"));
@@ -105,11 +111,10 @@ contract DepositorTest is DssTest, TestUtils {
     }
 
     function testDepositor() public {
-        assertEq(GemLike(UNIV3_POS_MGR).balanceOf(address(buffer)), 0);
+        assertEq(NftLike(UNIV3_POS_MGR).balanceOf(address(buffer)), 0);
         uint256 prevUSDC = GemLike(USDC).balanceOf(address(buffer));
         uint256 prevDAI = GemLike(DAI).balanceOf(address(buffer));
 
-        int24 refTick = -276324; // ~=  math.log(10**(-12) gem0/gem1)/math.log(1.0001)
         Depositor.DepositParams memory dp = Depositor.DepositParams({ 
             gem0: DAI,
             gem1: USDC,
@@ -118,8 +123,8 @@ contract DepositorTest is DssTest, TestUtils {
             minAmt0: 490 * WAD, 
             minAmt1: 490 * 10**6, 
             fee: uint24(100), 
-            tickLower: refTick-100, 
-            tickUpper: refTick+100
+            tickLower: REF_TICK-100, 
+            tickUpper: REF_TICK+100
         });
         vm.prank(FACILITATOR); (uint128 liq1,,) = depositor.deposit(dp);
 
@@ -127,7 +132,7 @@ contract DepositorTest is DssTest, TestUtils {
         assertLt(GemLike(USDC).balanceOf(address(buffer)), prevUSDC);
         assertEq(GemLike(DAI).balanceOf(address(depositor)), 0);
         assertEq(GemLike(USDC).balanceOf(address(depositor)), 0);
-        assertEq(GemLike(UNIV3_POS_MGR).balanceOf(address(buffer)), 1);
+        assertEq(NftLike(UNIV3_POS_MGR).balanceOf(address(buffer)), 1);
         prevUSDC = GemLike(USDC).balanceOf(address(buffer));
         prevDAI = GemLike(DAI).balanceOf(address(buffer));
 
@@ -138,7 +143,7 @@ contract DepositorTest is DssTest, TestUtils {
         assertLt(GemLike(USDC).balanceOf(address(buffer)), prevUSDC);
         assertEq(GemLike(DAI).balanceOf(address(depositor)), 0);
         assertEq(GemLike(USDC).balanceOf(address(depositor)), 0);
-        assertEq(GemLike(UNIV3_POS_MGR).balanceOf(address(buffer)), 1);
+        assertEq(NftLike(UNIV3_POS_MGR).balanceOf(address(buffer)), 1);
         prevUSDC = GemLike(USDC).balanceOf(address(buffer));
         prevDAI = GemLike(DAI).balanceOf(address(buffer));
 
@@ -159,8 +164,8 @@ contract DepositorTest is DssTest, TestUtils {
             gem0: DAI,
             gem1: USDC,
             fee: uint24(100), 
-            tickLower: refTick-100, 
-            tickUpper: refTick+100
+            tickLower: REF_TICK-100, 
+            tickUpper: REF_TICK+100
         });
         vm.prank(FACILITATOR); (uint256 amt0, uint256 amt1) = depositor.collect(cp);
         assertTrue(amt0 > 0 || amt1 > 0);
@@ -172,8 +177,8 @@ contract DepositorTest is DssTest, TestUtils {
             minAmt0: 880 * WAD, 
             minAmt1: 880 * 10**6,
             fee: uint24(100), 
-            tickLower: refTick-100, 
-            tickUpper: refTick+100,
+            tickLower: REF_TICK-100, 
+            tickUpper: REF_TICK+100,
             collectFees: true
         });
         vm.warp(block.timestamp + 3600);
@@ -183,6 +188,32 @@ contract DepositorTest is DssTest, TestUtils {
         assertGt(GemLike(USDC).balanceOf(address(buffer)), prevUSDC);
         assertEq(GemLike(DAI).balanceOf(address(depositor)), 0);
         assertEq(GemLike(USDC).balanceOf(address(depositor)), 0);
-        assertEq(GemLike(UNIV3_POS_MGR).balanceOf(address(buffer)), 1);        
+        assertEq(NftLike(UNIV3_POS_MGR).balanceOf(address(buffer)), 1);        
+    }
+
+    function testMovingLiquidity() public {
+        Depositor.DepositParams memory dp = Depositor.DepositParams({ 
+            gem0: DAI,
+            gem1: USDC,
+            amt0: 500 * WAD, 
+            amt1: 500 * 10**6, 
+            minAmt0: 490 * WAD, 
+            minAmt1: 490 * 10**6, 
+            fee: uint24(100), 
+            tickLower: REF_TICK-100, 
+            tickUpper: REF_TICK+100
+        });
+        vm.prank(FACILITATOR); depositor.deposit(dp);
+        bytes32 key = keccak256(abi.encode(dp.gem0, dp.gem1, dp.fee, dp.tickLower, dp.tickUpper));
+        uint256 tokenId = depositor.tokenIds(key);
+        address newBuffer = address(new AllocatorBuffer(ilk));
+        buffer.setApprovalForAll(UNIV3_POS_MGR, address(this), true);
+        assertEq(NftLike(UNIV3_POS_MGR).balanceOf(address(buffer)), 1);
+        assertEq(NftLike(UNIV3_POS_MGR).balanceOf(newBuffer), 0);
+
+        NftLike(UNIV3_POS_MGR).transferFrom(address(buffer), newBuffer, tokenId);
+
+        assertEq(NftLike(UNIV3_POS_MGR).balanceOf(address(buffer)), 0);
+        assertEq(NftLike(UNIV3_POS_MGR).balanceOf(newBuffer), 1);
     }
 }
