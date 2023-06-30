@@ -34,7 +34,7 @@ contract StableSwapperTest is DssTest, TestUtils {
         AllocatorRoles roles = new AllocatorRoles();
         swapper = new Swapper(address(roles), ilk, address(buffer));
         uniV3Callee = new UniV3SwapperCallee(UNIV3_ROUTER);
-        vm.prank(FACILITATOR); stableSwapper = new StableSwapper(address(swapper));
+        stableSwapper = new StableSwapper(address(swapper));
 
         roles.setIlkAdmin(ilk, address(this));
         roles.setRoleAction(ilk, SWAPPER_ROLE, address(swapper), swapper.swap.selector, true);
@@ -51,6 +51,7 @@ contract StableSwapperTest is DssTest, TestUtils {
         buffer.approve(USDC, address(swapper), type(uint256).max);
         buffer.approve(DAI,  address(swapper), type(uint256).max);
 
+        stableSwapper.kiss(FACILITATOR);
         vm.startPrank(FACILITATOR); 
         stableSwapper.setConfig(DAI, USDC, StableSwapper.PairConfig({ 
                count: 10,
@@ -62,7 +63,7 @@ contract StableSwapperTest is DssTest, TestUtils {
                  lot: uint96(10_000 * 10**6), 
               reqOut: uint112(9900 * WAD)
         }));
-        stableSwapper.kiss(KEEPER);
+        stableSwapper.permit(KEEPER);
         vm.stopPrank();
     }
 
