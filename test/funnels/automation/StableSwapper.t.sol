@@ -10,6 +10,8 @@ import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
 import { TestUtils } from "test/utils/TestUtils.sol";
 
 contract StableSwapperTest is DssTest, TestUtils {
+    event Swap (address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
+
     AllocatorBuffer public buffer;
     Swapper public swapper;
     StableSwapper public stableSwapper;
@@ -81,14 +83,36 @@ contract StableSwapperTest is DssTest, TestUtils {
         vm.warp(block.timestamp + 3600);
         bytes memory path = abi.encodePacked(USDC, uint24(100), DAI);
         uint256 prevDst = GemLike(DAI).balanceOf(address(buffer));
+
+        vm.expectEmit(true, true, true, false);
+        emit Swap(address(stableSwapper), USDC, DAI, 0, 0);
         vm.prank(KEEPER); uint256 out = stableSwapper.swap(USDC, DAI, 9900 * WAD, address(uniV3Callee), path);
-        assertGe(GemLike(DAI).balanceOf(address(buffer)), prevDst + 9900 * WAD);
+
+        assertGe(out, 9900 * WAD);
+        assertEq(GemLike(DAI).balanceOf(address(buffer)), prevDst + out);
+        assertEq(GemLike(DAI).balanceOf(address(stableSwapper)), 0);
+        assertEq(GemLike(USDC).balanceOf(address(stableSwapper)), 0);
+        assertEq(GemLike(DAI).balanceOf(address(swapper)), 0);
+        assertEq(GemLike(USDC).balanceOf(address(swapper)), 0);
+        assertEq(GemLike(DAI).balanceOf(address(uniV3Callee)), 0);
+        assertEq(GemLike(USDC).balanceOf(address(uniV3Callee)), 0);
 
         vm.warp(block.timestamp + 3600);
         path = abi.encodePacked(DAI, uint24(100), USDC);
         prevDst = GemLike(USDC).balanceOf(address(buffer));
+
+        vm.expectEmit(true, true, true, false);
+        emit Swap(address(stableSwapper), DAI, USDC, 0, 0);
         vm.prank(KEEPER); out = stableSwapper.swap(DAI, USDC, 9900 * 10**6, address(uniV3Callee), path);
-        assertGe(GemLike(USDC).balanceOf(address(buffer)), prevDst + 9900 * 10**6);
+
+        assertGe(out, 9900 * 10**6);
+        assertEq(GemLike(USDC).balanceOf(address(buffer)), prevDst + out);
+        assertEq(GemLike(DAI).balanceOf(address(stableSwapper)), 0);
+        assertEq(GemLike(USDC).balanceOf(address(stableSwapper)), 0);
+        assertEq(GemLike(DAI).balanceOf(address(swapper)), 0);
+        assertEq(GemLike(USDC).balanceOf(address(swapper)), 0);
+        assertEq(GemLike(DAI).balanceOf(address(uniV3Callee)), 0);
+        assertEq(GemLike(USDC).balanceOf(address(uniV3Callee)), 0);
     }
 
 }

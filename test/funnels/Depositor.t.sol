@@ -302,7 +302,7 @@ contract DepositorTest is DssTest, TestUtils {
         assertEq(NftLike(UNIV3_POS_MGR).balanceOf(address(buffer)), 1);        
     }
 
-    function testMovingLiquidity() public {
+    function testMoveLiquidity() public {
         Depositor.DepositParams memory dp = Depositor.DepositParams({ 
             gem0: DAI,
             gem1: USDC,

@@ -9,6 +9,8 @@ import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
 import { TestUtils } from "test/utils/TestUtils.sol";
 
 contract SwapperTest is DssTest, TestUtils {
+    event Swap (address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
+
     AllocatorRoles public roles;
     AllocatorBuffer public buffer;
     Swapper public swapper;
@@ -83,12 +85,38 @@ contract SwapperTest is DssTest, TestUtils {
     function testSwap() public {
         bytes memory path = abi.encodePacked(USDC, uint24(100), DAI);
         uint256 prevDst = GemLike(DAI).balanceOf(address(buffer));
+
+        vm.expectEmit(true, true, true, false);
+        emit Swap(FACILITATOR, USDC, DAI, 10_000 * 10**6, 0);
         vm.prank(FACILITATOR); uint256 out = swapper.swap(USDC, DAI, 10_000 * 10**6, 9900 * WAD, address(uniV3Callee), path);
-        assertGe(GemLike(DAI).balanceOf(address(buffer)), prevDst + 9900 * WAD);
+        
+        assertGe(out, 9900 * WAD);
+        assertEq(GemLike(DAI).balanceOf(address(buffer)), prevDst + out);
+        assertEq(GemLike(DAI).balanceOf(address(swapper)), 0);
+        assertEq(GemLike(USDC).balanceOf(address(swapper)), 0);
+        assertEq(GemLike(DAI).balanceOf(address(uniV3Callee)), 0);
+        assertEq(GemLike(USDC).balanceOf(address(uniV3Callee)), 0);
 
         path = abi.encodePacked(DAI, uint24(100), USDC);
         prevDst = GemLike(USDC).balanceOf(address(buffer));
+
+        vm.expectEmit(true, true, true, false);
+        emit Swap(FACILITATOR, DAI, USDC, 10_000 * WAD, 0);
         vm.prank(FACILITATOR); out = swapper.swap(DAI, USDC, 10_000 * WAD, 9900 * 10**6, address(uniV3Callee), path);
-        assertGe(GemLike(USDC).balanceOf(address(buffer)), prevDst + 9900 * 10**6);
+        
+        assertGe(out, 9900 * 10**6);
+        assertEq(GemLike(USDC).balanceOf(address(buffer)), prevDst + out);
+        assertEq(GemLike(DAI).balanceOf(address(swapper)), 0);
+        assertEq(GemLike(USDC).balanceOf(address(swapper)), 0);
+        assertEq(GemLike(DAI).balanceOf(address(uniV3Callee)), 0);
+        assertEq(GemLike(USDC).balanceOf(address(uniV3Callee)), 0);
+    }
+
+    function testSwapTooSoon() public {
+        bytes memory path = abi.encodePacked(USDC, uint24(100), DAI);
+        vm.prank(FACILITATOR); swapper.swap(USDC, DAI, 10_000 * 10**6, 9900 * WAD, address(uniV3Callee), path);
+        
+        vm.expectRevert("Swapper/too-soon");
+        vm.prank(FACILITATOR); swapper.swap(USDC, DAI, 10_000 * 10**6, 9900 * WAD, address(uniV3Callee), path);
     }
 }
