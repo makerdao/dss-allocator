@@ -32,8 +32,8 @@ interface CalleeLike {
 
 contract Swapper {
     mapping (address => uint256) public wards;
-    mapping (address => mapping (address => uint256)) public hops;       // [seconds]        hops[src][dst] is the swap cooldown when swapping `src` to `dst`.
-    mapping (address => mapping (address => uint256)) public zzz;        // [seconds]         zzz[src][dst] is the timestamp of the last swap from `src` to `dst`.
+    mapping (address => mapping (address => uint256)) public hops; // [seconds]  hops[src][dst] is the swap cooldown when swapping `src` to `dst`.
+    mapping (address => mapping (address => uint256)) public zzz;  // [seconds]   zzz[src][dst] is the timestamp of the last swap from `src` to `dst`.
     mapping (address => mapping (address => uint256)) public caps; // [weis]     caps[src][dst] is the maximum amount that can be swapped each hop when swapping `src` to `dst`.
 
 

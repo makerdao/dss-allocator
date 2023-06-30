@@ -42,6 +42,7 @@ contract DepositorTest is DssTest, TestUtils {
     UniV3SwapperCallee public uniV3Callee;
 
     bytes32 constant ilk = "aaa";
+    bytes constant DAI_USDC_PATH = abi.encodePacked(DAI, uint24(100), USDC);
 
     address constant DAI           = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address constant USDC          = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
@@ -174,9 +175,8 @@ contract DepositorTest is DssTest, TestUtils {
         // execute a trade to generate fees for the LP position
         deal(DAI,  address(this), 1_000_000 * WAD,   true);
         GemLike(DAI).approve(UNIV3_ROUTER, 1_000_000 * WAD);
-        bytes memory path = abi.encodePacked(DAI, uint24(100), USDC);
         SwapRouterLike.ExactInputParams memory params = SwapRouterLike.ExactInputParams({
-            path:             path,
+            path:             DAI_USDC_PATH,
             recipient:        address(this),
             deadline:         block.timestamp,
             amountIn:         1_000_000 * WAD,
@@ -265,9 +265,8 @@ contract DepositorTest is DssTest, TestUtils {
         // execute a trade to generate fees for the LP position
         deal(DAI,  address(this), 1_000_000 * WAD,   true);
         GemLike(DAI).approve(UNIV3_ROUTER, 1_000_000 * WAD);
-        bytes memory path = abi.encodePacked(DAI, uint24(100), USDC);
         SwapRouterLike.ExactInputParams memory params = SwapRouterLike.ExactInputParams({
-            path:             path,
+            path:             DAI_USDC_PATH,
             recipient:        address(this),
             deadline:         block.timestamp,
             amountIn:         1_000_000 * WAD,
@@ -326,5 +325,161 @@ contract DepositorTest is DssTest, TestUtils {
 
         assertEq(NftLike(UNIV3_POS_MGR).balanceOf(address(buffer)), 0);
         assertEq(NftLike(UNIV3_POS_MGR).balanceOf(newBuffer), 1);
+    }
+
+    function testDepositWrongGemOrder() public {
+        Depositor.DepositParams memory dp = Depositor.DepositParams({ 
+            gem0: USDC,
+            gem1: DAI,
+            amt0: 1, 
+            amt1: 1, 
+            minAmt0: 0, 
+            minAmt1: 0, 
+            fee: uint24(100), 
+            tickLower: REF_TICK-100, 
+            tickUpper: REF_TICK+100
+        });
+        vm.expectRevert("Depositor/wrong-gem-order");
+        vm.prank(FACILITATOR); depositor.deposit(dp);
+    }
+
+    function testDepositTooSoon() public {
+        Depositor.DepositParams memory dp = Depositor.DepositParams({ 
+            gem0: DAI,
+            gem1: USDC,
+            amt0: 500 * WAD, 
+            amt1: 500 * 10**6, 
+            minAmt0: 490 * WAD, 
+            minAmt1: 490 * 10**6, 
+            fee: uint24(100), 
+            tickLower: REF_TICK-100, 
+            tickUpper: REF_TICK+100
+        });
+        vm.prank(FACILITATOR); depositor.deposit(dp);
+        vm.expectRevert("Depositor/too-soon");
+        vm.prank(FACILITATOR); depositor.deposit(dp);
+    }
+
+    function testDepositExceedingCap() public {
+        (uint128 cap0, uint128 cap1) = depositor.caps(DAI, USDC);
+        Depositor.DepositParams memory dp = Depositor.DepositParams({ 
+            gem0: DAI,
+            gem1: USDC,
+            amt0: 2*cap0, 
+            amt1: 2*cap1, 
+            minAmt0: 0, 
+            minAmt1: 0, 
+            fee: uint24(100), 
+            tickLower: REF_TICK-100, 
+            tickUpper: REF_TICK+100
+        });
+        vm.expectRevert("Depositor/exceeds-cap");
+        vm.prank(FACILITATOR); depositor.deposit(dp);
+    }
+
+    function testDepositExceedingSlippage() public {
+        Depositor.DepositParams memory dp = Depositor.DepositParams({ 
+            gem0: DAI,
+            gem1: USDC,
+            amt0: 500 * WAD, 
+            amt1: 500 * 10**6, 
+            minAmt0: 3*500 * WAD, 
+            minAmt1: 3*500 * 10**6, 
+            fee: uint24(100), 
+            tickLower: REF_TICK-100, 
+            tickUpper: REF_TICK+100
+        });
+        vm.expectRevert("Depositor/exceeds-slippage");
+        vm.prank(FACILITATOR); depositor.deposit(dp);
+    }
+
+    function testWithdrawWrongGemOrder() public {
+        Depositor.WithdrawParams memory wp = Depositor.WithdrawParams({ 
+            gem0: USDC,
+            gem1: DAI,
+            liquidity: 0,
+            minAmt0: 0,
+            minAmt1: 0,
+            fee: uint24(100), 
+            tickLower: REF_TICK-100, 
+            tickUpper: REF_TICK+100,
+            collectFees: false
+        });
+        vm.expectRevert("Depositor/wrong-gem-order");
+        vm.prank(FACILITATOR); depositor.withdraw(wp);
+    }
+
+    function testWithdrawNoPosition() public {
+        Depositor.WithdrawParams memory wp = Depositor.WithdrawParams({ 
+            gem0: DAI,
+            gem1: USDC,
+            liquidity: 123,
+            minAmt0: 0, 
+            minAmt1: 0,
+            fee: uint24(100), 
+            tickLower: REF_TICK-100, 
+            tickUpper: REF_TICK+100,
+            collectFees: false
+        });
+
+        vm.expectRevert("Depositor/no-position");
+        vm.prank(FACILITATOR); depositor.withdraw(wp);
+    }
+
+    function testWithdrawExceedingCap() public {
+        Depositor.DepositParams memory dp = Depositor.DepositParams({ 
+            gem0: DAI,
+            gem1: USDC,
+            amt0: 500 * WAD, 
+            amt1: 500 * 10**6, 
+            minAmt0: 490 * WAD, 
+            minAmt1: 490 * 10**6, 
+            fee: uint24(100), 
+            tickLower: REF_TICK-100, 
+            tickUpper: REF_TICK+100
+        });
+        vm.prank(FACILITATOR); (uint128 liq,,) = depositor.deposit(dp);
+        depositor.file("cap", DAI, USDC, uint128(1 * WAD), 1 * 10**6);
+        Depositor.WithdrawParams memory wp = Depositor.WithdrawParams({ 
+            gem0: DAI,
+            gem1: USDC,
+            liquidity: liq,
+            minAmt0: 490 * WAD, 
+            minAmt1: 490 * 10**6,
+            fee: uint24(100), 
+            tickLower: REF_TICK-100, 
+            tickUpper: REF_TICK+100,
+            collectFees: false
+        });
+        vm.warp(block.timestamp + 3600);
+
+        vm.expectRevert("Depositor/exceeds-cap");
+        vm.prank(FACILITATOR); depositor.withdraw(wp);
+    }
+
+    function testCollectWrongGemOrder() public {
+        Depositor.CollectParams memory cp = Depositor.CollectParams({ 
+            gem0: USDC,
+            gem1: DAI,
+            fee: uint24(100), 
+            tickLower: REF_TICK-100, 
+            tickUpper: REF_TICK+100
+        });
+
+        vm.expectRevert("Depositor/wrong-gem-order");
+        vm.prank(FACILITATOR); depositor.collect(cp);
+    }
+
+    function testCollectNoPosition() public {
+        Depositor.CollectParams memory cp = Depositor.CollectParams({ 
+            gem0: DAI,
+            gem1: USDC,
+            fee: uint24(100), 
+            tickLower: REF_TICK-100, 
+            tickUpper: REF_TICK+100
+        });
+
+        vm.expectRevert("Depositor/no-position");
+        vm.prank(FACILITATOR); depositor.collect(cp);
     }
 }
