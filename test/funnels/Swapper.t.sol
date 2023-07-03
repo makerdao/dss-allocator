@@ -2,19 +2,36 @@
 pragma solidity ^0.8.16;
 
 import "dss-test/DssTest.sol";
-import { Swapper, GemLike } from "src/funnels/Swapper.sol";
+import { Swapper } from "src/funnels/Swapper.sol";
 import { UniV3SwapperCallee } from "src/funnels/callees/UniV3SwapperCallee.sol";
 import { AllocatorRoles } from "src/AllocatorRoles.sol";
 import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
 import { TestUtils } from "test/utils/TestUtils.sol";
 
+interface GemLike {
+    function balanceOf(address) external view returns (uint256);
+    function transfer(address, uint256) external;
+}
+
+contract CalleeMock is DssTest {
+    function swap(address src, address dst, uint256 amt, uint256, address to, bytes calldata) external {
+        GemLike(src).transfer(address(0xDEAD), amt);
+        deal(dst, address(this), amt, true);
+        GemLike(dst).transfer(to, amt);
+    }
+}
+
 contract SwapperTest is DssTest, TestUtils {
+    event Swap (address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
+
     AllocatorRoles public roles;
     AllocatorBuffer public buffer;
     Swapper public swapper;
     UniV3SwapperCallee public uniV3Callee;
 
     bytes32 constant ilk = "aaa";
+    bytes constant USDC_DAI_PATH = abi.encodePacked(USDC, uint24(100), DAI);
+    bytes constant DAI_USDC_PATH = abi.encodePacked(DAI, uint24(100), USDC);
 
     address constant DAI          = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address constant USDC         = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
@@ -30,14 +47,13 @@ contract SwapperTest is DssTest, TestUtils {
 
         buffer = new AllocatorBuffer(ilk);
         roles = new AllocatorRoles();
-        swapper = new Swapper(address(roles), ilk);
+        swapper = new Swapper(address(roles), ilk, address(buffer));
         uniV3Callee = new UniV3SwapperCallee(UNIV3_ROUTER);
 
         roles.setIlkAdmin(ilk, address(this));
         roles.setRoleAction(ilk, SWAPPER_ROLE, address(swapper), swapper.swap.selector, true);
         roles.setUserRole(ilk, FACILITATOR, SWAPPER_ROLE, true);
 
-        swapper.file("buffer", address(buffer));
         swapper.file("cap", DAI, USDC, 10_000 * WAD);
         swapper.file("cap", USDC, DAI, 10_000 * 10**6);
         swapper.file("hop", DAI, USDC, 3600);
@@ -50,7 +66,7 @@ contract SwapperTest is DssTest, TestUtils {
     }
 
     function testConstructor() public {
-        Swapper s = new Swapper(address(0xBEEF), "SubDAO 1");
+        Swapper s = new Swapper(address(0xBEEF), "SubDAO 1", address(0xAAA));
         assertEq(address(s.roles()),  address(0xBEEF));
         assertEq(s.ilk(), "SubDAO 1");
         assertEq(s.wards(address(this)), 1);
@@ -70,27 +86,61 @@ contract SwapperTest is DssTest, TestUtils {
     }
 
     function testFile() public {
-        checkFileAddress(address(swapper), "Swapper", ["buffer"]);
         checkFileUintForGemPair(address(swapper), "Swapper", ["cap", "hop"]);
     }
 
     function testRoles() public {
         vm.expectRevert("Swapper/not-authorized");
-        vm.prank(address(0xBEEF)); swapper.file("buffer", address(0));
-        roles.setRoleAction(ilk, uint8(0xF1), address(swapper), bytes4(keccak256("file(bytes32,address)")), true);
+        vm.prank(address(0xBEEF)); swapper.file("hop", address(0), address(0), 0);
+        roles.setRoleAction(ilk, uint8(0xF1), address(swapper), bytes4(keccak256("file(bytes32,address,address,uint256)")), true);
         roles.setUserRole(ilk, address(0xBEEF), uint8(0xF1), true);
-        vm.prank(address(0xBEEF)); swapper.file("buffer", address(0));
+        vm.prank(address(0xBEEF)); swapper.file("hop", address(0), address(0), 0);
     }
 
     function testSwap() public {
-        bytes memory path = abi.encodePacked(USDC, uint24(100), DAI);
         uint256 prevDst = GemLike(DAI).balanceOf(address(buffer));
-        vm.prank(FACILITATOR); uint256 out = swapper.swap(USDC, DAI, 10_000 * 10**6, 9900 * WAD, address(uniV3Callee), path);
-        assertGe(GemLike(DAI).balanceOf(address(buffer)), prevDst + 9900 * WAD);
 
-        path = abi.encodePacked(DAI, uint24(100), USDC);
+        vm.expectEmit(true, true, true, false);
+        emit Swap(FACILITATOR, USDC, DAI, 10_000 * 10**6, 0);
+        vm.prank(FACILITATOR); uint256 out = swapper.swap(USDC, DAI, 10_000 * 10**6, 9900 * WAD, address(uniV3Callee), USDC_DAI_PATH);
+        
+        assertGe(out, 9900 * WAD);
+        assertEq(GemLike(DAI).balanceOf(address(buffer)), prevDst + out);
+        assertEq(GemLike(DAI).balanceOf(address(swapper)), 0);
+        assertEq(GemLike(USDC).balanceOf(address(swapper)), 0);
+        assertEq(GemLike(DAI).balanceOf(address(uniV3Callee)), 0);
+        assertEq(GemLike(USDC).balanceOf(address(uniV3Callee)), 0);
+
         prevDst = GemLike(USDC).balanceOf(address(buffer));
-        vm.prank(FACILITATOR); out = swapper.swap(DAI, USDC, 10_000 * WAD, 9900 * 10**6, address(uniV3Callee), path);
-        assertGe(GemLike(USDC).balanceOf(address(buffer)), prevDst + 9900 * 10**6);
+
+        vm.expectEmit(true, true, true, false);
+        emit Swap(FACILITATOR, DAI, USDC, 10_000 * WAD, 0);
+        vm.prank(FACILITATOR); out = swapper.swap(DAI, USDC, 10_000 * WAD, 9900 * 10**6, address(uniV3Callee), DAI_USDC_PATH);
+        
+        assertGe(out, 9900 * 10**6);
+        assertEq(GemLike(USDC).balanceOf(address(buffer)), prevDst + out);
+        assertEq(GemLike(DAI).balanceOf(address(swapper)), 0);
+        assertEq(GemLike(USDC).balanceOf(address(swapper)), 0);
+        assertEq(GemLike(DAI).balanceOf(address(uniV3Callee)), 0);
+        assertEq(GemLike(USDC).balanceOf(address(uniV3Callee)), 0);
+    }
+
+    function testSwapTooSoon() public {
+        vm.prank(FACILITATOR); swapper.swap(USDC, DAI, 10_000 * 10**6, 9900 * WAD, address(uniV3Callee), USDC_DAI_PATH);
+        
+        vm.expectRevert("Swapper/too-soon");
+        vm.prank(FACILITATOR); swapper.swap(USDC, DAI, 10_000 * 10**6, 9900 * WAD, address(uniV3Callee), USDC_DAI_PATH);
+    }
+
+    function testSwapExceedingMax() public {
+        uint256 amt = swapper.caps(USDC, DAI) + 1;
+        vm.expectRevert("Swapper/exceeds-max-amt");
+        vm.prank(FACILITATOR); swapper.swap(USDC, DAI, amt, 0, address(uniV3Callee), USDC_DAI_PATH);
+    }
+
+    function testSwapReceivingTooLittle() public {
+        CalleeMock callee = new CalleeMock();
+        vm.expectRevert("Swapper/too-few-dst-received");
+        vm.prank(FACILITATOR); swapper.swap(USDC, DAI, 100*10**6, 200*10**18, address(callee), USDC_DAI_PATH);
     }
 }

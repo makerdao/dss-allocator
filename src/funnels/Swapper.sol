@@ -32,24 +32,24 @@ interface CalleeLike {
 
 contract Swapper {
     mapping (address => uint256) public wards;
-    mapping (address => mapping (address => uint256)) public hops;       // [seconds]        hops[src][dst] is the swap cooldown when swapping `src` to `dst`.
-    mapping (address => mapping (address => uint256)) public zzz;        // [seconds]         zzz[src][dst] is the timestamp of the last swap from `src` to `dst`.
+    mapping (address => mapping (address => uint256)) public hops; // [seconds]  hops[src][dst] is the swap cooldown when swapping `src` to `dst`.
+    mapping (address => mapping (address => uint256)) public zzz;  // [seconds]   zzz[src][dst] is the timestamp of the last swap from `src` to `dst`.
     mapping (address => mapping (address => uint256)) public caps; // [weis]     caps[src][dst] is the maximum amount that can be swapped each hop when swapping `src` to `dst`.
 
-    address public buffer;                                               // Escrow contract from which the GEM to sell is pulled and to which the bought GEM is pushed
 
+    address   public immutable buffer;                // Contract from which the GEM to sell is pulled and to which the bought GEM is pushed
     RolesLike public immutable roles;                 // Contract managing access control for this Depositor
     bytes32   public immutable ilk;
 
     event Rely (address indexed usr);
     event Deny (address indexed usr);
     event File (bytes32 indexed what, address indexed src, address indexed dst, uint256 data);
-    event File (bytes32 indexed what, address data);
     event Swap (address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
 
-    constructor(address roles_, bytes32 ilk_) {
+    constructor(address roles_, bytes32 ilk_, address buffer_) {
         roles = RolesLike(roles_);
         ilk = ilk_;
+        buffer = buffer_;
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
     }
@@ -69,23 +69,16 @@ contract Swapper {
         emit File(what, src, dst, data);
     }
 
-    function file(bytes32 what, address data) external auth {
-        if (what == "buffer") buffer = data;
-        else revert("Swapper/file-unrecognized-param");
-        emit File(what, data);
-    }
-
     function swap(address src, address dst, uint256 amt, uint256 minOut, address callee, bytes calldata data) external auth returns (uint256 out) {
         require(block.timestamp >= zzz[src][dst] + hops[src][dst], "Swapper/too-soon");
         zzz[src][dst] = block.timestamp;
 
         require(amt <= caps[src][dst], "Swapper/exceeds-max-amt");
 
-        address buffer_ = buffer;
-        uint256 prevDstBalance = GemLike(dst).balanceOf(buffer_);
-        GemLike(src).transferFrom(buffer_, callee, amt);
-        CalleeLike(callee).swap(src, dst, amt, minOut, buffer_, data);
-        uint256 dstBalance = GemLike(dst).balanceOf(buffer_);
+        uint256 prevDstBalance = GemLike(dst).balanceOf(buffer);
+        GemLike(src).transferFrom(buffer, callee, amt);
+        CalleeLike(callee).swap(src, dst, amt, minOut, buffer, data);
+        uint256 dstBalance = GemLike(dst).balanceOf(buffer);
         require(dstBalance >= prevDstBalance + minOut, "Swapper/too-few-dst-received");
         out = dstBalance - prevDstBalance;
 
