@@ -17,9 +17,6 @@
 
 pragma solidity ^0.8.16;
 
-import "./uniV3/LiquidityAmounts.sol";
-import "./uniV3/TickMath.sol";
-
 interface RolesLike {
     function canCall(bytes32, address, address, bytes4) external view returns (bool);
 }
@@ -204,71 +201,6 @@ contract Depositor {
         emit File(what, gemA, gemB, dataA, dataB);
     }
 
-    // https://github.com/Uniswap/v3-periphery/blob/464a8a49611272f7349c970e0fadb7ec1d3c1086/contracts/libraries/PoolAddress.sol#L33
-    function _getPoolAddress(address gem0, address gem1, uint24 fee) internal view returns (address pool) {
-        pool = address(uint160(uint256(keccak256(abi.encodePacked(
-            hex'ff',
-            uniV3Factory,
-            keccak256(abi.encode(gem0, gem1, fee)),
-            bytes32(0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54) // POOL_INIT_CODE_HASH
-         )))));
-    }
-
-    // https://github.com/Uniswap/v3-core/blob/d8b1c635c275d2a9450bd6a78f3fa2484fef73eb/contracts/libraries/UnsafeMath.sol#L12C1-L16C6
-    function _divRoundingUp(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        assembly {
-            z := add(div(x, y), gt(mod(x, y), 0))
-        }
-    }
-
-    // adapted from https://github.com/Uniswap/v3-core/blob/d8b1c635c275d2a9450bd6a78f3fa2484fef73eb/contracts/libraries/SqrtPriceMath.sol#L153
-    function _getAmount0ForLiquidityRoundingUp(
-        uint160 sqrtRatioAX96,
-        uint160 sqrtRatioBX96,
-        uint128 liquidity
-    ) internal pure returns (uint256 amount0) {
-        if (sqrtRatioAX96 > sqrtRatioBX96) (sqrtRatioAX96, sqrtRatioBX96) = (sqrtRatioBX96, sqrtRatioAX96);
-
-        return
-            _divRoundingUp(
-                FullMath.mulDivRoundingUp(
-                    uint256(liquidity) << FixedPoint96.RESOLUTION,
-                    sqrtRatioBX96 - sqrtRatioAX96,
-                    sqrtRatioBX96
-                ),
-                sqrtRatioAX96
-            );
-    }
-
-    // adapted from https://github.com/Uniswap/v3-core/blob/d8b1c635c275d2a9450bd6a78f3fa2484fef73eb/contracts/libraries/SqrtPriceMath.sol#L182
-    function _getAmount1ForLiquidityRoundingUp(
-        uint160 sqrtRatioAX96,
-        uint160 sqrtRatioBX96,
-        uint128 liquidity
-    ) internal pure returns (uint256 amount0) {
-        if (sqrtRatioAX96 > sqrtRatioBX96) (sqrtRatioAX96, sqrtRatioBX96) = (sqrtRatioBX96, sqrtRatioAX96);
-        return FullMath.mulDivRoundingUp(liquidity, sqrtRatioBX96 - sqrtRatioAX96, FixedPoint96.Q96);
-    }
-
-    // adapted from https://github.com/Uniswap/v3-periphery/blob/464a8a49611272f7349c970e0fadb7ec1d3c1086/contracts/libraries/LiquidityAmounts.sol#L120
-    function _getAmountsForLiquidityRoundingUp(
-        uint160 sqrtRatioX96,
-        uint160 sqrtRatioAX96,
-        uint160 sqrtRatioBX96,
-        uint128 liquidity
-    ) internal pure returns (uint256 amount0, uint256 amount1) {
-        if (sqrtRatioAX96 > sqrtRatioBX96) (sqrtRatioAX96, sqrtRatioBX96) = (sqrtRatioBX96, sqrtRatioAX96);
-
-        if (sqrtRatioX96 <= sqrtRatioAX96) {
-            amount0 = _getAmount0ForLiquidityRoundingUp(sqrtRatioAX96, sqrtRatioBX96, liquidity);
-        } else if (sqrtRatioX96 < sqrtRatioBX96) {
-            amount0 = _getAmount0ForLiquidityRoundingUp(sqrtRatioX96, sqrtRatioBX96, liquidity);
-            amount1 = _getAmount1ForLiquidityRoundingUp(sqrtRatioAX96, sqrtRatioX96, liquidity);
-        } else {
-            amount1 = _getAmount1ForLiquidityRoundingUp(sqrtRatioAX96, sqrtRatioBX96, liquidity);
-        }
-    }
-
     struct DepositParams {
         address gem0;
         address gem1;
@@ -279,14 +211,6 @@ contract Depositor {
         uint24 fee;
         int24 tickLower;
         int24 tickUpper;
-    }
-
-    function _getOptimalDepositAmounts(DepositParams memory p) internal view returns (uint256 amt0, uint256 amt1) {
-        (uint160 sqrtPriceX96,,,,,,) = UniV3PoolLike(_getPoolAddress(p.gem0, p.gem1, p.fee)).slot0();
-        uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(p.tickLower);
-        uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(p.tickUpper);
-        uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(sqrtPriceX96, sqrtRatioAX96, sqrtRatioBX96, p.amt0, p.amt1);
-        (amt0, amt1) = _getAmountsForLiquidityRoundingUp(sqrtPriceX96, sqrtRatioAX96, sqrtRatioBX96, liquidity);
     }
 
     function _addLiquidity(DepositParams memory p, address to) internal returns (uint128 liquidity, uint256 amt0, uint256 amt1) {
@@ -327,13 +251,8 @@ contract Depositor {
         require(block.timestamp >= zzz[p.gem0][p.gem1] + hops[p.gem0][p.gem1], "Depositor/too-soon");
         zzz[p.gem0][p.gem1] = block.timestamp;
 
-        (amt0, amt1) = _getOptimalDepositAmounts(p); // Pre-calculating the exact amounts to deposit avoids having to send leftover tokens back to the buffer, saving ~40k gas
-        Cap memory cap = caps[p.gem0][p.gem1];
-        require(amt0 <= cap.amt0 && amt1 <= cap.amt1, "Depositor/exceeds-cap");
-        require(amt0 >= p.minAmt0 && amt1 >= p.minAmt1, 'Depositor/exceeds-slippage'); // Saves gas by reverting early if slippage check fails
-
-        GemLike(p.gem0).transferFrom(buffer, address(this), amt0);
-        GemLike(p.gem1).transferFrom(buffer, address(this), amt1);
+        GemLike(p.gem0).transferFrom(buffer, address(this), p.amt0);
+        GemLike(p.gem1).transferFrom(buffer, address(this), p.amt1);
         
         // Note: approving type(uint256).max reduces the cumulated gas cost after calling deposit() 3 times or more for the same gem pair
         if (GemLike(p.gem0).allowance(address(this), uniV3PositionManager) < type(uint256).max) {
@@ -343,7 +262,13 @@ contract Depositor {
             GemLike(p.gem1).approve(uniV3PositionManager, type(uint256).max);
         }
 
-        (liquidity,,) = _addLiquidity(p, buffer);
+        (liquidity, amt0, amt1) = _addLiquidity(p, buffer);
+        Cap memory cap = caps[p.gem0][p.gem1];
+        require(amt0 <= cap.amt0 && amt1 <= cap.amt1, "Depositor/exceeds-cap");
+
+        // Send leftover tokens back to buffer
+        if (amt0 < p.amt0) GemLike(p.gem0).transfer(buffer, p.amt0 - amt0);
+        if (amt1 < p.amt1) GemLike(p.gem1).transfer(buffer, p.amt1 - amt1);
 
         emit Deposit(msg.sender, p.gem0, p.gem1, liquidity, amt0, amt1);
     }

@@ -2,14 +2,7 @@
 pragma solidity >=0.5.0;
 
 import "./FullMath.sol";
-
-/// @title FixedPoint96
-/// @notice A library for handling binary fixed point numbers, see https://en.wikipedia.org/wiki/Q_(number_format)
-/// @dev Used in SqrtPriceMath.sol
-library FixedPoint96 {
-    uint8 internal constant RESOLUTION = 96;
-    uint256 internal constant Q96 = 0x1000000000000000000000000;
-}
+import "./FixedPoint96.sol";
 
 /// @title Liquidity amount functions
 /// @notice Provides functions for computing liquidity amounts from token amounts and prices

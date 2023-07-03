@@ -389,7 +389,7 @@ contract DepositorTest is DssTest, TestUtils {
             tickLower: REF_TICK-100, 
             tickUpper: REF_TICK+100
         });
-        vm.expectRevert("Depositor/exceeds-slippage");
+        vm.expectRevert("Price slippage check");
         vm.prank(FACILITATOR); depositor.deposit(dp);
     }
 

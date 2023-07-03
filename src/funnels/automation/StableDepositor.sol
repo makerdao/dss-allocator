@@ -17,6 +17,11 @@
 
 pragma solidity ^0.8.16;
 
+import "src/funnels/uniV3/LiquidityAmounts.sol";
+import "src/funnels/uniV3/TickMath.sol";
+import "src/funnels/uniV3/PoolAddress.sol";
+import "src/funnels/uniV3/LiquidityAmountsRoundingUp.sol";
+
 interface DepositorLike {
     struct DepositParams {
         address gem0;
@@ -78,10 +83,6 @@ interface UniV3PoolLike {
         bool unlocked
     );
 }
-
-import "src/funnels/uniV3/LiquidityAmounts.sol";
-import "src/funnels/uniV3/TickMath.sol";
-import "src/funnels/uniV3/PoolAddress.sol";
 
 contract StableDepositor {
     mapping (address => uint256) public wards;
@@ -153,6 +154,19 @@ contract StableDepositor {
         emit Config(gemA, gemB, cfg);
     }
 
+    function _getOptimalDepositAmounts(address gem0, address gem1, PairConfig memory cfg) internal view returns (uint256 amt0, uint256 amt1) {
+        (uint160 sqrtPriceX96,,,,,,) =
+            UniV3PoolLike(PoolAddress.getPoolAddress(uniV3Factory, gem0, gem1, cfg.fee)).slot0();
+
+        uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(cfg.tickLower);
+        uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(cfg.tickUpper);
+        uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(sqrtPriceX96, sqrtRatioAX96, sqrtRatioBX96, cfg.amt0, cfg.amt1);
+
+        (amt0, amt1) = LiquidityAmountsRoundingUp.getAmountsForLiquidityRoundingUp(
+            sqrtPriceX96, sqrtRatioAX96, sqrtRatioBX96, liquidity
+        );
+    }
+
     // Note: the keeper's minAmts value must be updated whenever configs[gem0][gem1] is changed.
     // Failing to do so may result in this call reverting or in taking on more slippage than intended (up to a limit controlled by configs[src][dst].reqOut).
     function deposit(address gem0, address gem1, uint128 minAmt0, uint128 minAmt1)
@@ -171,11 +185,14 @@ contract StableDepositor {
         require(minAmt0 >= cfg.reqAmt0, "StableSwapper/min-amt0-too-small");
         require(minAmt1 >= cfg.reqAmt1, "StableSwapper/min-amt1-too-small");
 
+        // Pre-calculating the exact amounts to deposit avoids having to send leftover tokens back to the buffer, saving ~40k gas
+        (amt0, amt1) = _getOptimalDepositAmounts(gem0, gem1, cfg);
+
         DepositorLike.DepositParams memory depositParams = DepositorLike.DepositParams({
             gem0     : gem0,
             gem1     : gem1,
-            amt0     : cfg.amt0,
-            amt1     : cfg.amt1,
+            amt0     : amt0,
+            amt1     : amt1,
             minAmt0  : minAmt0,
             minAmt1  : minAmt1,
             fee      : cfg.fee,
