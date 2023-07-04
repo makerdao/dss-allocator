@@ -129,6 +129,15 @@ contract SwapperTest is DssTest, TestUtils {
         assertEq(GemLike(USDC).balanceOf(address(uniV3Callee)), 0);
     }
 
+    function testSwapAferHop() public {
+        vm.prank(FACILITATOR); swapper.swap(USDC, DAI, 10_000 * 10**6, 9900 * WAD, address(uniV3Callee), USDC_DAI_PATH);
+        vm.warp(block.timestamp + swapper.hops(USDC, DAI));
+
+        vm.expectEmit(true, true, true, false);
+        emit Swap(FACILITATOR, USDC, DAI, 10_000 * 10**6, 0);
+        vm.prank(FACILITATOR); swapper.swap(USDC, DAI, 10_000 * 10**6, 9900 * WAD, address(uniV3Callee), USDC_DAI_PATH);
+    }
+
     function testSwapTooSoon() public {
         vm.prank(FACILITATOR); swapper.swap(USDC, DAI, 10_000 * 10**6, 9900 * WAD, address(uniV3Callee), USDC_DAI_PATH);
         

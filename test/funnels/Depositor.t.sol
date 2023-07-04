@@ -156,6 +156,26 @@ contract DepositorTest is DssTest, TestUtils {
         assertEq(NftLike(UNIV3_POS_MGR).balanceOf(address(buffer)), 1);
     }
 
+    function testDepositAfterHop() public {
+        Depositor.DepositParams memory dp = Depositor.DepositParams({
+            gem0: DAI,
+            gem1: USDC,
+            amt0: 500 * WAD,
+            amt1: 500 * 10**6,
+            minAmt0: 490 * WAD,
+            minAmt1: 490 * 10**6,
+            fee: uint24(100),
+            tickLower: REF_TICK-100,
+            tickUpper: REF_TICK+100
+        });
+        vm.prank(FACILITATOR); depositor.deposit(dp);
+
+        vm.warp(block.timestamp + depositor.hops(DAI, USDC));
+        vm.expectEmit(true, true, true, false);
+        emit Deposit(FACILITATOR, DAI, USDC, 0, 0, 0);
+        vm.prank(FACILITATOR); depositor.deposit(dp);
+    }
+
     function testCollect() public {
         Depositor.DepositParams memory dp = Depositor.DepositParams({ 
             gem0: DAI,
@@ -406,6 +426,35 @@ contract DepositorTest is DssTest, TestUtils {
             collectFees: false
         });
         vm.expectRevert("Depositor/wrong-gem-order");
+        vm.prank(FACILITATOR); depositor.withdraw(wp);
+    }
+
+    function testWithdrawTooSoon() public {
+        Depositor.DepositParams memory dp = Depositor.DepositParams({
+            gem0: DAI,
+            gem1: USDC,
+            amt0: 500 * WAD,
+            amt1: 500 * 10**6,
+            minAmt0: 490 * WAD,
+            minAmt1: 490 * 10**6,
+            fee: uint24(100),
+            tickLower: REF_TICK-100,
+            tickUpper: REF_TICK+100
+        });
+        vm.prank(FACILITATOR); (uint128 liq,,) = depositor.deposit(dp);
+
+        Depositor.WithdrawParams memory wp = Depositor.WithdrawParams({
+            gem0: DAI,
+            gem1: USDC,
+            liquidity: liq / 2,
+            minAmt0: 490 * WAD,
+            minAmt1: 490 * 10**6,
+            fee: uint24(100),
+            tickLower: REF_TICK-100,
+            tickUpper: REF_TICK+100,
+            collectFees: false
+        });
+        vm.expectRevert("Depositor/too-soon");
         vm.prank(FACILITATOR); depositor.withdraw(wp);
     }
 
