@@ -84,6 +84,7 @@ contract StableSwapperTest is DssTest, TestUtils {
 
     function testSwapByKeeper() public {
         vm.warp(block.timestamp + 3600);
+        uint256 prevSrc = GemLike(USDC).balanceOf(address(buffer));
         uint256 prevDst = GemLike(DAI).balanceOf(address(buffer));
 
         vm.expectEmit(true, true, true, false);
@@ -91,6 +92,7 @@ contract StableSwapperTest is DssTest, TestUtils {
         vm.prank(KEEPER); uint256 out = stableSwapper.swap(USDC, DAI, 9900 * WAD, address(uniV3Callee), USDC_DAI_PATH);
 
         assertGe(out, 9900 * WAD);
+        assertEq(GemLike(USDC).balanceOf(address(buffer)), prevSrc - 10_000 * 10**6);
         assertEq(GemLike(DAI).balanceOf(address(buffer)), prevDst + out);
         assertEq(GemLike(DAI).balanceOf(address(stableSwapper)), 0);
         assertEq(GemLike(USDC).balanceOf(address(stableSwapper)), 0);
@@ -100,6 +102,7 @@ contract StableSwapperTest is DssTest, TestUtils {
         assertEq(GemLike(USDC).balanceOf(address(uniV3Callee)), 0);
 
         vm.warp(block.timestamp + 3600);
+        prevSrc = GemLike(DAI).balanceOf(address(buffer));
         prevDst = GemLike(USDC).balanceOf(address(buffer));
 
         vm.expectEmit(true, true, true, false);
@@ -107,6 +110,7 @@ contract StableSwapperTest is DssTest, TestUtils {
         vm.prank(KEEPER); out = stableSwapper.swap(DAI, USDC, 9900 * 10**6, address(uniV3Callee), DAI_USDC_PATH);
 
         assertGe(out, 9900 * 10**6);
+        assertEq(GemLike(DAI).balanceOf(address(buffer)), prevSrc - 10_000 * WAD);
         assertEq(GemLike(USDC).balanceOf(address(buffer)), prevDst + out);
         assertEq(GemLike(DAI).balanceOf(address(stableSwapper)), 0);
         assertEq(GemLike(USDC).balanceOf(address(stableSwapper)), 0);
