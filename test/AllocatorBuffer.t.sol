@@ -9,17 +9,14 @@ import { GemMock } from "test/mocks/GemMock.sol";
 contract AllocatorBufferTest is DssTest {
     using stdStorage for StdStorage;
 
-    bytes32         public ilk = "aaa";
     GemMock         public gem;
     AllocatorBuffer public buffer;
 
     event Approve(address indexed asset, address indexed spender, uint256 amount);
-    event Deposit(bytes32 indexed ilk, address indexed asset, uint256 amount);
-    event Withdraw(bytes32 indexed ilk, address indexed asset, address destination, uint256 amount);
 
     function setUp() public {
         gem    = new GemMock(1_000_000 * 10**18);
-        buffer = new AllocatorBuffer(ilk);
+        buffer = new AllocatorBuffer();
     }
 
     function testAuth() public {
@@ -35,34 +32,18 @@ contract AllocatorBufferTest is DssTest {
         vm.stopPrank();
     }
 
-    function testGetters() public {
-        assertEq(buffer.maxDeposit(bytes32(0), address(0)), type(uint256).max);
-        assertEq(buffer.maxWithdraw(bytes32(0), address(gem)), 0);
-        gem.approve(address(buffer), 10);
-        buffer.deposit(bytes32(0), address(gem), 10);
-        assertEq(buffer.maxWithdraw(bytes32(0), address(gem)), 10);
-    }
-
-    function testApprove() public {
-        assertEq(gem.allowance(address(buffer), address(0xBEEF)), 0);
-        vm.expectEmit(true, true, true, true);
-        emit Approve(address(gem), address(0xBEEF), 10);
-        buffer.approve(address(gem), address(0xBEEF), 10);
-        assertEq(gem.allowance(address(buffer), address(0xBEEF)), 10);
-    }
-
-    function testDepositWithdraw() public {
+    function testTransferApproveWithdraw() public {
         assertEq(gem.balanceOf(address(this)),   gem.totalSupply());
         assertEq(gem.balanceOf(address(buffer)), 0);
-        gem.approve(address(buffer), 10);
-        vm.expectEmit(true, true, true, true);
-        emit Deposit(buffer.ilk(), address(gem), 10);
-        buffer.deposit(bytes32(0), address(gem), 10);
+        gem.transfer(address(buffer), 10);
         assertEq(gem.balanceOf(address(this)),   gem.totalSupply() - 10);
         assertEq(gem.balanceOf(address(buffer)), 10);
+        assertEq(gem.allowance(address(buffer), address(this)), 0);
         vm.expectEmit(true, true, true, true);
-        emit Withdraw(buffer.ilk(), address(gem), address(123), 4);
-        buffer.withdraw(bytes32(0), address(gem), address(123), 4);
+        emit Approve(address(gem), address(this), 4);
+        buffer.approve(address(gem), address(this), 4);
+        assertEq(gem.allowance(address(buffer), address(this)), 4);
+        gem.transferFrom(address(buffer), address(123), 4);
         assertEq(gem.balanceOf(address(buffer)), 6);
         assertEq(gem.balanceOf(address(123)),    4);
     }

@@ -45,7 +45,7 @@ contract SwapperTest is DssTest, TestUtils {
     function setUp() public {
         vm.createSelectFork(vm.envString("ETH_RPC_URL"));
 
-        buffer = new AllocatorBuffer(ilk);
+        buffer = new AllocatorBuffer();
         roles = new AllocatorRoles();
         swapper = new Swapper(address(roles), ilk, address(buffer));
         uniV3Callee = new UniV3SwapperCallee(UNIV3_ROUTER);
