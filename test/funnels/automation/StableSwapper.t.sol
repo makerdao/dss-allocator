@@ -21,7 +21,6 @@ contract StableSwapperTest is DssTest, TestUtils {
     bytes constant USDC_DAI_PATH = abi.encodePacked(USDC, uint24(100), DAI);
     bytes constant DAI_USDC_PATH = abi.encodePacked(DAI, uint24(100), USDC);
 
-
     address constant DAI          = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address constant USDC         = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address constant UNIV3_ROUTER = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
@@ -30,7 +29,6 @@ contract StableSwapperTest is DssTest, TestUtils {
     address constant KEEPER      = address(0xb0b);
 
     uint8 constant SWAPPER_ROLE = uint8(1);
-
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETH_RPC_URL"));
