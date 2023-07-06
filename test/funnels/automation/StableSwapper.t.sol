@@ -7,9 +7,8 @@ import { StableSwapper } from "src/funnels/automation/StableSwapper.sol";
 import { UniV3SwapperCallee } from "src/funnels/callees/UniV3SwapperCallee.sol";
 import { AllocatorRoles } from "src/AllocatorRoles.sol";
 import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
-import { TestUtils } from "test/utils/TestUtils.sol";
 
-contract StableSwapperTest is DssTest, TestUtils {
+contract StableSwapperTest is DssTest {
     event Kissed (address indexed usr);
     event Dissed (address indexed usr);
     event Permit (address indexed usr);
@@ -211,7 +210,7 @@ contract StableSwapperTest is DssTest, TestUtils {
         vm.warp(block.timestamp + 3600);
         vm.expectEmit(true, true, true, false);
         emit Swap(address(stableSwapper), USDC, DAI, 0, 0);
-        vm.prank(KEEPER); uint256 out = stableSwapper.swap(USDC, DAI, 0, address(uniV3Callee), USDC_DAI_PATH);
+        vm.prank(KEEPER); stableSwapper.swap(USDC, DAI, 0, address(uniV3Callee), USDC_DAI_PATH);
     }
 
     function testSwapNonKeeper() public {
