@@ -10,6 +10,11 @@ import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
 import { TestUtils } from "test/utils/TestUtils.sol";
 
 contract StableSwapperTest is DssTest, TestUtils {
+    event Kissed (address indexed usr);
+    event Dissed (address indexed usr);
+    event Permit (address indexed usr);
+    event Forbid (address indexed usr);
+    event Config (address indexed src, address indexed dst,StableSwapper.PairConfig data);
     event Swap (address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
 
     AllocatorBuffer public buffer;
@@ -80,10 +85,90 @@ contract StableSwapperTest is DssTest, TestUtils {
         checkAuth(address(stableSwapper), "StableSwapper");
     }
 
+    function testKissDiss() public {
+        address testAddress = address(0x123);
+
+        assertEq(stableSwapper.buds(testAddress), 0);
+        vm.expectEmit(true, true, true, true);
+        emit Kissed(testAddress);
+        stableSwapper.kiss(testAddress);
+        assertEq(stableSwapper.buds(testAddress), 1);
+        vm.expectEmit(true, true, true, true);
+        emit Dissed(testAddress);
+        stableSwapper.diss(testAddress);
+        assertEq(stableSwapper.buds(testAddress), 0);
+
+        stableSwapper.deny(address(this));
+
+        vm.expectRevert("StableSwapper/not-authorized");
+        stableSwapper.kiss(testAddress);
+        vm.expectRevert("StableSwapper/not-authorized");
+        stableSwapper.diss(testAddress);
+    }
+
+    function testPermitForbid() public {
+        address testAddress = address(0x123);
+        stableSwapper.kiss(address(this));
+
+        assertEq(stableSwapper.bots(testAddress), 0);
+        vm.expectEmit(true, true, true, true);
+        emit Permit(testAddress);
+        stableSwapper.permit(testAddress);
+        assertEq(stableSwapper.bots(testAddress), 1);
+        vm.expectEmit(true, true, true, true);
+        emit Forbid(testAddress);
+        stableSwapper.forbid(testAddress);
+        assertEq(stableSwapper.bots(testAddress), 0);
+
+        stableSwapper.diss(address(this));
+
+        vm.expectRevert("StableSwapper/non-facilitator");
+        stableSwapper.permit(testAddress);
+        vm.expectRevert("StableSwapper/non-facilitator");
+        stableSwapper.forbid(testAddress);
+    }
+
+    function testSetConfig() public {
+        stableSwapper.kiss(address(this));
+        vm.expectEmit(true, true, true, true);
+        emit Config(address(0x123), address(0x456), StableSwapper.PairConfig({
+            count: 23,
+            lot: uint96(314),
+            reqOut: uint112(42)
+        }));
+        stableSwapper.setConfig(address(0x123), address(0x456), StableSwapper.PairConfig({
+            count: 23,
+            lot: uint96(314),
+            reqOut: uint112(42)
+        }));
+
+        (uint32 count, uint112 lot, uint112 reqOut) = stableSwapper.configs(address(0x123), address(0x456));
+        assertEq(count, 23);
+        assertEq(lot, 314);
+        assertEq(reqOut, 42);
+    }
+
+    function testSetConfigByNonFacilitator() public {
+        assertEq(stableSwapper.buds(address(this)), 0);
+        vm.expectRevert("StableSwapper/non-facilitator");
+        emit Config(address(0x123), address(0x456), StableSwapper.PairConfig({
+            count: 23,
+            lot: uint96(314),
+            reqOut: uint112(42)
+        }));
+        stableSwapper.setConfig(address(0x123), address(0x456), StableSwapper.PairConfig({
+            count: 23,
+            lot: uint96(314),
+            reqOut: uint112(42)
+        }));
+    }
+
     function testSwapByKeeper() public {
         vm.warp(block.timestamp + 3600);
         uint256 prevSrc = GemLike(USDC).balanceOf(address(buffer));
         uint256 prevDst = GemLike(DAI).balanceOf(address(buffer));
+        (uint32 prevUsdcDaiCount,,) = stableSwapper.configs(USDC, DAI);
+        (uint32 prevDaiUsdcCount,,) = stableSwapper.configs(DAI, USDC);
 
         vm.expectEmit(true, true, true, false);
         emit Swap(address(stableSwapper), USDC, DAI, 0, 0);
@@ -98,6 +183,8 @@ contract StableSwapperTest is DssTest, TestUtils {
         assertEq(GemLike(USDC).balanceOf(address(swapper)), 0);
         assertEq(GemLike(DAI).balanceOf(address(uniV3Callee)), 0);
         assertEq(GemLike(USDC).balanceOf(address(uniV3Callee)), 0);
+        (uint32 currentUsdcDaiCount,,) = stableSwapper.configs(USDC, DAI);
+        assertEq(currentUsdcDaiCount, prevUsdcDaiCount - 1);
 
         vm.warp(block.timestamp + 3600);
         prevSrc = GemLike(DAI).balanceOf(address(buffer));
@@ -116,6 +203,21 @@ contract StableSwapperTest is DssTest, TestUtils {
         assertEq(GemLike(USDC).balanceOf(address(swapper)), 0);
         assertEq(GemLike(DAI).balanceOf(address(uniV3Callee)), 0);
         assertEq(GemLike(USDC).balanceOf(address(uniV3Callee)), 0);
+        (uint32 currentDaiUsdcCount,,) = stableSwapper.configs(DAI, USDC);
+        assertEq(currentDaiUsdcCount, prevDaiUsdcCount - 1);
+    }
+
+    function testSwapMinZero() public {
+        vm.warp(block.timestamp + 3600);
+        vm.expectEmit(true, true, true, false);
+        emit Swap(address(stableSwapper), USDC, DAI, 0, 0);
+        vm.prank(KEEPER); uint256 out = stableSwapper.swap(USDC, DAI, 0, address(uniV3Callee), USDC_DAI_PATH);
+    }
+
+    function testSwapNonKeeper() public {
+        assertEq(stableSwapper.buds(address(this)), 0);
+        vm.expectRevert("StableSwapper/non-keeper");
+        stableSwapper.swap(USDC, DAI, 9900 * WAD, address(uniV3Callee), USDC_DAI_PATH);
     }
 
     function testSwapExceedingCount() public {
