@@ -35,7 +35,6 @@ contract DepositorTest is DssTest, TestUtils {
     event Withdraw(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1);
     event Collect(address indexed sender, address indexed gem0, address indexed gem1, uint256 amt0, uint256 amt1);
 
-
     AllocatorRoles public roles;
     AllocatorBuffer public buffer;
     Depositor public depositor;
