@@ -110,10 +110,10 @@ contract StableDepositor {
         int24   tickUpper;
         uint128 amt0;
         uint128 amt1;
-        uint128 minAmt0;
-        uint128 minAmt1;
-        uint128 reqAmt0;
-        uint128 reqAmt1;
+        uint128 amt0Min;
+        uint128 amt1Min;
+        uint128 amt0Req;
+        uint128 amt1Req;
     }
 
     function setConfig(address gemA, address gemB, PairConfig memory cfg) external toll {
@@ -124,7 +124,7 @@ contract StableDepositor {
 
     // Note: the keeper's minAmts value must be updated whenever configs[gem0][gem1] is changed.
     // Failing to do so may result in this call reverting or in taking on more slippage than intended (up to a limit controlled by configs[src][dst].reqOut).
-    function deposit(address gem0, address gem1, uint128 minAmt0, uint128 minAmt1)
+    function deposit(address gem0, address gem1, uint128 amt0Min, uint128 amt1Min)
         keep
         external
         returns (uint128 liquidity, uint256 amt0, uint256 amt1)
@@ -136,10 +136,10 @@ contract StableDepositor {
         require(cfg.count > 0, "StableDepositor/exceeds-count");
         configs[gem0][gem1].count = cfg.count - 1;
 
-        if (minAmt0 == 0) minAmt0 = cfg.reqAmt0;
-        if (minAmt1 == 0) minAmt1 = cfg.reqAmt1;
-        require(minAmt0 >= cfg.reqAmt0, "StableSwapper/min-amt0-too-small");
-        require(minAmt1 >= cfg.reqAmt1, "StableSwapper/min-amt1-too-small");
+        if (amt0Min == 0) amt0Min = cfg.amt0Req;
+        if (amt1Min == 0) amt1Min = cfg.amt1Req;
+        require(amt0Min >= cfg.amt0Req, "StableSwapper/min-amt0-too-small");
+        require(amt1Min >= cfg.amt1Req, "StableSwapper/min-amt1-too-small");
 
         DepositorLike.LiquidityParams memory p = DepositorLike.LiquidityParams({
             gem0       : gem0,
@@ -150,15 +150,15 @@ contract StableDepositor {
             liquidity  : 0,             // use desired amount
             amt0Desired: cfg.amt0,
             amt1Desired: cfg.amt1,
-            amt0Min    : minAmt0,
-            amt1Min    : minAmt1
+            amt0Min    : amt0Min,
+            amt1Min    : amt1Min
         });
         (liquidity, amt0, amt1) = depositor.deposit(p);
     }
 
     // Note: the keeper's minAmts value must be updated whenever configs[gem0][gem1] is changed.
     // Failing to do so may result in this call reverting or in taking on more slippage than intended (up to a limit controlled by configs[src][dst].reqOut).
-    function withdraw(address gem0, address gem1, uint128 minAmt0, uint128 minAmt1)
+    function withdraw(address gem0, address gem1, uint128 amt0Min, uint128 amt1Min)
         keep
         external
         returns (uint128 liquidity, uint256 amt0, uint256 amt1)
@@ -169,10 +169,10 @@ contract StableDepositor {
         require(cfg.count > 0, "StableDepositor/exceeds-count");
         configs[gem0][gem1].count = cfg.count - 1;
 
-        if (minAmt0 == 0) minAmt0 = cfg.reqAmt0;
-        if (minAmt1 == 0) minAmt1 = cfg.reqAmt1;
-        require(minAmt0 >= cfg.reqAmt0, "StableSwapper/min-amt0-too-small");
-        require(minAmt1 >= cfg.reqAmt1, "StableSwapper/min-amt1-too-small");
+        if (amt0Min == 0) amt0Min = cfg.amt0Req;
+        if (amt1Min == 0) amt1Min = cfg.amt1Req;
+        require(amt0Min >= cfg.amt0Req, "StableSwapper/min-amt0-too-small");
+        require(amt1Min >= cfg.amt1Req, "StableSwapper/min-amt1-too-small");
 
         DepositorLike.LiquidityParams memory p = DepositorLike.LiquidityParams({
             gem0       : gem0,
@@ -183,8 +183,8 @@ contract StableDepositor {
             liquidity  : 0,             // use desired amount
             amt0Desired: cfg.amt0,
             amt1Desired: cfg.amt1,
-            amt0Min    : minAmt0,
-            amt1Min    : minAmt1
+            amt0Min    : amt0Min,
+            amt1Min    : amt1Min
         });
         (liquidity, amt0, amt1) = depositor.withdraw(p, true);
     }
