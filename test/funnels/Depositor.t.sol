@@ -13,9 +13,16 @@ interface GemLike {
     function balanceOf(address) external view returns (uint256);
 }
 
-interface NftLike {
-    function balanceOf(address) external view returns (uint256);
-    function transferFrom(address, address, uint256) external;
+interface UniV3PoolLike {
+    struct PositionInfo {
+        uint128 liquidity;
+        uint256 feeGrowthInside0LastX128;
+        uint256 feeGrowthInside1LastX128;
+        uint128 tokensOwed0;
+        uint128 tokensOwed1;
+    }
+
+    function positions(bytes32) external view returns (PositionInfo memory);
 }
 
 interface SwapRouterLike {
@@ -32,20 +39,18 @@ interface SwapRouterLike {
 
 contract DepositorTest is DssTest, TestUtils {
     event Deposit(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1);
-    event Withdraw(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1);
-    event Collect(address indexed sender, address indexed gem0, address indexed gem1, uint256 amt0, uint256 amt1);
+    event Withdraw(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1, uint256 collected0, uint256 collected1);
+    event Collect(address indexed sender, address indexed gem0, address indexed gem1, uint256 collected0, uint256 collected1);
 
     AllocatorRoles public roles;
     AllocatorBuffer public buffer;
     Depositor public depositor;
-    UniV3SwapperCallee public uniV3Callee;
 
     bytes32 constant ilk = "aaa";
     bytes constant DAI_USDC_PATH = abi.encodePacked(DAI, uint24(100), USDC);
 
     address constant DAI           = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address constant USDC          = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-    address constant UNIV3_POS_MGR = 0xC36442b4a4522E871399CD717aBDD847Ab11FE88;
     address constant UNIV3_ROUTER  = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
     address constant UNIV3_FACTORY = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
 
@@ -59,7 +64,7 @@ contract DepositorTest is DssTest, TestUtils {
         
         buffer = new AllocatorBuffer();
         roles = new AllocatorRoles();
-        depositor = new Depositor(address(roles), ilk, UNIV3_FACTORY, UNIV3_POS_MGR, address(buffer));
+        depositor = new Depositor(address(roles), ilk, UNIV3_FACTORY, address(buffer));
 
         roles.setIlkAdmin(ilk, address(this));
         roles.setRoleAction(ilk, DEPOSITOR_ROLE, address(depositor), depositor.deposit.selector, true);
@@ -74,15 +79,13 @@ contract DepositorTest is DssTest, TestUtils {
         deal(USDC, address(buffer), 1_000_000 * 10**6, true);
         buffer.approve(USDC, address(depositor), type(uint256).max);
         buffer.approve(DAI,  address(depositor), type(uint256).max);
-        buffer.setApprovalForAll(UNIV3_POS_MGR,  address(depositor), true);
     }
 
     function testConstructor() public {
-        Depositor d = new Depositor(address(0xBEEF), "SubDAO 1", address(0xAAA), address(0xBBB), address(0xCCC));
+        Depositor d = new Depositor(address(0xBEEF), "SubDAO 1", address(0xAAA), address(0xCCC));
         assertEq(address(d.roles()),  address(0xBEEF));
         assertEq(d.ilk(), "SubDAO 1");
         assertEq(d.uniV3Factory(), address(0xAAA));
-        assertEq(d.uniV3PositionManager(), address(0xBBB));
         assertEq(d.buffer(), address(0xCCC));
         assertEq(d.wards(address(this)), 1);
     }
@@ -115,21 +118,42 @@ contract DepositorTest is DssTest, TestUtils {
         vm.prank(address(0xBEEF)); depositor.file("hop", address(0), address(0), 0);
     }
 
+    // https://github.com/Uniswap/v3-periphery/blob/464a8a49611272f7349c970e0fadb7ec1d3c1086/contracts/libraries/PoolAddress.sol#L33
+    function _getPool(address gem0, address gem1, uint24 fee) internal pure returns (UniV3PoolLike pool) {
+        pool = UniV3PoolLike(address(uint160(uint256(keccak256(abi.encodePacked(
+                hex'ff',
+                UNIV3_FACTORY,
+                keccak256(abi.encode(gem0, gem1, fee)),
+                bytes32(0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54) // POOL_INIT_CODE_HASH
+            ))))));
+    }
+
+    function _getLiquidity(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tickUpper)
+        internal
+        view
+        returns (uint128 liquidity)
+    {
+        return (_getPool(gem0, gem1, fee).
+            positions(keccak256(abi.encodePacked(address(depositor), tickLower, tickUpper)))).liquidity;
+
+    }
+
     function testDeposit() public {
-        assertEq(NftLike(UNIV3_POS_MGR).balanceOf(address(buffer)), 0);
+        assertEq(_getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100), 0);
         uint256 prevUSDC = GemLike(USDC).balanceOf(address(buffer));
         uint256 prevDAI = GemLike(DAI).balanceOf(address(buffer));
 
-        Depositor.DepositParams memory dp = Depositor.DepositParams({ 
+        Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
             gem0: DAI,
             gem1: USDC,
-            amt0: 500 * WAD, 
-            amt1: 500 * 10**6, 
-            minAmt0: 490 * WAD, 
-            minAmt1: 490 * 10**6, 
-            fee: uint24(100), 
-            tickLower: REF_TICK-100, 
-            tickUpper: REF_TICK+100
+            fee: uint24(100),
+            tickLower: REF_TICK-100,
+            tickUpper: REF_TICK+100,
+            liquidity: 0,
+            amt0Desired: 500 * WAD,
+            amt1Desired: 500 * 10**6,
+            amt0Min: 490 * WAD,
+            amt1Min: 490 * 10**6
         });
         vm.expectEmit(true, true, true, false);
         emit Deposit(FACILITATOR, DAI, USDC, 0, 0, 0);
@@ -139,7 +163,8 @@ contract DepositorTest is DssTest, TestUtils {
         assertLt(GemLike(USDC).balanceOf(address(buffer)), prevUSDC);
         assertEq(GemLike(DAI).balanceOf(address(depositor)), 0);
         assertEq(GemLike(USDC).balanceOf(address(depositor)), 0);
-        assertEq(NftLike(UNIV3_POS_MGR).balanceOf(address(buffer)), 1);
+        uint128 liquidityAfterDeposit = _getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100);
+        assertGt(liquidityAfterDeposit, 0);
         prevUSDC = GemLike(USDC).balanceOf(address(buffer));
         prevDAI = GemLike(DAI).balanceOf(address(buffer));
 
@@ -152,40 +177,21 @@ contract DepositorTest is DssTest, TestUtils {
         assertLt(GemLike(USDC).balanceOf(address(buffer)), prevUSDC);
         assertEq(GemLike(DAI).balanceOf(address(depositor)), 0);
         assertEq(GemLike(USDC).balanceOf(address(depositor)), 0);
-        assertEq(NftLike(UNIV3_POS_MGR).balanceOf(address(buffer)), 1);
-    }
-
-    function testDepositAfterHop() public {
-        Depositor.DepositParams memory dp = Depositor.DepositParams({
-            gem0: DAI,
-            gem1: USDC,
-            amt0: 500 * WAD,
-            amt1: 500 * 10**6,
-            minAmt0: 490 * WAD,
-            minAmt1: 490 * 10**6,
-            fee: uint24(100),
-            tickLower: REF_TICK-100,
-            tickUpper: REF_TICK+100
-        });
-        vm.prank(FACILITATOR); depositor.deposit(dp);
-
-        vm.warp(block.timestamp + depositor.hops(DAI, USDC));
-        vm.expectEmit(true, true, true, false);
-        emit Deposit(FACILITATOR, DAI, USDC, 0, 0, 0);
-        vm.prank(FACILITATOR); depositor.deposit(dp);
+        assertGt(_getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100), liquidityAfterDeposit);
     }
 
     function testCollect() public {
-        Depositor.DepositParams memory dp = Depositor.DepositParams({ 
+        Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
             gem0: DAI,
             gem1: USDC,
-            amt0: 500 * WAD, 
-            amt1: 500 * 10**6, 
-            minAmt0: 490 * WAD, 
-            minAmt1: 490 * 10**6, 
-            fee: uint24(100), 
-            tickLower: REF_TICK-100, 
-            tickUpper: REF_TICK+100
+            fee: uint24(100),
+            tickLower: REF_TICK-100,
+            tickUpper: REF_TICK+100,
+            liquidity: 0,
+            amt0Desired: 500 * WAD,
+            amt1Desired: 500 * 10**6,
+            amt0Min: 490 * WAD,
+            amt1Min: 490 * 10**6
         });
         vm.prank(FACILITATOR); depositor.deposit(dp);
         uint256 prevUSDC = GemLike(USDC).balanceOf(address(buffer));
@@ -203,7 +209,7 @@ contract DepositorTest is DssTest, TestUtils {
         });
         SwapRouterLike(UNIV3_ROUTER).exactInput(params);
 
-        Depositor.CollectParams memory cp = Depositor.CollectParams({ 
+        Depositor.CollectParams memory cp = Depositor.CollectParams({
             gem0: DAI,
             gem1: USDC,
             fee: uint24(100), 
@@ -225,34 +231,27 @@ contract DepositorTest is DssTest, TestUtils {
     function testWithdrawWithNoFeeCollection() public {
         uint256 initialUSDC = GemLike(USDC).balanceOf(address(buffer));
         uint256 initialDAI = GemLike(DAI).balanceOf(address(buffer));
-        Depositor.DepositParams memory dp = Depositor.DepositParams({ 
+        Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
             gem0: DAI,
             gem1: USDC,
-            amt0: 500 * WAD, 
-            amt1: 500 * 10**6, 
-            minAmt0: 490 * WAD, 
-            minAmt1: 490 * 10**6, 
-            fee: uint24(100), 
-            tickLower: REF_TICK-100, 
-            tickUpper: REF_TICK+100
+            fee: uint24(100),
+            tickLower: REF_TICK-100,
+            tickUpper: REF_TICK+100,
+            liquidity: 0,
+            amt0Desired: 500 * WAD,
+            amt1Desired: 500 * 10**6,
+            amt0Min: 490 * WAD,
+            amt1Min: 490 * 10**6
         });
         vm.prank(FACILITATOR); (uint128 liq, uint256 deposited0, uint256 deposited1) = depositor.deposit(dp);
+        assertGt(_getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100), 0);
 
-        Depositor.WithdrawParams memory wp = Depositor.WithdrawParams({ 
-            gem0: DAI,
-            gem1: USDC,
-            liquidity: liq,
-            minAmt0: 490 * WAD, 
-            minAmt1: 490 * 10**6,
-            fee: uint24(100), 
-            tickLower: REF_TICK-100, 
-            tickUpper: REF_TICK+100,
-            collectFees: false
-        });
+        dp.liquidity = liq;
+
         vm.warp(block.timestamp + 3600);
         vm.expectEmit(true, true, true, false);
-        emit Withdraw(FACILITATOR, DAI, USDC, liq, 0, 0);
-        vm.prank(FACILITATOR); (uint256 withdrawn0, uint256 withdrawn1) = depositor.withdraw(wp);
+        emit Withdraw(FACILITATOR, DAI, USDC, liq, 0, 0, 0, 0);
+        vm.prank(FACILITATOR); (, uint256 withdrawn0, uint256 withdrawn1) = depositor.withdraw(dp, false);
         
         assertTrue(withdrawn0 + 1 >= deposited0);
         assertTrue(withdrawn1 + 1 >= deposited1);
@@ -260,24 +259,26 @@ contract DepositorTest is DssTest, TestUtils {
         assertTrue(GemLike(USDC).balanceOf(address(buffer)) + 1 >= initialUSDC);
         assertEq(GemLike(DAI).balanceOf(address(depositor)), 0);
         assertEq(GemLike(USDC).balanceOf(address(depositor)), 0);
-        assertEq(NftLike(UNIV3_POS_MGR).balanceOf(address(buffer)), 1);
+        assertEq(_getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100), 0);
     }
 
     function testWithdrawWithFeeCollection() public {
         uint256 initialUSDC = GemLike(USDC).balanceOf(address(buffer));
         uint256 initialDAI = GemLike(DAI).balanceOf(address(buffer));
-        Depositor.DepositParams memory dp = Depositor.DepositParams({ 
+        Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
             gem0: DAI,
             gem1: USDC,
-            amt0: 500 * WAD, 
-            amt1: 500 * 10**6, 
-            minAmt0: 490 * WAD, 
-            minAmt1: 490 * 10**6, 
-            fee: uint24(100), 
-            tickLower: REF_TICK-100, 
-            tickUpper: REF_TICK+100
+            fee: uint24(100),
+            tickLower: REF_TICK-100,
+            tickUpper: REF_TICK+100,
+            liquidity: 0,
+            amt0Desired: 500 * WAD,
+            amt1Desired: 500 * 10**6,
+            amt0Min: 490 * WAD,
+            amt1Min: 490 * 10**6
         });
         vm.prank(FACILITATOR); (uint128 liq, uint256 deposited0, uint256 deposited1) = depositor.deposit(dp);
+        assertGt(_getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100), 0);
         uint256 prevUSDC = GemLike(USDC).balanceOf(address(buffer));
         uint256 prevDAI = GemLike(DAI).balanceOf(address(buffer));
 
@@ -293,21 +294,11 @@ contract DepositorTest is DssTest, TestUtils {
         });
         SwapRouterLike(UNIV3_ROUTER).exactInput(params);
 
-        Depositor.WithdrawParams memory wp = Depositor.WithdrawParams({ 
-            gem0: DAI,
-            gem1: USDC,
-            liquidity: liq,
-            minAmt0: 490 * WAD, 
-            minAmt1: 490 * 10**6,
-            fee: uint24(100), 
-            tickLower: REF_TICK-100, 
-            tickUpper: REF_TICK+100,
-            collectFees: true
-        });
+        dp.liquidity = liq;
         vm.warp(block.timestamp + 3600);
         vm.expectEmit(true, true, true, false);
-        emit Withdraw(FACILITATOR, DAI, USDC, liq, 0, 0);
-        vm.prank(FACILITATOR); (uint256 withdrawn0, uint256 withdrawn1) = depositor.withdraw(wp);
+        emit Withdraw(FACILITATOR, DAI, USDC, liq, 0, 0, 0, 0);
+        vm.prank(FACILITATOR); (, uint256 withdrawn0, uint256 withdrawn1) = depositor.withdraw(dp, true);
 
         assertTrue(
             (withdrawn0 > deposited0 && GemLike(DAI ).balanceOf(address(buffer)) > initialDAI ) || 
@@ -317,62 +308,73 @@ contract DepositorTest is DssTest, TestUtils {
         assertTrue(GemLike(USDC).balanceOf(address(buffer)) >= prevUSDC);
         assertEq(GemLike(DAI).balanceOf(address(depositor)), 0);
         assertEq(GemLike(USDC).balanceOf(address(depositor)), 0);
-        assertEq(NftLike(UNIV3_POS_MGR).balanceOf(address(buffer)), 1);        
+        assertEq(_getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100), 0);
     }
 
-    function testMoveLiquidity() public {
-        Depositor.DepositParams memory dp = Depositor.DepositParams({ 
+    function testWithdrawAmounts() public {
+        Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
             gem0: DAI,
             gem1: USDC,
-            amt0: 500 * WAD, 
-            amt1: 500 * 10**6, 
-            minAmt0: 490 * WAD, 
-            minAmt1: 490 * 10**6, 
-            fee: uint24(100), 
-            tickLower: REF_TICK-100, 
-            tickUpper: REF_TICK+100
+            fee: uint24(100),
+            tickLower: REF_TICK-100,
+            tickUpper: REF_TICK+100,
+            liquidity: 0,
+            amt0Desired: 500 * WAD,
+            amt1Desired: 500 * 10**6,
+            amt0Min: 490 * WAD,
+            amt1Min: 490 * 10**6
         });
-        vm.prank(FACILITATOR); depositor.deposit(dp);
-        bytes32 key = keccak256(abi.encode(dp.gem0, dp.gem1, dp.fee, dp.tickLower, dp.tickUpper));
-        uint256 tokenId = depositor.tokenIds(key);
-        address newBuffer = address(new AllocatorBuffer());
-        buffer.setApprovalForAll(UNIV3_POS_MGR, address(this), true);
-        assertEq(NftLike(UNIV3_POS_MGR).balanceOf(address(buffer)), 1);
-        assertEq(NftLike(UNIV3_POS_MGR).balanceOf(newBuffer), 0);
+        vm.prank(FACILITATOR); (uint128 liq, uint256 deposited0, uint256 deposited1) = depositor.deposit(dp);
+        assertGt(_getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100), 0);
 
-        NftLike(UNIV3_POS_MGR).transferFrom(address(buffer), newBuffer, tokenId);
+        dp.liquidity = 0;
+        dp.amt0Desired = deposited0;
+        dp.amt1Desired = deposited1;
 
-        assertEq(NftLike(UNIV3_POS_MGR).balanceOf(address(buffer)), 0);
-        assertEq(NftLike(UNIV3_POS_MGR).balanceOf(newBuffer), 1);
+        uint256 liquidityBeforeWithdraw = _getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100);
+
+        vm.warp(block.timestamp + 3600);
+        vm.expectEmit(true, true, true, false);
+        emit Withdraw(FACILITATOR, DAI, USDC, liq, 0, 0, 0, 0);
+        vm.prank(FACILITATOR); (, uint256 withdrawn0, uint256 withdrawn1) = depositor.withdraw(dp, false);
+
+        // due to liquidity from amounts calculation there is rounding dust
+        assertTrue(withdrawn0 * 100001 / 100000 >= deposited0);
+        assertTrue(withdrawn1 * 100001 / 100000 >= deposited1);
+        assertEq(GemLike(DAI).balanceOf(address(depositor)), 0);
+        assertEq(GemLike(USDC).balanceOf(address(depositor)), 0);
+        assertLe(_getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100), liquidityBeforeWithdraw);
     }
 
     function testDepositWrongGemOrder() public {
-        Depositor.DepositParams memory dp = Depositor.DepositParams({ 
+        Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
             gem0: USDC,
             gem1: DAI,
-            amt0: 1, 
-            amt1: 1, 
-            minAmt0: 0, 
-            minAmt1: 0, 
-            fee: uint24(100), 
-            tickLower: REF_TICK-100, 
-            tickUpper: REF_TICK+100
+            fee: uint24(100),
+            tickLower: REF_TICK-100,
+            tickUpper: REF_TICK+100,
+            liquidity: 0,
+            amt0Desired: 0,
+            amt1Desired: 0,
+            amt0Min: 0,
+            amt1Min: 0
         });
         vm.expectRevert("Depositor/wrong-gem-order");
         vm.prank(FACILITATOR); depositor.deposit(dp);
     }
 
     function testDepositTooSoon() public {
-        Depositor.DepositParams memory dp = Depositor.DepositParams({ 
+        Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
             gem0: DAI,
             gem1: USDC,
-            amt0: 500 * WAD, 
-            amt1: 500 * 10**6, 
-            minAmt0: 490 * WAD, 
-            minAmt1: 490 * 10**6, 
-            fee: uint24(100), 
-            tickLower: REF_TICK-100, 
-            tickUpper: REF_TICK+100
+            fee: uint24(100),
+            tickLower: REF_TICK-100,
+            tickUpper: REF_TICK+100,
+            liquidity: 0,
+            amt0Desired: 500 * WAD,
+            amt1Desired: 500 * 10**6,
+            amt0Min: 490 * WAD,
+            amt1Min: 490 * 10**6
         });
         vm.prank(FACILITATOR); depositor.deposit(dp);
         vm.expectRevert("Depositor/too-soon");
@@ -381,136 +383,128 @@ contract DepositorTest is DssTest, TestUtils {
 
     function testDepositExceedingCap() public {
         (uint128 cap0, uint128 cap1) = depositor.caps(DAI, USDC);
-        Depositor.DepositParams memory dp = Depositor.DepositParams({ 
+        Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
             gem0: DAI,
             gem1: USDC,
-            amt0: 2*cap0, 
-            amt1: 2*cap1, 
-            minAmt0: 0, 
-            minAmt1: 0, 
-            fee: uint24(100), 
-            tickLower: REF_TICK-100, 
-            tickUpper: REF_TICK+100
+            fee: uint24(100),
+            tickLower: REF_TICK-100,
+            tickUpper: REF_TICK+100,
+            liquidity: 0,
+            amt0Desired: 2 * cap0,
+            amt1Desired: 2 * cap1,
+            amt0Min: 0,
+            amt1Min: 0
         });
+
         vm.expectRevert("Depositor/exceeds-cap");
         vm.prank(FACILITATOR); depositor.deposit(dp);
     }
 
     function testDepositExceedingSlippage() public {
-        Depositor.DepositParams memory dp = Depositor.DepositParams({ 
+        Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
             gem0: DAI,
             gem1: USDC,
-            amt0: 500 * WAD, 
-            amt1: 500 * 10**6, 
-            minAmt0: 3*500 * WAD, 
-            minAmt1: 3*500 * 10**6, 
-            fee: uint24(100), 
-            tickLower: REF_TICK-100, 
-            tickUpper: REF_TICK+100
+            fee: uint24(100),
+            tickLower: REF_TICK-100,
+            tickUpper: REF_TICK+100,
+            liquidity: 0,
+            amt0Desired: 500 * WAD,
+            amt1Desired: 500 * 10**6,
+            amt0Min: 3 * 500 * WAD,
+            amt1Min: 3 * 500 * 10**6
         });
+
         vm.expectRevert("Depositor/exceeds-slippage");
         vm.prank(FACILITATOR); depositor.deposit(dp);
     }
 
     function testWithdrawWrongGemOrder() public {
-        Depositor.WithdrawParams memory wp = Depositor.WithdrawParams({ 
+        Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
             gem0: USDC,
             gem1: DAI,
-            liquidity: 0,
-            minAmt0: 0,
-            minAmt1: 0,
-            fee: uint24(100), 
-            tickLower: REF_TICK-100, 
+            fee: uint24(100),
+            tickLower: REF_TICK-100,
             tickUpper: REF_TICK+100,
-            collectFees: false
+            liquidity: 0,
+            amt0Desired: 0,
+            amt1Desired: 0,
+            amt0Min: 0,
+            amt1Min: 0
         });
+
         vm.expectRevert("Depositor/wrong-gem-order");
-        vm.prank(FACILITATOR); depositor.withdraw(wp);
+        vm.prank(FACILITATOR); depositor.withdraw(dp, false);
     }
 
     function testWithdrawTooSoon() public {
-        Depositor.DepositParams memory dp = Depositor.DepositParams({
+        Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
             gem0: DAI,
             gem1: USDC,
-            amt0: 500 * WAD,
-            amt1: 500 * 10**6,
-            minAmt0: 490 * WAD,
-            minAmt1: 490 * 10**6,
-            fee: uint24(100),
-            tickLower: REF_TICK-100,
-            tickUpper: REF_TICK+100
-        });
-        vm.prank(FACILITATOR); (uint128 liq,,) = depositor.deposit(dp);
-
-        Depositor.WithdrawParams memory wp = Depositor.WithdrawParams({
-            gem0: DAI,
-            gem1: USDC,
-            liquidity: liq / 2,
-            minAmt0: 490 * WAD,
-            minAmt1: 490 * 10**6,
             fee: uint24(100),
             tickLower: REF_TICK-100,
             tickUpper: REF_TICK+100,
-            collectFees: false
+            liquidity: 0,
+            amt0Desired: 500 * WAD,
+            amt1Desired: 500 * 10**6,
+            amt0Min: 490 * WAD,
+            amt1Min: 490 * 10**6
         });
+
+        vm.prank(FACILITATOR); (uint128 liq,,) = depositor.deposit(dp);
+        dp.liquidity = liq;
+
         vm.expectRevert("Depositor/too-soon");
-        vm.prank(FACILITATOR); depositor.withdraw(wp);
+        vm.prank(FACILITATOR); depositor.withdraw(dp, false);
     }
 
     function testWithdrawNoPosition() public {
-        Depositor.WithdrawParams memory wp = Depositor.WithdrawParams({ 
+        Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
             gem0: DAI,
             gem1: USDC,
-            liquidity: 123,
-            minAmt0: 0, 
-            minAmt1: 0,
-            fee: uint24(100), 
-            tickLower: REF_TICK-100, 
+            fee: uint24(100),
+            tickLower: REF_TICK-100,
             tickUpper: REF_TICK+100,
-            collectFees: false
+            liquidity: 1,
+            amt0Desired: 0,
+            amt1Desired: 0,
+            amt0Min: 0,
+            amt1Min: 0
         });
 
-        vm.expectRevert("Depositor/no-position");
-        vm.prank(FACILITATOR); depositor.withdraw(wp);
+        // "Liquidity Sub" error - https://github.com/Uniswap/v3-core/blob/d8b1c635c275d2a9450bd6a78f3fa2484fef73eb/contracts/libraries/LiquidityMath.sol#L12
+        vm.expectRevert(bytes("LS"));
+        vm.prank(FACILITATOR); depositor.withdraw(dp, false);
     }
 
     function testWithdrawExceedingCap() public {
-        Depositor.DepositParams memory dp = Depositor.DepositParams({ 
+        Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
             gem0: DAI,
             gem1: USDC,
-            amt0: 500 * WAD, 
-            amt1: 500 * 10**6, 
-            minAmt0: 490 * WAD, 
-            minAmt1: 490 * 10**6, 
-            fee: uint24(100), 
-            tickLower: REF_TICK-100, 
-            tickUpper: REF_TICK+100
+            fee: uint24(100),
+            tickLower: REF_TICK-100,
+            tickUpper: REF_TICK+100,
+            liquidity: 0,
+            amt0Desired: 500 * WAD,
+            amt1Desired: 500 * 10**6,
+            amt0Min: 490 * WAD,
+            amt1Min: 490 * 10**6
         });
         vm.prank(FACILITATOR); (uint128 liq,,) = depositor.deposit(dp);
         depositor.file("cap", DAI, USDC, uint128(1 * WAD), 1 * 10**6);
-        Depositor.WithdrawParams memory wp = Depositor.WithdrawParams({ 
-            gem0: DAI,
-            gem1: USDC,
-            liquidity: liq,
-            minAmt0: 490 * WAD, 
-            minAmt1: 490 * 10**6,
-            fee: uint24(100), 
-            tickLower: REF_TICK-100, 
-            tickUpper: REF_TICK+100,
-            collectFees: false
-        });
+
+        dp.liquidity = liq;
         vm.warp(block.timestamp + 3600);
 
         vm.expectRevert("Depositor/exceeds-cap");
-        vm.prank(FACILITATOR); depositor.withdraw(wp);
+        vm.prank(FACILITATOR); depositor.withdraw(dp, false);
     }
 
     function testCollectWrongGemOrder() public {
-        Depositor.CollectParams memory cp = Depositor.CollectParams({ 
+        Depositor.CollectParams memory cp = Depositor.CollectParams({
             gem0: USDC,
             gem1: DAI,
-            fee: uint24(100), 
-            tickLower: REF_TICK-100, 
+            fee: uint24(100),
+            tickLower: REF_TICK-100,
             tickUpper: REF_TICK+100
         });
 
@@ -519,15 +513,16 @@ contract DepositorTest is DssTest, TestUtils {
     }
 
     function testCollectNoPosition() public {
-        Depositor.CollectParams memory cp = Depositor.CollectParams({ 
+        Depositor.CollectParams memory cp = Depositor.CollectParams({
             gem0: DAI,
             gem1: USDC,
-            fee: uint24(100), 
-            tickLower: REF_TICK-100, 
+            fee: uint24(100),
+            tickLower: REF_TICK-100,
             tickUpper: REF_TICK+100
         });
 
-        vm.expectRevert("Depositor/no-position");
+        // 0 liquidity position - https://github.com/Uniswap/v3-core/blob/d8b1c635c275d2a9450bd6a78f3fa2484fef73eb/contracts/libraries/Position.sol#L54
+        vm.expectRevert(bytes("NP"));
         vm.prank(FACILITATOR); depositor.collect(cp);
     }
 }
