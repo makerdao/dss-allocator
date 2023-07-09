@@ -57,7 +57,7 @@ contract DepositorTest is DssTest, TestUtils {
     function setUp() public {
         vm.createSelectFork(vm.envString("ETH_RPC_URL"));
         
-        buffer = new AllocatorBuffer(ilk);
+        buffer = new AllocatorBuffer();
         roles = new AllocatorRoles();
         depositor = new Depositor(address(roles), ilk, UNIV3_FACTORY, UNIV3_POS_MGR, address(buffer));
 
@@ -335,7 +335,7 @@ contract DepositorTest is DssTest, TestUtils {
         vm.prank(FACILITATOR); depositor.deposit(dp);
         bytes32 key = keccak256(abi.encode(dp.gem0, dp.gem1, dp.fee, dp.tickLower, dp.tickUpper));
         uint256 tokenId = depositor.tokenIds(key);
-        address newBuffer = address(new AllocatorBuffer(ilk));
+        address newBuffer = address(new AllocatorBuffer());
         buffer.setApprovalForAll(UNIV3_POS_MGR, address(this), true);
         assertEq(NftLike(UNIV3_POS_MGR).balanceOf(address(buffer)), 1);
         assertEq(NftLike(UNIV3_POS_MGR).balanceOf(newBuffer), 0);
