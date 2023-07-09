@@ -80,19 +80,19 @@ contract StableDepositor {
     }
 
     modifier auth {
-        require(wards[msg.sender] == 1, "StableSwapper/not-authorized");
+        require(wards[msg.sender] == 1, "StableDepositor/not-authorized");
         _;
     }
 
     // permissionned to facilitators
     modifier toll {
-        require(buds[msg.sender] == 1, "StableSwapper/non-facilitator");
+        require(buds[msg.sender] == 1, "StableDepositor/non-facilitator");
         _;
     }
 
     // permissionned to whitelisted keepers
     modifier keep {
-        require(bots[msg.sender] == 1, "StableSwapper/non-keeper");
+        require(bots[msg.sender] == 1, "StableDepositor/non-keeper");
         _;
     }
 
@@ -110,8 +110,6 @@ contract StableDepositor {
         int24   tickUpper;
         uint128 amt0;
         uint128 amt1;
-        uint128 amt0Min;
-        uint128 amt1Min;
         uint128 amt0Req;
         uint128 amt1Req;
     }
@@ -138,8 +136,8 @@ contract StableDepositor {
 
         if (amt0Min == 0) amt0Min = cfg.amt0Req;
         if (amt1Min == 0) amt1Min = cfg.amt1Req;
-        require(amt0Min >= cfg.amt0Req, "StableSwapper/min-amt0-too-small");
-        require(amt1Min >= cfg.amt1Req, "StableSwapper/min-amt1-too-small");
+        require(amt0Min >= cfg.amt0Req, "StableDepositor/min-amt0-too-small");
+        require(amt1Min >= cfg.amt1Req, "StableDepositor/min-amt1-too-small");
 
         DepositorLike.LiquidityParams memory p = DepositorLike.LiquidityParams({
             gem0       : gem0,
@@ -171,8 +169,8 @@ contract StableDepositor {
 
         if (amt0Min == 0) amt0Min = cfg.amt0Req;
         if (amt1Min == 0) amt1Min = cfg.amt1Req;
-        require(amt0Min >= cfg.amt0Req, "StableSwapper/min-amt0-too-small");
-        require(amt1Min >= cfg.amt1Req, "StableSwapper/min-amt1-too-small");
+        require(amt0Min >= cfg.amt0Req, "StableDepositor/min-amt0-too-small");
+        require(amt1Min >= cfg.amt1Req, "StableDepositor/min-amt1-too-small");
 
         DepositorLike.LiquidityParams memory p = DepositorLike.LiquidityParams({
             gem0       : gem0,
@@ -189,6 +187,7 @@ contract StableDepositor {
         (liquidity, amt0, amt1) = depositor.withdraw(p, true);
     }
 
+    // TODO: should it really be toll?
     function collect(address gem0, address gem1) toll external returns (uint256 amt0, uint256 amt1) {
         // Note: we rely on Depositor to enforce p.gem0 < p.gem1
         PairConfig memory cfg = configs[gem0][gem1];
