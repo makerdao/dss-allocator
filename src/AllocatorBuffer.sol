@@ -23,10 +23,6 @@ interface TokenLike {
     function transferFrom(address, address, uint256) external;
 }
 
-interface NonFungibleTokenLike {
-    function setApprovalForAll(address _operator, bool _approved) external;
-}
-
 contract AllocatorBuffer {
     // --- storage variables ---
 
