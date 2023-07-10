@@ -186,7 +186,11 @@ contract StableDepositor {
         (liquidity, amt0, amt1) = depositor.withdraw(p, true);
     }
 
-    function collect(address gem0, address gem1) toll external returns (uint256 amt0, uint256 amt1) {
+    function collect(address gem0, address gem1)
+        keep
+        external
+        returns (uint256 amt0, uint256 amt1)
+    {
         // Note: we rely on Depositor to enforce gem0 < gem1
         PairConfig memory cfg = configs[gem0][gem1];
 

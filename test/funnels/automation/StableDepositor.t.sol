@@ -246,17 +246,6 @@ contract StableSwapperTest is DssTest {
 
         assertGt(GemLike(DAI).balanceOf(address(buffer)), afterDepositDai);
         assertGt(GemLike(USDC).balanceOf(address(buffer)), afterDepositUsdc);
-
-    }
-
-    function testDepositWithdrawNonKeeper() public {
-        assertEq(stableDepositor.buds(address(this)), 0);
-
-        vm.expectRevert("StableDepositor/non-keeper");
-        stableDepositor.deposit(DAI, USDC, uint128(491 * WAD), uint128(491 * 10**6));
-
-        vm.expectRevert("StableDepositor/non-keeper");
-        stableDepositor.withdraw(DAI, USDC, uint128(491 * WAD), uint128(491 * 10**6));
     }
 
     function testDepositWithdrawExceedingCount() public {
@@ -281,7 +270,7 @@ contract StableSwapperTest is DssTest {
         vm.prank(KEEPER); stableDepositor.deposit(DAI, USDC, uint128(491 * WAD), amt1Req - 1);
     }
 
-    function testCollectFromFacilitator() public {
+    function testCollectByKeeper() public {
         vm.warp(block.timestamp + 3600);
         vm.prank(KEEPER); stableDepositor.deposit(DAI, USDC, uint128(491 * WAD), uint128(491 * 10**6));
 
@@ -300,7 +289,7 @@ contract StableSwapperTest is DssTest {
         });
         SwapRouterLike(UNIV3_ROUTER).exactInput(params);
 
-        vm.prank(FACILITATOR); (uint256 amt0, uint256 amt1) = stableDepositor.collect(DAI, USDC);
+        vm.prank(KEEPER); (uint256 amt0, uint256 amt1) = stableDepositor.collect(DAI, USDC);
 
         assertTrue(
             (amt0 > 0 && GemLike(DAI ).balanceOf(address(buffer)) > prevDai ) ||
@@ -308,8 +297,16 @@ contract StableSwapperTest is DssTest {
         );
     }
 
-    function testCollectFromNonFacilitator() public {
-        vm.expectRevert("StableDepositor/non-facilitator");
+    function testOperationsNonKeeper() public {
+        assertEq(stableDepositor.bots(address(this)), 0);
+
+        vm.expectRevert("StableDepositor/non-keeper");
+        stableDepositor.deposit(DAI, USDC, uint128(491 * WAD), uint128(491 * 10**6));
+
+        vm.expectRevert("StableDepositor/non-keeper");
+        stableDepositor.withdraw(DAI, USDC, uint128(491 * WAD), uint128(491 * 10**6));
+
+        vm.expectRevert("StableDepositor/non-keeper");
         vm.prank(address(0x123)); (uint256 amt0, uint256 amt1) = stableDepositor.collect(DAI, USDC);
     }
 }
