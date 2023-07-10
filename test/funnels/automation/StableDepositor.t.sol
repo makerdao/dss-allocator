@@ -27,9 +27,9 @@ interface SwapRouterLike {
 }
 
 contract StableSwapperTest is DssTest, TestUtils {
-    event Kiss (address indexed usr);
-    event Diss (address indexed usr);
-    event Config (address indexed src, address indexed dst, StableDepositor.PairConfig data);
+    event Kiss(address indexed usr);
+    event Diss(address indexed usr);
+    event Config(address indexed src, address indexed dst, StableDepositor.PairConfig data);
     
     AllocatorBuffer public buffer;
     Depositor       public depositor;

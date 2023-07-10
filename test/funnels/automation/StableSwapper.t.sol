@@ -10,10 +10,10 @@ import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
 import { TestUtils } from "test/utils/TestUtils.sol";
 
 contract StableSwapperTest is DssTest, TestUtils {
-    event Kiss (address indexed usr);
-    event Diss (address indexed usr);
-    event Config (address indexed src, address indexed dst, StableSwapper.PairConfig data);
-    event Swap (address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
+    event Kiss(address indexed usr);
+    event Diss(address indexed usr);
+    event Config(address indexed src, address indexed dst, StableSwapper.PairConfig data);
+    event Swap(address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
 
     AllocatorBuffer public buffer;
     Swapper public swapper;

@@ -22,7 +22,7 @@ contract CalleeMock is DssTest {
 }
 
 contract SwapperTest is DssTest, TestUtils {
-    event Swap (address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
+    event Swap(address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
 
     AllocatorRoles public roles;
     AllocatorBuffer public buffer;
