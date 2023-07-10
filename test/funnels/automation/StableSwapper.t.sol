@@ -13,7 +13,7 @@ contract StableSwapperTest is DssTest {
     event Dissed (address indexed usr);
     event Permit (address indexed usr);
     event Forbid (address indexed usr);
-    event Config (address indexed src, address indexed dst,StableSwapper.PairConfig data);
+    event Config (address indexed src, address indexed dst, StableSwapper.PairConfig data);
     event Swap (address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
 
     AllocatorBuffer public buffer;
@@ -150,11 +150,6 @@ contract StableSwapperTest is DssTest {
     function testSetConfigByNonFacilitator() public {
         assertEq(stableSwapper.buds(address(this)), 0);
         vm.expectRevert("StableSwapper/non-facilitator");
-        emit Config(address(0x123), address(0x456), StableSwapper.PairConfig({
-            count: 23,
-            lot: uint96(314),
-            reqOut: uint112(42)
-        }));
         stableSwapper.setConfig(address(0x123), address(0x456), StableSwapper.PairConfig({
             count: 23,
             lot: uint96(314),
