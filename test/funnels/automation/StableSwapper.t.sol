@@ -7,12 +7,11 @@ import { StableSwapper } from "src/funnels/automation/StableSwapper.sol";
 import { UniV3SwapperCallee } from "src/funnels/callees/UniV3SwapperCallee.sol";
 import { AllocatorRoles } from "src/AllocatorRoles.sol";
 import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
+import { TestUtils } from "test/utils/TestUtils.sol";
 
-contract StableSwapperTest is DssTest {
-    event Kissed (address indexed usr);
-    event Dissed (address indexed usr);
-    event Permit (address indexed usr);
-    event Forbid (address indexed usr);
+contract StableSwapperTest is DssTest, TestUtils {
+    event Kiss (address indexed usr);
+    event Diss (address indexed usr);
     event Config (address indexed src, address indexed dst, StableSwapper.PairConfig data);
     event Swap (address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
 
@@ -58,7 +57,7 @@ contract StableSwapperTest is DssTest {
         buffer.approve(USDC, address(swapper), type(uint256).max);
         buffer.approve(DAI,  address(swapper), type(uint256).max);
 
-        stableSwapper.kiss(FACILITATOR);
+        stableSwapper.rely(FACILITATOR);
         vm.startPrank(FACILITATOR); 
         stableSwapper.setConfig(DAI, USDC, StableSwapper.PairConfig({ 
                count: 10,
@@ -70,7 +69,7 @@ contract StableSwapperTest is DssTest {
                  lot: uint96(10_000 * 10**6), 
               reqOut: uint112(9900 * WAD)
         }));
-        stableSwapper.permit(KEEPER);
+        stableSwapper.kiss(KEEPER);
         vm.stopPrank();
     }
 
@@ -84,16 +83,25 @@ contract StableSwapperTest is DssTest {
         checkAuth(address(stableSwapper), "StableSwapper");
     }
 
+    function testModifiers() public {
+        bytes4[] memory authedMethods = new bytes4[](1);
+        authedMethods[0] = stableSwapper.setConfig.selector;
+
+        vm.startPrank(address(0xBEEF));
+        checkModifierForLargeArgs(address(stableSwapper), "StableSwapper/not-authorized", authedMethods);
+        vm.stopPrank();
+    }
+
     function testKissDiss() public {
         address testAddress = address(0x123);
 
         assertEq(stableSwapper.buds(testAddress), 0);
         vm.expectEmit(true, true, true, true);
-        emit Kissed(testAddress);
+        emit Kiss(testAddress);
         stableSwapper.kiss(testAddress);
         assertEq(stableSwapper.buds(testAddress), 1);
         vm.expectEmit(true, true, true, true);
-        emit Dissed(testAddress);
+        emit Diss(testAddress);
         stableSwapper.diss(testAddress);
         assertEq(stableSwapper.buds(testAddress), 0);
 
@@ -103,28 +111,6 @@ contract StableSwapperTest is DssTest {
         stableSwapper.kiss(testAddress);
         vm.expectRevert("StableSwapper/not-authorized");
         stableSwapper.diss(testAddress);
-    }
-
-    function testPermitForbid() public {
-        address testAddress = address(0x123);
-        stableSwapper.kiss(address(this));
-
-        assertEq(stableSwapper.bots(testAddress), 0);
-        vm.expectEmit(true, true, true, true);
-        emit Permit(testAddress);
-        stableSwapper.permit(testAddress);
-        assertEq(stableSwapper.bots(testAddress), 1);
-        vm.expectEmit(true, true, true, true);
-        emit Forbid(testAddress);
-        stableSwapper.forbid(testAddress);
-        assertEq(stableSwapper.bots(testAddress), 0);
-
-        stableSwapper.diss(address(this));
-
-        vm.expectRevert("StableSwapper/non-facilitator");
-        stableSwapper.permit(testAddress);
-        vm.expectRevert("StableSwapper/non-facilitator");
-        stableSwapper.forbid(testAddress);
     }
 
     function testSetConfig() public {
@@ -145,16 +131,6 @@ contract StableSwapperTest is DssTest {
         assertEq(count, 23);
         assertEq(lot, 314);
         assertEq(reqOut, 42);
-    }
-
-    function testSetConfigByNonFacilitator() public {
-        assertEq(stableSwapper.buds(address(this)), 0);
-        vm.expectRevert("StableSwapper/non-facilitator");
-        stableSwapper.setConfig(address(0x123), address(0x456), StableSwapper.PairConfig({
-            count: 23,
-            lot: uint96(314),
-            reqOut: uint112(42)
-        }));
     }
 
     function testSwapByKeeper() public {

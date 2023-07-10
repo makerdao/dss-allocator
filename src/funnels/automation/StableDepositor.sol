@@ -59,7 +59,6 @@ interface DepositorLike {
 contract StableDepositor {
     mapping (address => uint256) public wards;
     mapping (address => uint256) public buds;
-    mapping (address => uint256) public bots;
     mapping (address => mapping (address => PairConfig)) public configs;
 
     DepositorLike public immutable depositor;
@@ -68,8 +67,6 @@ contract StableDepositor {
     event Deny  (address indexed usr);
     event Kiss  (address indexed usr);
     event Diss  (address indexed usr);
-    event Permit(address indexed usr);
-    event Forbid(address indexed usr);
     event Config(address indexed gemA, address indexed gemB, PairConfig data);
 
     constructor(address _depositor) {
@@ -84,15 +81,9 @@ contract StableDepositor {
         _;
     }
 
-    // permissionned to facilitators
-    modifier toll {
-        require(buds[msg.sender] == 1, "StableDepositor/non-facilitator");
-        _;
-    }
-
     // permissionned to whitelisted keepers
-    modifier keep {
-        require(bots[msg.sender] == 1, "StableDepositor/non-keeper");
+    modifier toll {
+        require(buds[msg.sender] == 1, "StableDepositor/non-keeper");
         _;
     }
 
@@ -100,8 +91,6 @@ contract StableDepositor {
     function deny  (address usr) external auth { wards[usr] = 0; emit Deny(usr); }
     function kiss  (address usr) external auth {  buds[usr] = 1; emit Kiss(usr); }
     function diss  (address usr) external auth {  buds[usr] = 0; emit Diss(usr); }
-    function permit(address usr) external toll {  bots[usr] = 1; emit Permit(usr); }
-    function forbid(address usr) external toll {  bots[usr] = 0; emit Forbid(usr); }
 
     struct PairConfig {
         uint32  count;
@@ -114,7 +103,7 @@ contract StableDepositor {
         uint128 amt1Req;
     }
 
-    function setConfig(address gemA, address gemB, PairConfig memory cfg) external toll {
+    function setConfig(address gemA, address gemB, PairConfig memory cfg) external auth {
         (address gem0, address gem1) = gemA < gemB ? (gemA, gemB) : (gemB, gemA);
         configs[gem0][gem1] = cfg;
         emit Config(gemA, gemB, cfg);
@@ -123,7 +112,7 @@ contract StableDepositor {
     // Note: the keeper's minAmts value must be updated whenever configs[gem0][gem1] is changed.
     // Failing to do so may result in this call reverting or in taking on more slippage than intended (up to a limit controlled by configs[src][dst].reqOut).
     function deposit(address gem0, address gem1, uint128 amt0Min, uint128 amt1Min)
-        keep
+        toll
         external
         returns (uint128 liquidity, uint256 amt0, uint256 amt1)
     {
@@ -156,7 +145,7 @@ contract StableDepositor {
     // Note: the keeper's minAmts value must be updated whenever configs[gem0][gem1] is changed.
     // Failing to do so may result in this call reverting or in taking on more slippage than intended (up to a limit controlled by configs[src][dst].reqOut).
     function withdraw(address gem0, address gem1, uint128 amt0Min, uint128 amt1Min)
-        keep
+        toll
         external
         returns (uint128 liquidity, uint256 amt0, uint256 amt1)
     {
@@ -187,7 +176,7 @@ contract StableDepositor {
     }
 
     function collect(address gem0, address gem1)
-        keep
+        toll
         external
         returns (uint256 amt0, uint256 amt1)
     {

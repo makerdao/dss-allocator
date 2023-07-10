@@ -6,6 +6,7 @@ import { Depositor } from "src/funnels/Depositor.sol";
 import { StableDepositor } from "src/funnels/automation/StableDepositor.sol";
 import { AllocatorRoles } from "src/AllocatorRoles.sol";
 import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
+import { TestUtils } from "test/utils/TestUtils.sol";
 
 interface GemLike {
     function balanceOf(address) external view returns (uint256);
@@ -25,11 +26,9 @@ interface SwapRouterLike {
     }
 }
 
-contract StableSwapperTest is DssTest {
+contract StableSwapperTest is DssTest, TestUtils {
     event Kiss (address indexed usr);
     event Diss (address indexed usr);
-    event Permit (address indexed usr);
-    event Forbid (address indexed usr);
     event Config (address indexed src, address indexed dst, StableDepositor.PairConfig data);
     
     AllocatorBuffer public buffer;
@@ -74,7 +73,7 @@ contract StableSwapperTest is DssTest {
         buffer.approve(USDC, address(depositor), type(uint256).max);
         buffer.approve(DAI,  address(depositor), type(uint256).max);
 
-        stableDepositor.kiss(FACILITATOR);
+        stableDepositor.rely(FACILITATOR);
         vm.startPrank(FACILITATOR); 
         stableDepositor.setConfig(DAI, USDC, StableDepositor.PairConfig({ 
             count    : 10,
@@ -87,7 +86,7 @@ contract StableSwapperTest is DssTest {
             amt1Req  : uint128(490 * 10**6)
         }));
 
-        stableDepositor.permit(KEEPER);
+        stableDepositor.kiss(KEEPER);
         vm.stopPrank();
     }
 
@@ -99,6 +98,15 @@ contract StableSwapperTest is DssTest {
 
     function testAuth() public {
         checkAuth(address(stableDepositor), "StableDepositor");
+    }
+
+    function testModifiers() public {
+        bytes4[] memory authedMethods = new bytes4[](1);
+        authedMethods[0] = stableDepositor.setConfig.selector;
+
+        vm.startPrank(address(0xBEEF));
+        checkModifierForLargeArgs(address(stableDepositor), "StableDepositor/not-authorized", authedMethods);
+        vm.stopPrank();
     }
 
     function testKissDiss() public {
@@ -120,28 +128,6 @@ contract StableSwapperTest is DssTest {
         stableDepositor.kiss(testAddress);
         vm.expectRevert("StableDepositor/not-authorized");
         stableDepositor.diss(testAddress);
-    }
-
-    function testPermitForbid() public {
-        address testAddress = address(0x123);
-        stableDepositor.kiss(address(this));
-
-        assertEq(stableDepositor.bots(testAddress), 0);
-        vm.expectEmit(true, true, true, true);
-        emit Permit(testAddress);
-        stableDepositor.permit(testAddress);
-        assertEq(stableDepositor.bots(testAddress), 1);
-        vm.expectEmit(true, true, true, true);
-        emit Forbid(testAddress);
-        stableDepositor.forbid(testAddress);
-        assertEq(stableDepositor.bots(testAddress), 0);
-
-        stableDepositor.diss(address(this));
-
-        vm.expectRevert("StableDepositor/non-facilitator");
-        stableDepositor.permit(testAddress);
-        vm.expectRevert("StableDepositor/non-facilitator");
-        stableDepositor.forbid(testAddress);
     }
 
     function testSetConfig() public {
@@ -186,21 +172,6 @@ contract StableSwapperTest is DssTest {
         assertEq(amt1     , uint128(8));
         assertEq(amt0Req  , uint128(9));
         assertEq(amt1Req  , uint128(10));
-    }
-
-    function testSetConfigByNonFacilitator() public {
-        assertEq(stableDepositor.buds(address(this)), 0);
-        vm.expectRevert("StableDepositor/non-facilitator");
-        stableDepositor.setConfig(address(0x123), address(0x456), StableDepositor.PairConfig({
-            count    : 23,
-            fee      : uint24(314),
-            tickLower: 5,
-            tickUpper: 6,
-            amt0     : uint128(7),
-            amt1     : uint128(8),
-            amt0Req  : uint128(9),
-            amt1Req  : uint128(10)
-        }));
     }
 
     function testDepositWithdrawByKeeper() public {
@@ -298,7 +269,7 @@ contract StableSwapperTest is DssTest {
     }
 
     function testOperationsNonKeeper() public {
-        assertEq(stableDepositor.bots(address(this)), 0);
+        assertEq(stableDepositor.buds(address(this)), 0);
 
         vm.expectRevert("StableDepositor/non-keeper");
         stableDepositor.deposit(DAI, USDC, uint128(491 * WAD), uint128(491 * 10**6));
@@ -307,6 +278,6 @@ contract StableSwapperTest is DssTest {
         stableDepositor.withdraw(DAI, USDC, uint128(491 * WAD), uint128(491 * 10**6));
 
         vm.expectRevert("StableDepositor/non-keeper");
-        vm.prank(address(0x123)); (uint256 amt0, uint256 amt1) = stableDepositor.collect(DAI, USDC);
+        vm.prank(address(0x123)); stableDepositor.collect(DAI, USDC);
     }
 }
