@@ -41,10 +41,10 @@ contract Swapper {
     RolesLike public immutable roles;                 // Contract managing access control for this Depositor
     bytes32   public immutable ilk;
 
-    event Rely (address indexed usr);
-    event Deny (address indexed usr);
-    event File (bytes32 indexed what, address indexed src, address indexed dst, uint256 data);
-    event Swap (address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
+    event Rely(address indexed usr);
+    event Deny(address indexed usr);
+    event File(bytes32 indexed what, address indexed src, address indexed dst, uint256 data);
+    event Swap(address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
 
     constructor(address roles_, bytes32 ilk_, address buffer_) {
         roles = RolesLike(roles_);
@@ -59,8 +59,15 @@ contract Swapper {
         _;
     }
 
-    function rely(address usr) external auth { wards[usr] = 1; emit Rely(usr); }
-    function deny(address usr) external auth { wards[usr] = 0; emit Deny(usr); }
+    function rely(address usr) external auth {
+        wards[usr] = 1;
+        emit Rely(usr);
+    }
+
+    function deny(address usr) external auth {
+        wards[usr] = 0;
+        emit Deny(usr);
+    }
 
     function file(bytes32 what, address src, address dst, uint256 data) external auth {
         if      (what == "cap")  caps[src][dst] = data;

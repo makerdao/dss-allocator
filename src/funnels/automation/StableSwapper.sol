@@ -30,12 +30,12 @@ contract StableSwapper {
 
     address public immutable swapper;                                    // Swapper for this StableSwapper
 
-    event Rely   (address indexed usr);
-    event Deny   (address indexed usr);
-    event Kiss   (address indexed usr);
-    event Diss   (address indexed usr);
-    event File   (bytes32 indexed what, address data);
-    event Config (address indexed src, address indexed dst, PairConfig data);
+    event Rely  (address indexed usr);
+    event Deny  (address indexed usr);
+    event Kiss  (address indexed usr);
+    event Diss  (address indexed usr);
+    event File  (bytes32 indexed what, address data);
+    event Config(address indexed src, address indexed dst, PairConfig data);
 
     constructor(address swapper_) {
         swapper = swapper_;
@@ -56,10 +56,25 @@ contract StableSwapper {
 
     uint256 internal constant WAD = 10 ** 18;
 
-    function rely  (address usr) external auth { wards[usr] = 1; emit Rely(usr); }
-    function deny  (address usr) external auth { wards[usr] = 0; emit Deny(usr); }
-    function kiss  (address usr) external auth {  buds[usr] = 1; emit Kiss(usr); }
-    function diss  (address usr) external auth {  buds[usr] = 0; emit Diss(usr); }
+    function rely(address usr) external auth {
+        wards[usr] = 1;
+        emit Rely(usr);
+    }
+
+    function deny(address usr) external auth {
+        wards[usr] = 0;
+        emit Deny(usr);
+    }
+
+    function kiss(address usr) external auth {
+        buds[usr] = 1;
+        emit Kiss(usr);
+    }
+
+    function diss(address usr) external auth {
+        buds[usr] = 0;
+        emit Diss(usr);
+    }
 
     struct PairConfig {
         uint32 count;

@@ -87,10 +87,25 @@ contract StableDepositor {
         _;
     }
 
-    function rely  (address usr) external auth { wards[usr] = 1; emit Rely(usr); }
-    function deny  (address usr) external auth { wards[usr] = 0; emit Deny(usr); }
-    function kiss  (address usr) external auth {  buds[usr] = 1; emit Kiss(usr); }
-    function diss  (address usr) external auth {  buds[usr] = 0; emit Diss(usr); }
+    function rely(address usr) external auth {
+        wards[usr] = 1;
+        emit Rely(usr);
+    }
+
+    function deny(address usr) external auth {
+        wards[usr] = 0;
+        emit Deny(usr);
+    }
+
+    function kiss(address usr) external auth {
+        buds[usr] = 1;
+        emit Kiss(usr);
+    }
+
+    function diss(address usr) external auth {
+        buds[usr] = 0;
+        emit Diss(usr);
+    }
 
     struct PairConfig {
         uint32  count;

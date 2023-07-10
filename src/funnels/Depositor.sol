@@ -101,8 +101,15 @@ contract Depositor {
         _;
     }
 
-    function rely(address usr) external auth { wards[usr] = 1; emit Rely(usr); }
-    function deny(address usr) external auth { wards[usr] = 0; emit Deny(usr); }
+    function rely(address usr) external auth {
+        wards[usr] = 1;
+        emit Rely(usr);
+    }
+
+    function deny(address usr) external auth {
+        wards[usr] = 0;
+        emit Deny(usr);
+    }
 
     function file(bytes32 what, address gemA, address gemB, uint256 data) external auth {
         (address gem0, address gem1) = gemA < gemB ? (gemA, gemB) : (gemB, gemA);
