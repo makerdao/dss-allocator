@@ -120,13 +120,6 @@ contract Depositor {
         emit File(what, gemA, gemB, dataA, dataB);
     }
 
-    struct MintCallbackData {
-        address gem0;
-        address gem1;
-        uint24  fee;
-        address payer;
-    }
-
     // https://github.com/Uniswap/v3-periphery/blob/464a8a49611272f7349c970e0fadb7ec1d3c1086/contracts/libraries/PoolAddress.sol#L33
     function _getPool(address gem0, address gem1, uint24 fee) internal view returns (UniV3PoolLike pool) {
         pool = UniV3PoolLike(address(uint160(uint256(keccak256(abi.encodePacked(
@@ -158,6 +151,13 @@ contract Depositor {
         );
     }
 
+    struct MintCallbackData {
+        address gem0;
+        address gem1;
+        uint24  fee;
+        address payer;
+    }
+
     // https://github.com/Uniswap/v3-core/blob/d8b1c635c275d2a9450bd6a78f3fa2484fef73eb/contracts/interfaces/callback/IUniswapV3MintCallback.sol#L6
     function uniswapV3MintCallback(
         uint256        amt0Owed,
@@ -166,7 +166,7 @@ contract Depositor {
     ) external {
         MintCallbackData memory decoded = abi.decode(data, (MintCallbackData));
         address pool = address(_getPool(decoded.gem0, decoded.gem1, decoded.fee));
-        require(msg.sender == pool);
+        require(msg.sender == pool, "Depositor/sender-not-a-pool");
 
         if (amt0Owed > 0) GemLike(decoded.gem0).transferFrom(decoded.payer, msg.sender, amt0Owed);
         if (amt0Owed > 0) GemLike(decoded.gem1).transferFrom(decoded.payer, msg.sender, amt1Owed);
