@@ -13,7 +13,7 @@ contract StableSwapperTest is DssTest {
     event Dissed (address indexed usr);
     event Permit (address indexed usr);
     event Forbid (address indexed usr);
-    event Config (address indexed src, address indexed dst,StableSwapper.PairConfig data);
+    event Config (address indexed src, address indexed dst, StableSwapper.PairConfig data);
     event Swap (address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
 
     AllocatorBuffer public buffer;
