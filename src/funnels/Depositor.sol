@@ -137,7 +137,6 @@ contract Depositor {
         uint256       amt0Desired,
         uint256       amt1Desired
     ) internal view returns (uint128 liquidity) {
-
         (uint160 sqrtPriceX96, , , , , , ) = pool.slot0();
         uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(tickLower);
         uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(tickUpper);

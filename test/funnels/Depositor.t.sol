@@ -52,6 +52,7 @@ contract DepositorTest is DssTest, TestUtils {
 
     address constant DAI           = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address constant USDC          = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address constant DAI_USDC_POOL = 0x5777d92f208679DB4b9778590Fa3CAB3aC9e2168;
     address constant UNIV3_ROUTER  = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
     address constant UNIV3_FACTORY = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
 
@@ -525,5 +526,33 @@ contract DepositorTest is DssTest, TestUtils {
         // 0 liquidity position - https://github.com/Uniswap/v3-core/blob/d8b1c635c275d2a9450bd6a78f3fa2484fef73eb/contracts/libraries/Position.sol#L54
         vm.expectRevert(bytes("NP"));
         vm.prank(FACILITATOR); depositor.collect(cp);
+    }
+
+    function testMintCallback() public {
+        uint256 initialDAI      = GemLike(DAI).balanceOf(address(buffer));
+        uint256 initialPoolDAI  = GemLike(DAI).balanceOf(DAI_USDC_POOL);
+        uint256 initialUSDC     = GemLike(USDC).balanceOf(address(buffer));
+        uint256 initialPoolUSDC = GemLike(USDC).balanceOf(DAI_USDC_POOL);
+
+        vm.prank(DAI_USDC_POOL);
+            depositor.uniswapV3MintCallback({
+            amt0Owed: 1,
+            amt1Owed: 2,
+            data: abi.encode(Depositor.MintCallbackData({gem0: DAI, gem1: USDC, fee: 100, payer: address(buffer)}))
+        });
+
+        assertEq(GemLike(DAI).balanceOf(address(buffer)), initialDAI - 1);
+        assertEq(GemLike(USDC).balanceOf(address(buffer)), initialUSDC - 2);
+        assertEq(GemLike(DAI).balanceOf(DAI_USDC_POOL), initialPoolDAI + 1);
+        assertEq(GemLike(USDC).balanceOf(DAI_USDC_POOL), initialPoolUSDC + 2);
+    }
+
+    function testMintCallbackNotFromPool() public {
+        vm.expectRevert("Depositor/sender-not-a-pool");
+        depositor.uniswapV3MintCallback({
+            amt0Owed: 1,
+            amt1Owed: 2,
+            data: abi.encode(Depositor.MintCallbackData({gem0: DAI, gem1: USDC, fee: 100, payer: address(buffer)}))
+        });
     }
 }
