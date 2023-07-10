@@ -66,11 +66,6 @@ contract AllocatorBuffer {
 
     // --- functions ---
 
-    function setApprovalForAll(address asset, address spender, bool approved) external auth {
-        NonFungibleTokenLike(asset).setApprovalForAll(spender, approved);
-        emit Approve(asset, spender, approved ? 1 : 0);
-    }
-
     function approve(address asset, address spender, uint256 amount) external auth {
         TokenLike(asset).approve(spender, amount);
         emit Approve(asset, spender, amount);
