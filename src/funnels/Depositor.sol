@@ -68,10 +68,10 @@ contract Depositor {
     mapping (address => mapping (address => uint256)) public zzz;  // [seconds] zzz[gem0][gem1] is the timestamp of the last liquidity change for a (gem0, gem1) pool
     mapping (address => mapping (address => Cap))     public caps; // [amt]     caps[gem0][gem1] is the tuple (amt0, amt1) indicating the maximum amt of (gem0, gem1) that can be added as liquidity each hop for a (gem0, gem1) pool
 
-    address   public immutable buffer;       // Contract from/to which the two tokens that make up the liquidity position are pulled/pushed
     RolesLike public immutable roles;        // Contract managing access control for this Depositor
     bytes32   public immutable ilk;          // Collateral type
     address   public immutable uniV3Factory; // Uniswap V3 factory
+    address   public immutable buffer;       // Contract from/to which the two tokens that make up the liquidity position are pulled/pushed
 
     struct Cap {
         uint128 amt0;

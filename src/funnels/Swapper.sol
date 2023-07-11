@@ -37,9 +37,9 @@ contract Swapper {
     mapping (address => mapping (address => uint256)) public caps; // [weis]     caps[src][dst] is the maximum amount that can be swapped each hop when swapping `src` to `dst`.
 
 
-    address   public immutable buffer;                // Contract from which the GEM to sell is pulled and to which the bought GEM is pushed
     RolesLike public immutable roles;                 // Contract managing access control for this Depositor
     bytes32   public immutable ilk;
+    address   public immutable buffer;                // Contract from which the GEM to sell is pulled and to which the bought GEM is pushed
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
