@@ -39,10 +39,10 @@ interface SwapRouterLike {
 }
 
 contract DepositorTest is DssTest, TestUtils {
+    event File(bytes32 indexed what, address indexed src, address indexed dst, uint256 data);
     event Deposit(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1);
     event Withdraw(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1, uint256 collected0, uint256 collected1);
     event Collect(address indexed sender, address indexed gem0, address indexed gem1, uint256 collected0, uint256 collected1);
-
 
     AllocatorRoles public roles;
     AllocatorBuffer public buffer;
@@ -109,8 +109,23 @@ contract DepositorTest is DssTest, TestUtils {
     }
 
     function testFile() public {
-        checkFileUintForGemPair(address(depositor), "Depositor", ["hop"]);
         checkFileUint128PairForGemPair(address(depositor), "Depositor", ["cap"]);
+    }
+
+    function testFileHop() public {
+        vm.expectEmit(true, true, true, true);
+        emit File("hop", address(0x123), address(0x456), 23);
+        depositor.file("hop", address(0x123), address(0x456), 23);
+        (uint64 hop,) = depositor.timings(address(0x123), address(0x456));
+        assertEq(hop, 23);
+
+        vm.expectRevert("Depositor/not-authorized");
+        vm.prank(address(0x789)); depositor.file("hop", address(0x123), address(0x456), 23);
+    }
+
+    function testFileUintUnrecognizedParam() public {
+        vm.expectRevert("Depositor/file-unrecognized-param");
+        depositor.file("wrong", address(0x123), address(0x456), 0);
     }
 
     function testRoles() public {
@@ -141,7 +156,7 @@ contract DepositorTest is DssTest, TestUtils {
 
     }
 
-    function testDeposit() public {
+    function testDepositX() public {
         assertEq(_getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100), 0);
         uint256 prevUSDC = GemLike(USDC).balanceOf(address(buffer));
         uint256 prevDAI = GemLike(DAI).balanceOf(address(buffer));
@@ -160,7 +175,9 @@ contract DepositorTest is DssTest, TestUtils {
         });
         vm.expectEmit(true, true, true, false);
         emit Deposit(FACILITATOR, DAI, USDC, 0, 0, 0);
+        uint256 startGas = gasleft();
         vm.prank(FACILITATOR); depositor.deposit(dp);
+        console.log("Gas used: %d", startGas - gasleft());
 
         assertLt(GemLike(DAI).balanceOf(address(buffer)), prevDAI);
         assertLt(GemLike(USDC).balanceOf(address(buffer)), prevUSDC);

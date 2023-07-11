@@ -64,18 +64,22 @@ interface UniV3PoolLike {
 
 contract Depositor {
     mapping (address => uint256) public wards;
-    mapping (address => mapping (address => uint256)) public hops; // [seconds] hops[gem0][gem1] is the cooldown one has to wait between changes to the liquidity of a (gem0, gem1) pool
-    mapping (address => mapping (address => uint256)) public zzz;  // [seconds] zzz[gem0][gem1] is the timestamp of the last liquidity change for a (gem0, gem1) pool
-    mapping (address => mapping (address => Cap))     public caps; // [amt]     caps[gem0][gem1] is the tuple (amt0, amt1) indicating the maximum amt of (gem0, gem1) that can be added as liquidity each hop for a (gem0, gem1) pool
+    mapping (address => mapping (address => Timing)) public timings;
+    mapping (address => mapping (address => Cap))    public caps;
 
     RolesLike public immutable roles;        // Contract managing access control for this Depositor
     bytes32   public immutable ilk;          // Collateral type
     address   public immutable uniV3Factory; // Uniswap V3 factory
     address   public immutable buffer;       // Contract from/to which the two tokens that make up the liquidity position are pulled/pushed
 
+    struct Timing {
+        uint64 hop; // Cooldown one has to wait between changes to the liquidity of a (gem0, gem1) pool
+        uint64 zzz; // Timestamp of the last liquidity change for a (gem0, gem1) pool
+    }
+
     struct Cap {
-        uint128 amt0;
-        uint128 amt1;
+        uint128 amt0; // Maximum amt of gem0 that can be added as liquidity each hop for a (gem0, gem1) pool
+        uint128 amt1; // Maximum amt of gem1 that can be added as liquidity each hop for a (gem0, gem1) pool
     }
 
     event Rely (address indexed usr);
@@ -113,7 +117,7 @@ contract Depositor {
 
     function file(bytes32 what, address gemA, address gemB, uint256 data) external auth {
         (address gem0, address gem1) = gemA < gemB ? (gemA, gemB) : (gemB, gemA);
-        if (what == "hop") hops[gem0][gem1] = data;
+        if (what == "hop") timings[gem0][gem1].hop = uint64(data);
         else revert("Depositor/file-unrecognized-param");
         emit File(what, gemA, gemB, data);
     }
@@ -198,8 +202,9 @@ contract Depositor {
     {
         require(p.gem0 < p.gem1, "Depositor/wrong-gem-order");
 
-        require(block.timestamp >= zzz[p.gem0][p.gem1] + hops[p.gem0][p.gem1], "Depositor/too-soon");
-        zzz[p.gem0][p.gem1] = block.timestamp;
+        Timing memory timing = timings[p.gem0][p.gem1];
+        require(block.timestamp >= timing.zzz + timing.hop, "Depositor/too-soon");
+        timings[p.gem0][p.gem1].zzz = uint64(block.timestamp);
 
         UniV3PoolLike pool = _getPool(p.gem0, p.gem1, p.fee);
         liquidity = (p.liquidity == 0)
@@ -228,8 +233,9 @@ contract Depositor {
     {
         require(p.gem0 < p.gem1, "Depositor/wrong-gem-order");
 
-        require(block.timestamp >= zzz[p.gem0][p.gem1] + hops[p.gem0][p.gem1], "Depositor/too-soon");
-        zzz[p.gem0][p.gem1] = block.timestamp;
+        Timing memory timing = timings[p.gem0][p.gem1];
+        require(block.timestamp >= timing.zzz + timing.hop, "Depositor/too-soon");
+        timings[p.gem0][p.gem1].zzz = uint64(block.timestamp);
 
         UniV3PoolLike pool = _getPool(p.gem0, p.gem1, p.fee);
         liquidity = (p.liquidity == 0)
