@@ -33,7 +33,6 @@ contract UniV3SwapperCalleeTest is DssTest {
         assertEq(address(c.uniV3Router()),  address(0xBEEF));
     }
 
-
     function checkStableSwap(address from, address to, bytes memory path) public {
         uint256 prevFrom = GemLike(from).balanceOf(address(this));
         uint256 prevTo = GemLike(to).balanceOf(address(this));
@@ -47,7 +46,6 @@ contract UniV3SwapperCalleeTest is DssTest {
         assertGe(GemLike(to).balanceOf(address(this)), prevTo + 9900 * 10**toDecimals);
         assertEq(GemLike(from).balanceOf(address(callee)), 0);
         assertEq(GemLike(to).balanceOf(address(callee)), 0);
-
     }
 
     function testSwapShortPath() public {
@@ -66,5 +64,4 @@ contract UniV3SwapperCalleeTest is DssTest {
         vm.expectRevert("UniV3SwapperCallee/invalid-path");
         this.checkStableSwap(DAI, USDC, USDC_WETH_DAI_PATH);
     }
-
 }
