@@ -24,9 +24,7 @@ interface SwapperLike {
 contract StableSwapper {
     mapping (address => uint256) public wards;                           // admin
     mapping (address => uint256) public buds;                            // whitelisted keepers
-    mapping (address => mapping (address => PairConfig)) public configs; // configs[src][dst].count is the remaining number of times that a src-to-dst swap can be performed by keepers
-                                                                         // configs[src][dst].lot    [token weis] is the amount swapped by keepers from src to dst every hop
-                                                                         // configs[src][dst].reqOut [token weis] is the minimum output amount to insist on in the swap form src to dst
+    mapping (address => mapping (address => PairConfig)) public configs;
 
     address public immutable swapper;                                    // Swapper for this StableSwapper
 
@@ -77,9 +75,9 @@ contract StableSwapper {
     }
 
     struct PairConfig {
-        uint32 count;
-        uint112 lot;
-        uint112 reqOut;
+        uint32 count;   // the remaining number of times that a src-to-dst swap can be performed by keepers
+        uint112 lot;    // the amount swapped by keepers from src to dst every hop
+        uint112 reqOut; // the minimum output amount to insist on in the swap form src to dst
     }
 
     function setConfig(address src, address dst, PairConfig memory cfg) external auth {
