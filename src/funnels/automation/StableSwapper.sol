@@ -26,7 +26,7 @@ contract StableSwapper {
     mapping (address => uint256) public buds;                            // whitelisted keepers
     mapping (address => mapping (address => PairConfig)) public configs;
 
-    address public immutable swapper;                                    // Swapper for this StableSwapper
+    SwapperLike public immutable swapper;                                // Swapper for this StableSwapper
 
     event Rely  (address indexed usr);
     event Deny  (address indexed usr);
@@ -36,7 +36,7 @@ contract StableSwapper {
     event Config(address indexed src, address indexed dst, PairConfig data);
 
     constructor(address swapper_) {
-        swapper = swapper_;
+        swapper = SwapperLike(swapper_);
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
     }
@@ -96,6 +96,6 @@ contract StableSwapper {
         if (minOut == 0) minOut = cfg.reqOut;
         require(minOut >= cfg.reqOut, "StableSwapper/min-too-small");
 
-        out = SwapperLike(swapper).swap(src, dst, cfg.lot, minOut, callee, data);
+        out = swapper.swap(src, dst, cfg.lot, minOut, callee, data);
     }
 }
