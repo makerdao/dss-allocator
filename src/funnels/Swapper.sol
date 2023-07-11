@@ -31,14 +31,17 @@ interface CalleeLike {
 
 contract Swapper {
     mapping (address => uint256) public wards;
-    mapping (address => mapping (address => uint256)) public hops; // [seconds]  hops[src][dst] is the swap cooldown when swapping `src` to `dst`.
-    mapping (address => mapping (address => uint256)) public zzz;  // [seconds]   zzz[src][dst] is the timestamp of the last swap from `src` to `dst`.
-    mapping (address => mapping (address => uint256)) public caps; // [weis]     caps[src][dst] is the maximum amount that can be swapped each hop when swapping `src` to `dst`.
-
+    mapping (address => mapping (address => PairLimit)) public limits;
 
     RolesLike public immutable roles;  // Contract managing access control for this Depositor
     bytes32   public immutable ilk;    // Collateral type
     address   public immutable buffer; // Contract from which the GEM to sell is pulled and to which the bought GEM is pushed
+
+    struct PairLimit {
+        uint64  hop;
+        uint64  zzz;
+        uint128 cap;
+    }
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
@@ -69,25 +72,27 @@ contract Swapper {
     }
 
     function file(bytes32 what, address src, address dst, uint256 data) external auth {
-        if      (what == "cap")  caps[src][dst] = data;
-        else if (what == "hop")  hops[src][dst] = data;
+        if      (what == "cap") limits[src][dst].cap = uint128(data);
+        else if (what == "hop") limits[src][dst].hop = uint64(data);
         else revert("Swapper/file-unrecognized-param");
         emit File(what, src, dst, data);
     }
 
     function swap(address src, address dst, uint256 amt, uint256 minOut, address callee, bytes calldata data) external auth returns (uint256 out) {
-        require(block.timestamp >= zzz[src][dst] + hops[src][dst], "Swapper/too-soon");
-        zzz[src][dst] = block.timestamp;
+        PairLimit memory limit = limits[src][dst];
+        require(block.timestamp >= limit.zzz + limit.hop, "Swapper/too-soon");
+        limits[src][dst].zzz = uint64(block.timestamp);
 
-        require(amt <= caps[src][dst], "Swapper/exceeds-max-amt");
+        require(amt <= limit.cap, "Swapper/exceeds-max-amt");
 
         uint256 prevDstBalance = GemLike(dst).balanceOf(buffer);
         GemLike(src).transferFrom(buffer, callee, amt);
         CalleeLike(callee).swap(src, dst, amt, minOut, buffer, data);
+
         uint256 dstBalance = GemLike(dst).balanceOf(buffer);
         require(dstBalance >= prevDstBalance + minOut, "Swapper/too-few-dst-received");
-        out = dstBalance - prevDstBalance;
 
+        out = dstBalance - prevDstBalance;
         emit Swap(msg.sender, src, dst, amt, out);
     }
 }

@@ -7,7 +7,6 @@ import { Swapper } from "src/funnels/Swapper.sol";
 import { UniV3SwapperCallee } from "src/funnels/callees/UniV3SwapperCallee.sol";
 import { AllocatorRoles } from "src/AllocatorRoles.sol";
 import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
-import { TestUtils } from "test/utils/TestUtils.sol";
 
 interface GemLike {
     function balanceOf(address) external view returns (uint256);
@@ -22,7 +21,8 @@ contract CalleeMock is DssTest {
     }
 }
 
-contract SwapperTest is DssTest, TestUtils {
+contract SwapperTest is DssTest {
+    event File(bytes32 indexed what, address indexed src, address indexed dst, uint256 data);
     event Swap(address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
 
     AllocatorRoles public roles;
@@ -86,8 +86,31 @@ contract SwapperTest is DssTest, TestUtils {
         vm.stopPrank();
     }
 
-    function testFile() public {
-        checkFileUintForGemPair(address(swapper), "Swapper", ["cap", "hop"]);
+    function testFileCap() public {
+        vm.expectEmit(true, true, true, true);
+        emit File("cap", address(0x123), address(0x456), 23);
+        swapper.file("cap", address(0x123), address(0x456), 23);
+        (,, uint128 cap) = swapper.limits(address(0x123), address(0x456));
+        assertEq(cap, 23);
+
+        vm.expectRevert("Swapper/not-authorized");
+        vm.prank(address(0x789)); swapper.file("cap", address(0x123), address(0x456), 23);
+    }
+
+    function testFileHop() public {
+        vm.expectEmit(true, true, true, true);
+        emit File("hop", address(0x123), address(0x456), 23);
+        swapper.file("hop", address(0x123), address(0x456), 23);
+        (uint64 hop,,) = swapper.limits(address(0x123), address(0x456));
+        assertEq(hop, 23);
+
+        vm.expectRevert("Swapper/not-authorized");
+        vm.prank(address(0x789)); swapper.file("hop", address(0x123), address(0x456), 23);
+    }
+
+    function testFileUintUnrecognizedParam() public {
+        vm.expectRevert("Swapper/file-unrecognized-param");
+        swapper.file("wrong", address(0x123), address(0x456), 0);
     }
 
     function testRoles() public {
@@ -105,7 +128,7 @@ contract SwapperTest is DssTest, TestUtils {
         vm.expectEmit(true, true, true, false);
         emit Swap(FACILITATOR, USDC, DAI, 10_000 * 10**6, 0);
         vm.prank(FACILITATOR); uint256 out = swapper.swap(USDC, DAI, 10_000 * 10**6, 9900 * WAD, address(uniV3Callee), USDC_DAI_PATH);
-        
+
         assertGe(out, 9900 * WAD);
         assertEq(GemLike(USDC).balanceOf(address(buffer)), prevSrc - 10_000 * 10**6);
         assertEq(GemLike(DAI).balanceOf(address(buffer)), prevDst + out);
@@ -132,7 +155,8 @@ contract SwapperTest is DssTest, TestUtils {
 
     function testSwapAferHop() public {
         vm.prank(FACILITATOR); swapper.swap(USDC, DAI, 10_000 * 10**6, 9900 * WAD, address(uniV3Callee), USDC_DAI_PATH);
-        vm.warp(block.timestamp + swapper.hops(USDC, DAI));
+        (uint64  hop,,) = swapper.limits(USDC, DAI);
+        vm.warp(block.timestamp + hop);
 
         vm.expectEmit(true, true, true, false);
         emit Swap(FACILITATOR, USDC, DAI, 10_000 * 10**6, 0);
@@ -147,7 +171,8 @@ contract SwapperTest is DssTest, TestUtils {
     }
 
     function testSwapExceedingMax() public {
-        uint256 amt = swapper.caps(USDC, DAI) + 1;
+        (,, uint128 cap) = swapper.limits(USDC, DAI);
+        uint256 amt = cap + 1;
         vm.expectRevert("Swapper/exceeds-max-amt");
         vm.prank(FACILITATOR); swapper.swap(USDC, DAI, amt, 0, address(uniV3Callee), USDC_DAI_PATH);
     }
