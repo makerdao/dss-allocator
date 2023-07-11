@@ -16,7 +16,7 @@ contract UniV3SwapperCalleeTest is DssTest {
 
     address constant DAI          = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address constant USDC         = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-    address constant WETH         = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address constant USDT         = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
     address constant UNIV3_ROUTER = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
 
     function setUp() public {
@@ -54,14 +54,14 @@ contract UniV3SwapperCalleeTest is DssTest {
     }
 
     function testSwapLongPath() public {
-        bytes memory USDC_WETH_DAI_PATH = abi.encodePacked(USDC, uint24(100), WETH, uint24(100), DAI);
-        checkStableSwap(USDC, DAI, USDC_WETH_DAI_PATH);
+        bytes memory USDC_USDT_DAI_PATH = abi.encodePacked(USDC, uint24(100), USDT, uint24(100), DAI);
+        checkStableSwap(USDC, DAI, USDC_USDT_DAI_PATH);
     }
 
     function testSwapInvalidPath() public {
-        bytes memory USDC_WETH_DAI_PATH = abi.encodePacked(USDC, uint24(100), WETH, uint24(100), DAI);
+        bytes memory USDC_USDT_DAI_PATH = abi.encodePacked(USDC, uint24(100), USDT, uint24(100), DAI);
 
         vm.expectRevert("UniV3SwapperCallee/invalid-path");
-        this.checkStableSwap(DAI, USDC, USDC_WETH_DAI_PATH);
+        this.checkStableSwap(DAI, USDC, USDC_USDT_DAI_PATH);
     }
 }
