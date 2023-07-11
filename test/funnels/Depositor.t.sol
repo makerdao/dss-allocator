@@ -556,7 +556,7 @@ contract DepositorTest is DssTest, TestUtils {
             depositor.uniswapV3MintCallback({
             amt0Owed: 1,
             amt1Owed: 2,
-            data: abi.encode(Depositor.MintCallbackData({gem0: DAI, gem1: USDC, fee: 100, payer: address(buffer)}))
+            data: abi.encode(Depositor.MintCallbackData({gem0: DAI, gem1: USDC, fee: 100}))
         });
 
         assertEq(GemLike(DAI).balanceOf(address(buffer)), initialDAI - 1);
@@ -570,7 +570,7 @@ contract DepositorTest is DssTest, TestUtils {
         depositor.uniswapV3MintCallback({
             amt0Owed: 1,
             amt1Owed: 2,
-            data: abi.encode(Depositor.MintCallbackData({gem0: DAI, gem1: USDC, fee: 100, payer: address(buffer)}))
+            data: abi.encode(Depositor.MintCallbackData({gem0: DAI, gem1: USDC, fee: 100}))
         });
     }
 }

@@ -165,7 +165,6 @@ contract Depositor {
         address gem0;
         address gem1;
         uint24  fee;
-        address payer;
     }
 
     // https://github.com/Uniswap/v3-core/blob/d8b1c635c275d2a9450bd6a78f3fa2484fef73eb/contracts/interfaces/callback/IUniswapV3MintCallback.sol#L6
@@ -178,8 +177,8 @@ contract Depositor {
         address pool = address(_getPool(decoded.gem0, decoded.gem1, decoded.fee));
         require(msg.sender == pool, "Depositor/sender-not-a-pool");
 
-        if (amt0Owed > 0) GemLike(decoded.gem0).transferFrom(decoded.payer, msg.sender, amt0Owed);
-        if (amt0Owed > 0) GemLike(decoded.gem1).transferFrom(decoded.payer, msg.sender, amt1Owed);
+        if (amt0Owed > 0) GemLike(decoded.gem0).transferFrom(buffer, msg.sender, amt0Owed);
+        if (amt0Owed > 0) GemLike(decoded.gem1).transferFrom(buffer, msg.sender, amt1Owed);
     }
 
     struct LiquidityParams {
@@ -216,7 +215,7 @@ contract Depositor {
             tickLower: p.tickLower,
             tickUpper: p.tickUpper,
             amount   : liquidity,
-            data     : abi.encode(MintCallbackData({gem0: p.gem0, gem1: p.gem1, fee: p.fee, payer: buffer}))
+            data     : abi.encode(MintCallbackData({gem0: p.gem0, gem1: p.gem1, fee: p.fee}))
         });
         require(amt0 >= p.amt0Min && amt1 >= p.amt1Min, "Depositor/exceeds-slippage");
 
