@@ -40,10 +40,10 @@ contract UniV3SwapperCalleeTest is DssTest {
         uint8 toDecimals = GemLike(to).decimals();
 
         GemLike(from).transfer(address(callee), 10_000 * 10**fromDecimals);
-        callee.swap(from, to, 10_000 * 10**fromDecimals, 9900 * 10**toDecimals, address(this), path);
+        callee.swap(from, to, 10_000 * 10**fromDecimals, 9000 * 10**toDecimals, address(this), path);
         
         assertEq(GemLike(from).balanceOf(address(this)), prevFrom - 10_000 * 10**fromDecimals);
-        assertGe(GemLike(to).balanceOf(address(this)), prevTo + 9900 * 10**toDecimals);
+        assertGe(GemLike(to).balanceOf(address(this)), prevTo + 9000 * 10**toDecimals);
         assertEq(GemLike(from).balanceOf(address(callee)), 0);
         assertEq(GemLike(to).balanceOf(address(callee)), 0);
     }
