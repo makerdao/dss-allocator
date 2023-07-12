@@ -146,7 +146,7 @@ contract DepositorTest is DssTest, TestUtils {
 
     }
 
-    function testDepositX() public {
+    function testDeposit() public {
         assertEq(_getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100), 0);
         uint256 prevUSDC = GemLike(USDC).balanceOf(address(buffer));
         uint256 prevDAI = GemLike(DAI).balanceOf(address(buffer));
