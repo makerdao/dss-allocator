@@ -26,7 +26,7 @@ interface GemLike {
 }
 
 interface CalleeLike {
-    function swap(address src, address dst, uint256 amt, uint256 minOut, address to, bytes calldata data) external;
+    function swap(address, address, uint256, uint256, address, bytes calldata) external;
 }
 
 contract Swapper {
@@ -91,10 +91,9 @@ contract Swapper {
         GemLike(src).transferFrom(buffer, callee, amt);
         CalleeLike(callee).swap(src, dst, amt, minOut, buffer, data);
 
-        uint256 dstBalance = GemLike(dst).balanceOf(buffer);
-        require(dstBalance >= prevDstBalance + minOut, "Swapper/too-few-dst-received");
+        out = GemLike(dst).balanceOf(buffer) - prevDstBalance;
+        require(out >= minOut, "Swapper/too-few-dst-received");
 
-        out = dstBalance - prevDstBalance;
         emit Swap(msg.sender, src, dst, amt, out);
     }
 }

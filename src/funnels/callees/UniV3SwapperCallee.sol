@@ -36,11 +36,11 @@ interface SwapRouterLike {
 }
 
 contract UniV3SwapperCallee {
+    address public immutable uniV3Router;
+
     constructor(address _uniV3Router) {
         uniV3Router = _uniV3Router;
     }
-
-    address public immutable uniV3Router;
 
     function swap(address src, address dst, uint256 amt, uint256 minOut, address to, bytes calldata data) external {
         bytes memory path = data;
