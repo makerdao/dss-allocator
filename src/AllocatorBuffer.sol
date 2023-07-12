@@ -23,10 +23,6 @@ interface TokenLike {
     function transferFrom(address, address, uint256) external;
 }
 
-interface NonFungibleTokenLike {
-    function setApprovalForAll(address _operator, bool _approved) external;
-}
-
 contract AllocatorBuffer {
     // --- storage variables ---
 
@@ -65,11 +61,6 @@ contract AllocatorBuffer {
     }
 
     // --- functions ---
-
-    function setApprovalForAll(address asset, address spender, bool approved) external auth {
-        NonFungibleTokenLike(asset).setApprovalForAll(spender, approved);
-        emit Approve(asset, spender, approved ? 1 : 0);
-    }
 
     function approve(address asset, address spender, uint256 amount) external auth {
         TokenLike(asset).approve(spender, amount);

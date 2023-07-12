@@ -1,4 +1,5 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 pragma solidity ^0.8.16;
 
 import "dss-test/DssTest.sol";
@@ -6,7 +7,6 @@ import { Swapper } from "src/funnels/Swapper.sol";
 import { UniV3SwapperCallee } from "src/funnels/callees/UniV3SwapperCallee.sol";
 import { AllocatorRoles } from "src/AllocatorRoles.sol";
 import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
-import { TestUtils } from "test/utils/TestUtils.sol";
 
 interface GemLike {
     function balanceOf(address) external view returns (uint256);
@@ -21,8 +21,9 @@ contract CalleeMock is DssTest {
     }
 }
 
-contract SwapperTest is DssTest, TestUtils {
-    event Swap (address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
+contract SwapperTest is DssTest {
+    event SetLimits(address indexed gem0, address indexed gem1, uint64 hop, uint128 cap);
+    event Swap(address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
 
     AllocatorRoles public roles;
     AllocatorBuffer public buffer;
@@ -54,10 +55,8 @@ contract SwapperTest is DssTest, TestUtils {
         roles.setRoleAction(ilk, SWAPPER_ROLE, address(swapper), swapper.swap.selector, true);
         roles.setUserRole(ilk, FACILITATOR, SWAPPER_ROLE, true);
 
-        swapper.file("cap", DAI, USDC, 10_000 * WAD);
-        swapper.file("cap", USDC, DAI, 10_000 * 10**6);
-        swapper.file("hop", DAI, USDC, 3600);
-        swapper.file("hop", USDC, DAI, 3600);
+        swapper.setLimits(DAI, USDC, 3600 seconds, uint128(10_000 * WAD));
+        swapper.setLimits(USDC, DAI, 3600 seconds, uint128(10_000 * 10**6));
 
         deal(DAI,  address(buffer), 1_000_000 * WAD,   true);
         deal(USDC, address(buffer), 1_000_000 * 10**6, true);
@@ -85,16 +84,22 @@ contract SwapperTest is DssTest, TestUtils {
         vm.stopPrank();
     }
 
-    function testFile() public {
-        checkFileUintForGemPair(address(swapper), "Swapper", ["cap", "hop"]);
+    function testSetLimits() public {
+        vm.expectEmit(true, true, true, true);
+        emit SetLimits(address(1), address(2), 3, 4);
+        vm.prank(address(this)); swapper.setLimits(address(1), address(2), 3, 4);
+        (uint64 hop, uint64 zzz, uint128 cap) = swapper.limits(address(1), address(2));
+        assertEq(hop, 3);
+        assertEq(zzz, 0);
+        assertEq(cap, 4);
     }
 
     function testRoles() public {
         vm.expectRevert("Swapper/not-authorized");
-        vm.prank(address(0xBEEF)); swapper.file("hop", address(0), address(0), 0);
-        roles.setRoleAction(ilk, uint8(0xF1), address(swapper), bytes4(keccak256("file(bytes32,address,address,uint256)")), true);
+        vm.prank(address(0xBEEF)); swapper.setLimits(address(0), address(0), 0, 0);
+        roles.setRoleAction(ilk, uint8(0xF1), address(swapper), bytes4(keccak256("setLimits(address,address,uint64,uint128)")), true);
         roles.setUserRole(ilk, address(0xBEEF), uint8(0xF1), true);
-        vm.prank(address(0xBEEF)); swapper.file("hop", address(0), address(0), 0);
+        vm.prank(address(0xBEEF)); swapper.setLimits(address(0), address(0), 0, 0);
     }
 
     function testSwap() public {
@@ -104,7 +109,7 @@ contract SwapperTest is DssTest, TestUtils {
         vm.expectEmit(true, true, true, false);
         emit Swap(FACILITATOR, USDC, DAI, 10_000 * 10**6, 0);
         vm.prank(FACILITATOR); uint256 out = swapper.swap(USDC, DAI, 10_000 * 10**6, 9900 * WAD, address(uniV3Callee), USDC_DAI_PATH);
-        
+
         assertGe(out, 9900 * WAD);
         assertEq(GemLike(USDC).balanceOf(address(buffer)), prevSrc - 10_000 * 10**6);
         assertEq(GemLike(DAI).balanceOf(address(buffer)), prevDst + out);
@@ -131,7 +136,8 @@ contract SwapperTest is DssTest, TestUtils {
 
     function testSwapAferHop() public {
         vm.prank(FACILITATOR); swapper.swap(USDC, DAI, 10_000 * 10**6, 9900 * WAD, address(uniV3Callee), USDC_DAI_PATH);
-        vm.warp(block.timestamp + swapper.hops(USDC, DAI));
+        (uint64  hop,,) = swapper.limits(USDC, DAI);
+        vm.warp(block.timestamp + hop);
 
         vm.expectEmit(true, true, true, false);
         emit Swap(FACILITATOR, USDC, DAI, 10_000 * 10**6, 0);
@@ -146,7 +152,8 @@ contract SwapperTest is DssTest, TestUtils {
     }
 
     function testSwapExceedingMax() public {
-        uint256 amt = swapper.caps(USDC, DAI) + 1;
+        (,, uint128 cap) = swapper.limits(USDC, DAI);
+        uint256 amt = cap + 1;
         vm.expectRevert("Swapper/exceeds-max-amt");
         vm.prank(FACILITATOR); swapper.swap(USDC, DAI, amt, 0, address(uniV3Callee), USDC_DAI_PATH);
     }

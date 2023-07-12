@@ -1,5 +1,4 @@
-// SPDX-FileCopyrightText: © 2020 Lev Livnev <lev@liv.nev.org.uk>
-// SPDX-FileCopyrightText: © 2021 Dai Foundation <www.daifoundation.org>
+// SPDX-FileCopyrightText: © 2023 Dai Foundation <www.daifoundation.org>
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
 // This program is free software: you can redistribute it and/or modify
@@ -32,19 +31,22 @@ interface CalleeLike {
 
 contract Swapper {
     mapping (address => uint256) public wards;
-    mapping (address => mapping (address => uint256)) public hops; // [seconds]  hops[src][dst] is the swap cooldown when swapping `src` to `dst`.
-    mapping (address => mapping (address => uint256)) public zzz;  // [seconds]   zzz[src][dst] is the timestamp of the last swap from `src` to `dst`.
-    mapping (address => mapping (address => uint256)) public caps; // [weis]     caps[src][dst] is the maximum amount that can be swapped each hop when swapping `src` to `dst`.
+    mapping (address => mapping (address => PairLimit)) public limits;
 
+    RolesLike public immutable roles;  // Contract managing access control for this Depositor
+    bytes32   public immutable ilk;    // Collateral type
+    address   public immutable buffer; // Contract from which the GEM to sell is pulled and to which the bought GEM is pushed
 
-    address   public immutable buffer;                // Contract from which the GEM to sell is pulled and to which the bought GEM is pushed
-    RolesLike public immutable roles;                 // Contract managing access control for this Depositor
-    bytes32   public immutable ilk;
+    struct PairLimit {
+        uint64  hop;
+        uint64  zzz;
+        uint128 cap;
+    }
 
-    event Rely (address indexed usr);
-    event Deny (address indexed usr);
-    event File (bytes32 indexed what, address indexed src, address indexed dst, uint256 data);
-    event Swap (address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
+    event Rely(address indexed usr);
+    event Deny(address indexed usr);
+    event SetLimits(address indexed gem0, address indexed gem1, uint64 hop, uint128 cap);
+    event Swap(address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
 
     constructor(address roles_, bytes32 ilk_, address buffer_) {
         roles = RolesLike(roles_);
@@ -59,29 +61,40 @@ contract Swapper {
         _;
     }
 
-    function rely(address usr) external auth { wards[usr] = 1; emit Rely(usr); }
-    function deny(address usr) external auth { wards[usr] = 0; emit Deny(usr); }
+    function rely(address usr) external auth {
+        wards[usr] = 1;
+        emit Rely(usr);
+    }
 
-    function file(bytes32 what, address src, address dst, uint256 data) external auth {
-        if      (what == "cap")  caps[src][dst] = data;
-        else if (what == "hop")  hops[src][dst] = data;
-        else revert("Swapper/file-unrecognized-param");
-        emit File(what, src, dst, data);
+    function deny(address usr) external auth {
+        wards[usr] = 0;
+        emit Deny(usr);
+    }
+
+    function setLimits(address gem0, address gem1, uint64 hop, uint128 cap) external auth {
+        limits[gem0][gem1] = PairLimit({
+            hop:  hop,
+            zzz:  limits[gem0][gem1].zzz,
+            cap: cap
+        });
+        emit SetLimits(gem0, gem1, hop, cap);
     }
 
     function swap(address src, address dst, uint256 amt, uint256 minOut, address callee, bytes calldata data) external auth returns (uint256 out) {
-        require(block.timestamp >= zzz[src][dst] + hops[src][dst], "Swapper/too-soon");
-        zzz[src][dst] = block.timestamp;
+        PairLimit memory limit = limits[src][dst];
+        require(block.timestamp >= limit.zzz + limit.hop, "Swapper/too-soon");
+        limits[src][dst].zzz = uint64(block.timestamp);
 
-        require(amt <= caps[src][dst], "Swapper/exceeds-max-amt");
+        require(amt <= limit.cap, "Swapper/exceeds-max-amt");
 
         uint256 prevDstBalance = GemLike(dst).balanceOf(buffer);
         GemLike(src).transferFrom(buffer, callee, amt);
         CalleeLike(callee).swap(src, dst, amt, minOut, buffer, data);
+
         uint256 dstBalance = GemLike(dst).balanceOf(buffer);
         require(dstBalance >= prevDstBalance + minOut, "Swapper/too-few-dst-received");
-        out = dstBalance - prevDstBalance;
 
+        out = dstBalance - prevDstBalance;
         emit Swap(msg.sender, src, dst, amt, out);
     }
 }

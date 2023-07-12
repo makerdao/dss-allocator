@@ -1,5 +1,4 @@
-// SPDX-FileCopyrightText: © 2020 Lev Livnev <lev@liv.nev.org.uk>
-// SPDX-FileCopyrightText: © 2021 Dai Foundation <www.daifoundation.org>
+// SPDX-FileCopyrightText: © 2023 Dai Foundation <www.daifoundation.org>
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
 // This program is free software: you can redistribute it and/or modify
@@ -23,25 +22,20 @@ interface SwapperLike {
 
 contract StableSwapper {
     mapping (address => uint256) public wards;                           // admin
-    mapping (address => uint256) public buds;                            // facilitators
-    mapping (address => uint256) public bots;                            // whitelisted keepers
-    mapping (address => mapping (address => PairConfig)) public configs; // configs[src][dst].count is the remaining number of times that a src-to-dst swap can be performed by keepers
-                                                                         // configs[src][dst].lot    [token weis] is the amount swapped by keepers from src to dst every hop
-                                                                         // configs[src][dst].reqOut [token weis] is the minimum output amount to insist on in the swap form src to dst
+    mapping (address => uint256) public buds;                            // whitelisted keepers
+    mapping (address => mapping (address => PairConfig)) public configs;
 
-    address public immutable swapper;                                    // Swapper for this StableSwapper
+    SwapperLike public immutable swapper;                                // Swapper for this StableSwapper
 
-    event Rely   (address indexed usr);
-    event Deny   (address indexed usr);
-    event Kissed (address indexed usr);
-    event Dissed (address indexed usr);
-    event Permit (address indexed usr);
-    event Forbid (address indexed usr);
-    event File   (bytes32 indexed what, address data);
-    event Config (address indexed src, address indexed dst, PairConfig data);
+    event Rely  (address indexed usr);
+    event Deny  (address indexed usr);
+    event Kiss  (address indexed usr);
+    event Diss  (address indexed usr);
+    event File  (bytes32 indexed what, address data);
+    event SetConfig(address indexed src, address indexed dst, PairConfig data);
 
     constructor(address swapper_) {
-        swapper = swapper_;
+        swapper = SwapperLike(swapper_);
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
     }
@@ -51,41 +45,48 @@ contract StableSwapper {
         _;
     }
 
-    // permissionned to facilitators
-    modifier toll { 
-        require(buds[msg.sender] == 1, "StableSwapper/non-facilitator"); 
-        _;
-    }
-
     // permissionned to whitelisted keepers
-    modifier keep { 
-        require(bots[msg.sender] == 1, "StableSwapper/non-keeper"); 
+    modifier toll { 
+        require(buds[msg.sender] == 1, "StableSwapper/non-keeper");
         _;
     }
 
     uint256 internal constant WAD = 10 ** 18;
 
-    function rely  (address usr) external auth { wards[usr] = 1; emit Rely(usr); }
-    function deny  (address usr) external auth { wards[usr] = 0; emit Deny(usr); }
-    function kiss  (address usr) external auth {  buds[usr] = 1; emit Kissed(usr); }
-    function diss  (address usr) external auth {  buds[usr] = 0; emit Dissed(usr); }
-    function permit(address usr) external toll {  bots[usr] = 1; emit Permit(usr); }
-    function forbid(address usr) external toll {  bots[usr] = 0; emit Forbid(usr); }
-
-    struct PairConfig {
-        uint32 count;
-        uint112 lot;
-        uint112 reqOut;
+    function rely(address usr) external auth {
+        wards[usr] = 1;
+        emit Rely(usr);
     }
 
-    function setConfig(address src, address dst, PairConfig memory cfg) external toll {
+    function deny(address usr) external auth {
+        wards[usr] = 0;
+        emit Deny(usr);
+    }
+
+    function kiss(address usr) external auth {
+        buds[usr] = 1;
+        emit Kiss(usr);
+    }
+
+    function diss(address usr) external auth {
+        buds[usr] = 0;
+        emit Diss(usr);
+    }
+
+    struct PairConfig {
+        uint32 count;   // the remaining number of times that a src-to-dst swap can be performed by keepers
+        uint112 lot;    // the amount swapped by keepers from src to dst every hop
+        uint112 reqOut; // the minimum output amount to insist on in the swap form src to dst
+    }
+
+    function setConfig(address src, address dst, PairConfig memory cfg) external auth {
         configs[src][dst] = cfg;
-        emit Config(src, dst, cfg);
+        emit SetConfig(src, dst, cfg);
     }
 
     // Note: the keeper's minOut value must be updated whenever configs[src][dst] is changed.
     // Failing to do so may result in this call reverting or in taking on more slippage than intended (up to a limit controlled by configs[src][dst].reqOut).
-    function swap(address src, address dst, uint256 minOut, address callee, bytes calldata data) keep external returns (uint256 out) {
+    function swap(address src, address dst, uint256 minOut, address callee, bytes calldata data) toll external returns (uint256 out) {
         PairConfig memory cfg = configs[src][dst];
 
         require(cfg.count > 0, "StableSwapper/exceeds-count");
@@ -94,6 +95,6 @@ contract StableSwapper {
         if (minOut == 0) minOut = cfg.reqOut;
         require(minOut >= cfg.reqOut, "StableSwapper/min-too-small");
 
-        out = SwapperLike(swapper).swap(src, dst, cfg.lot, minOut, callee, data);
+        out = swapper.swap(src, dst, cfg.lot, minOut, callee, data);
     }
 }
