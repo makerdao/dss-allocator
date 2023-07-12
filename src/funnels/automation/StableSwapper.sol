@@ -32,7 +32,7 @@ contract StableSwapper {
     event Kiss  (address indexed usr);
     event Diss  (address indexed usr);
     event File  (bytes32 indexed what, address data);
-    event Config(address indexed src, address indexed dst, PairConfig data);
+    event SetConfig(address indexed src, address indexed dst, PairConfig data);
 
     constructor(address swapper_) {
         swapper = SwapperLike(swapper_);
@@ -81,7 +81,7 @@ contract StableSwapper {
 
     function setConfig(address src, address dst, PairConfig memory cfg) external auth {
         configs[src][dst] = cfg;
-        emit Config(src, dst, cfg);
+        emit SetConfig(src, dst, cfg);
     }
 
     // Note: the keeper's minOut value must be updated whenever configs[src][dst] is changed.

@@ -45,7 +45,7 @@ contract Swapper {
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
-    event File(bytes32 indexed what, address indexed src, address indexed dst, uint256 data);
+    event SetLimits(address indexed gem0, address indexed gem1, uint64 hop, uint128 cap);
     event Swap(address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
 
     constructor(address roles_, bytes32 ilk_, address buffer_) {
@@ -71,11 +71,13 @@ contract Swapper {
         emit Deny(usr);
     }
 
-    function file(bytes32 what, address src, address dst, uint256 data) external auth {
-        if      (what == "cap") limits[src][dst].cap = uint128(data);
-        else if (what == "hop") limits[src][dst].hop = uint64(data);
-        else revert("Swapper/file-unrecognized-param");
-        emit File(what, src, dst, data);
+    function setLimits(address gem0, address gem1, uint64 hop, uint128 cap) external auth {
+        limits[gem0][gem1] = PairLimit({
+            hop:  hop,
+            zzz:  limits[gem0][gem1].zzz,
+            cap: cap
+        });
+        emit SetLimits(gem0, gem1, hop, cap);
     }
 
     function swap(address src, address dst, uint256 amt, uint256 minOut, address callee, bytes calldata data) external auth returns (uint256 out) {

@@ -64,28 +64,23 @@ interface UniV3PoolLike {
 
 contract Depositor {
     mapping (address => uint256) public wards;
-    mapping (address => mapping (address => Timing)) public timings;
-    mapping (address => mapping (address => Cap))    public caps;
+    mapping (address => mapping (address => PairLimit)) public limits;
 
     RolesLike public immutable roles;        // Contract managing access control for this Depositor
     bytes32   public immutable ilk;          // Collateral type
     address   public immutable uniV3Factory; // Uniswap V3 factory
     address   public immutable buffer;       // Contract from/to which the two tokens that make up the liquidity position are pulled/pushed
 
-    struct Timing {
-        uint64 hop; // Cooldown one has to wait between changes to the liquidity of a (gem0, gem1) pool
-        uint64 zzz; // Timestamp of the last liquidity change for a (gem0, gem1) pool
-    }
-
-    struct Cap {
-        uint128 amt0; // Maximum amt of gem0 that can be added as liquidity each hop for a (gem0, gem1) pool
-        uint128 amt1; // Maximum amt of gem1 that can be added as liquidity each hop for a (gem0, gem1) pool
+    struct PairLimit {
+        uint64   hop; // Cooldown one has to wait between changes to the liquidity of a (gem0, gem1) pool
+        uint64   zzz; // Timestamp of the last liquidity change for a (gem0, gem1) pool
+        uint128 cap0; // Maximum amt of gem0 that can be added as liquidity each hop for a (gem0, gem1) pool
+        uint128 cap1; // Maximum amt of gem1 that can be added as liquidity each hop for a (gem0, gem1) pool
     }
 
     event Rely (address indexed usr);
     event Deny (address indexed usr);
-    event File (bytes32 indexed what, address indexed gemA, address indexed gemB, uint256 data);
-    event File (bytes32 indexed what, address indexed gemA, address indexed gemB, uint128 dataA, uint128 dataB);
+    event SetLimits(address indexed gem0, address indexed gem1, uint64 hop, uint128 cap0, uint128 cap1);
     event Deposit(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1);
     event Withdraw(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1, uint256 collected0, uint256 collected1);
     event Collect(address indexed sender, address indexed gem0, address indexed gem1, uint256 collected0, uint256 collected1);
@@ -115,20 +110,15 @@ contract Depositor {
         emit Deny(usr);
     }
 
-    function file(bytes32 what, address gemA, address gemB, uint256 data) external auth {
-        (address gem0, address gem1) = gemA < gemB ? (gemA, gemB) : (gemB, gemA);
-        if (what == "hop") timings[gem0][gem1].hop = uint64(data);
-        else revert("Depositor/file-unrecognized-param");
-        emit File(what, gemA, gemB, data);
-    }
-
-    function file(bytes32 what, address gemA, address gemB, uint128 dataA, uint128 dataB) external auth {
-        (address gem0, address gem1, uint128 data0, uint128 data1) = gemA < gemB
-            ? (gemA, gemB, dataA, dataB)
-            : (gemB, gemA, dataB, dataA);
-        if (what == "cap") caps[gem0][gem1] = Cap({ amt0: data0, amt1: data1 });
-        else revert("Depositor/file-unrecognized-param");
-        emit File(what, gemA, gemB, dataA, dataB);
+    function setLimits(address gem0, address gem1, uint64 hop, uint128 cap0, uint128 cap1) external auth {
+        require(gem0 < gem1, "Depositor/wrong-gem-order");
+        limits[gem0][gem1] = PairLimit({
+            hop:  hop,
+            zzz:  limits[gem0][gem1].zzz,
+            cap0: cap0,
+            cap1: cap1
+        });
+        emit SetLimits(gem0, gem1, hop, cap0, cap1);
     }
 
     // https://github.com/Uniswap/v3-periphery/blob/464a8a49611272f7349c970e0fadb7ec1d3c1086/contracts/libraries/PoolAddress.sol#L33
@@ -187,7 +177,7 @@ contract Depositor {
         uint24  fee;
         int24   tickLower;
         int24   tickUpper;
-        uint128 liquidity;
+        uint128 liquidity;   // Useful for clearing out the entire liquidity of a position
         uint256 amt0Desired; // relevant only if liquidity == 0
         uint256 amt1Desired; // relevant only if liquidity == 0
         uint256 amt0Min;
@@ -201,9 +191,9 @@ contract Depositor {
     {
         require(p.gem0 < p.gem1, "Depositor/wrong-gem-order");
 
-        Timing memory timing = timings[p.gem0][p.gem1];
-        require(block.timestamp >= timing.zzz + timing.hop, "Depositor/too-soon");
-        timings[p.gem0][p.gem1].zzz = uint64(block.timestamp);
+        PairLimit memory limit = limits[p.gem0][p.gem1];
+        require(block.timestamp >= limit.zzz + limit.hop, "Depositor/too-soon");
+        limits[p.gem0][p.gem1].zzz = uint64(block.timestamp);
 
         UniV3PoolLike pool = _getPool(p.gem0, p.gem1, p.fee);
         liquidity = (p.liquidity == 0)
@@ -218,9 +208,7 @@ contract Depositor {
             data     : abi.encode(MintCallbackData({gem0: p.gem0, gem1: p.gem1, fee: p.fee}))
         });
         require(amt0 >= p.amt0Min && amt1 >= p.amt1Min, "Depositor/exceeds-slippage");
-
-        Cap memory cap = caps[p.gem0][p.gem1];
-        require(amt0 <= cap.amt0 && amt1 <= cap.amt1, "Depositor/exceeds-cap");
+        require(amt0 <= limit.cap0 && amt1 <= limit.cap1, "Depositor/exceeds-cap");
 
         emit Deposit(msg.sender, p.gem0, p.gem1, liquidity, amt0, amt1);
     }
@@ -232,9 +220,9 @@ contract Depositor {
     {
         require(p.gem0 < p.gem1, "Depositor/wrong-gem-order");
 
-        Timing memory timing = timings[p.gem0][p.gem1];
-        require(block.timestamp >= timing.zzz + timing.hop, "Depositor/too-soon");
-        timings[p.gem0][p.gem1].zzz = uint64(block.timestamp);
+        PairLimit memory limit = limits[p.gem0][p.gem1];
+        require(block.timestamp >= limit.zzz + limit.hop, "Depositor/too-soon");
+        limits[p.gem0][p.gem1].zzz = uint64(block.timestamp);
 
         UniV3PoolLike pool = _getPool(p.gem0, p.gem1, p.fee);
         liquidity = (p.liquidity == 0)
@@ -242,10 +230,8 @@ contract Depositor {
             : p.liquidity;
 
         (amt0, amt1) = pool.burn({ tickLower: p.tickLower, tickUpper: p.tickUpper, amount: liquidity });
-        require(amt0 >= p.amt0Min && amt1 >= p.amt1Min, "Depositor/exceeds-slippage");
-
-        Cap memory cap = caps[p.gem0][p.gem1];
-        require(amt0 <= cap.amt0 && amt1 <= cap.amt1, "Depositor/exceeds-cap");
+        require(amt0 >= p.amt0Min  && amt1 >= p.amt1Min,  "Depositor/exceeds-slippage");
+        require(amt0 <= limit.cap0 && amt1 <= limit.cap1, "Depositor/exceeds-cap");
 
         (uint256 collected0, uint256 collected1) = pool.collect({
             recipient       : buffer,

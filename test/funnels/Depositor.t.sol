@@ -39,7 +39,7 @@ interface SwapRouterLike {
 }
 
 contract DepositorTest is DssTest, TestUtils {
-    event File(bytes32 indexed what, address indexed src, address indexed dst, uint256 data);
+    event SetLimits(address indexed gem0, address indexed gem1, uint64 hop, uint128 cap0, uint128 cap1);
     event Deposit(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1);
     event Withdraw(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1, uint256 collected0, uint256 collected1);
     event Collect(address indexed sender, address indexed gem0, address indexed gem1, uint256 collected0, uint256 collected1);
@@ -75,8 +75,7 @@ contract DepositorTest is DssTest, TestUtils {
         roles.setRoleAction(ilk, DEPOSITOR_ROLE, address(depositor), depositor.collect.selector, true);
         roles.setUserRole(ilk, FACILITATOR, DEPOSITOR_ROLE, true);
 
-        depositor.file("cap", DAI, USDC, uint128(10_000 * WAD), 10_000 * 10**6);
-        depositor.file("hop", DAI, USDC, 3600);
+        depositor.setLimits(DAI, USDC, 3600 seconds, uint128(10_000 * WAD), uint128(10_000 * 10**6));
 
         deal(DAI,  address(buffer), 1_000_000 * WAD,   true);
         deal(USDC, address(buffer), 1_000_000 * 10**6, true);
@@ -108,32 +107,23 @@ contract DepositorTest is DssTest, TestUtils {
         vm.stopPrank();
     }
 
-    function testFile() public {
-        checkFileUint128PairForGemPair(address(depositor), "Depositor", ["cap"]);
-    }
-
-    function testFileHop() public {
+    function testSetLimits() public {
         vm.expectEmit(true, true, true, true);
-        emit File("hop", address(0x123), address(0x456), 23);
-        depositor.file("hop", address(0x123), address(0x456), 23);
-        (uint64 hop,) = depositor.timings(address(0x123), address(0x456));
-        assertEq(hop, 23);
-
-        vm.expectRevert("Depositor/not-authorized");
-        vm.prank(address(0x789)); depositor.file("hop", address(0x123), address(0x456), 23);
-    }
-
-    function testFileUintUnrecognizedParam() public {
-        vm.expectRevert("Depositor/file-unrecognized-param");
-        depositor.file("wrong", address(0x123), address(0x456), 0);
+        emit SetLimits(address(1), address(2), 3, 4, 5);
+        vm.prank(address(this)); depositor.setLimits(address(1), address(2), 3, 4, 5);
+        (uint64 hop, uint64 zzz, uint128 cap0, uint128 cap1) = depositor.limits(address(1), address(2));
+        assertEq(hop, 3);
+        assertEq(zzz, 0);
+        assertEq(cap0, 4);
+        assertEq(cap1, 5);
     }
 
     function testRoles() public {
         vm.expectRevert("Depositor/not-authorized");
-        vm.prank(address(0xBEEF)); depositor.file("hop", address(0), address(0), 0);
-        roles.setRoleAction(ilk, uint8(0xF1), address(depositor), bytes4(keccak256("file(bytes32,address,address,uint256)")), true);
+        vm.prank(address(0xBEEF)); depositor.setLimits(address(0), address(1), 0, 0, 0);
+        roles.setRoleAction(ilk, uint8(0xF1), address(depositor), bytes4(keccak256("setLimits(address,address,uint64,uint128,uint128)")), true);
         roles.setUserRole(ilk, address(0xBEEF), uint8(0xF1), true);
-        vm.prank(address(0xBEEF)); depositor.file("hop", address(0), address(0), 0);
+        vm.prank(address(0xBEEF)); depositor.setLimits(address(0), address(1), 0, 0, 0);
     }
 
     // https://github.com/Uniswap/v3-periphery/blob/464a8a49611272f7349c970e0fadb7ec1d3c1086/contracts/libraries/PoolAddress.sol#L33
@@ -402,7 +392,7 @@ contract DepositorTest is DssTest, TestUtils {
     }
 
     function testDepositExceedingCap() public {
-        (uint128 cap0, uint128 cap1) = depositor.caps(DAI, USDC);
+        (,,uint128 cap0, uint128 cap1) = depositor.limits(DAI, USDC);
         Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
             gem0: DAI,
             gem1: USDC,
@@ -510,7 +500,7 @@ contract DepositorTest is DssTest, TestUtils {
             amt1Min: 490 * 10**6
         });
         vm.prank(FACILITATOR); (uint128 liq,,) = depositor.deposit(dp);
-        depositor.file("cap", DAI, USDC, uint128(1 * WAD), 1 * 10**6);
+        depositor.setLimits(DAI, USDC, 3600, uint128(1 * WAD), 1 * 10**6);
 
         dp.liquidity = liq;
         vm.warp(block.timestamp + 3600);

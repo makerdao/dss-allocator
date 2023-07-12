@@ -67,7 +67,7 @@ contract StableDepositor {
     event Deny  (address indexed usr);
     event Kiss  (address indexed usr);
     event Diss  (address indexed usr);
-    event Config(address indexed gemA, address indexed gemB, PairConfig data);
+    event SetConfig(address indexed gem0, address indexed gem1, PairConfig data);
 
     constructor(address _depositor) {
         depositor = DepositorLike(_depositor);
@@ -117,11 +117,10 @@ contract StableDepositor {
         uint128 amt0Req;
         uint128 amt1Req;
     }
-
-    function setConfig(address gemA, address gemB, PairConfig memory cfg) external auth {
-        (address gem0, address gem1) = gemA < gemB ? (gemA, gemB) : (gemB, gemA);
+    function setConfig(address gem0, address gem1, PairConfig memory cfg) external auth {
+        require(gem0 < gem1, "StableDepositor/wrong-gem-order");
         configs[gem0][gem1] = cfg;
-        emit Config(gemA, gemB, cfg);
+        emit SetConfig(gem0, gem1, cfg);
     }
 
     // Note: the keeper's minAmts value must be updated whenever configs[gem0][gem1] is changed.
@@ -131,7 +130,6 @@ contract StableDepositor {
         external
         returns (uint128 liquidity, uint256 amt0, uint256 amt1)
     {
-        // Note: we rely on Depositor to enforce gem0 < gem1
         PairConfig memory cfg = configs[gem0][gem1];
 
         require(cfg.count > 0, "StableDepositor/exceeds-count");
@@ -164,7 +162,6 @@ contract StableDepositor {
         external
         returns (uint128 liquidity, uint256 amt0, uint256 amt1)
     {
-        // Note: we rely on Depositor to enforce gem0 < gem1
         PairConfig memory cfg = configs[gem0][gem1];
 
         require(cfg.count > 0, "StableDepositor/exceeds-count");
@@ -195,7 +192,6 @@ contract StableDepositor {
         external
         returns (uint256 amt0, uint256 amt1)
     {
-        // Note: we rely on Depositor to enforce gem0 < gem1
         PairConfig memory cfg = configs[gem0][gem1];
 
         DepositorLike.CollectParams memory collectParams = DepositorLike.CollectParams({

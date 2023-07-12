@@ -13,7 +13,7 @@ import { TestUtils } from "test/utils/TestUtils.sol";
 contract StableSwapperTest is DssTest, TestUtils {
     event Kiss(address indexed usr);
     event Diss(address indexed usr);
-    event Config(address indexed src, address indexed dst, StableSwapper.PairConfig data);
+    event SetConfig(address indexed src, address indexed dst, StableSwapper.PairConfig data);
     event Swap(address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
 
     AllocatorBuffer public buffer;
@@ -48,10 +48,8 @@ contract StableSwapperTest is DssTest, TestUtils {
         roles.setUserRole(ilk, FACILITATOR, SWAPPER_ROLE, true);
         roles.setUserRole(ilk, address(stableSwapper), SWAPPER_ROLE, true);
 
-        swapper.file("cap", DAI, USDC, 10_000 * WAD);
-        swapper.file("cap", USDC, DAI, 10_000 * 10**6);
-        swapper.file("hop", DAI, USDC, 3600);
-        swapper.file("hop", USDC, DAI, 3600);
+        swapper.setLimits(DAI, USDC, 3600 seconds, uint128(10_000 * WAD));
+        swapper.setLimits(USDC, DAI, 3600 seconds, uint128(10_000 * 10**6));
 
         deal(DAI,  address(buffer), 1_000_000 * WAD,   true);
         deal(USDC, address(buffer), 1_000_000 * 10**6, true);
@@ -117,7 +115,7 @@ contract StableSwapperTest is DssTest, TestUtils {
     function testSetConfig() public {
         stableSwapper.kiss(address(this));
         vm.expectEmit(true, true, true, true);
-        emit Config(address(0x123), address(0x456), StableSwapper.PairConfig({
+        emit SetConfig(address(0x123), address(0x456), StableSwapper.PairConfig({
             count: 23,
             lot: uint96(314),
             reqOut: uint112(42)

@@ -22,7 +22,7 @@ contract CalleeMock is DssTest {
 }
 
 contract SwapperTest is DssTest {
-    event File(bytes32 indexed what, address indexed src, address indexed dst, uint256 data);
+    event SetLimits(address indexed gem0, address indexed gem1, uint64 hop, uint128 cap);
     event Swap(address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
 
     AllocatorRoles public roles;
@@ -55,10 +55,8 @@ contract SwapperTest is DssTest {
         roles.setRoleAction(ilk, SWAPPER_ROLE, address(swapper), swapper.swap.selector, true);
         roles.setUserRole(ilk, FACILITATOR, SWAPPER_ROLE, true);
 
-        swapper.file("cap", DAI, USDC, 10_000 * WAD);
-        swapper.file("cap", USDC, DAI, 10_000 * 10**6);
-        swapper.file("hop", DAI, USDC, 3600);
-        swapper.file("hop", USDC, DAI, 3600);
+        swapper.setLimits(DAI, USDC, 3600 seconds, uint128(10_000 * WAD));
+        swapper.setLimits(USDC, DAI, 3600 seconds, uint128(10_000 * 10**6));
 
         deal(DAI,  address(buffer), 1_000_000 * WAD,   true);
         deal(USDC, address(buffer), 1_000_000 * 10**6, true);
@@ -86,39 +84,22 @@ contract SwapperTest is DssTest {
         vm.stopPrank();
     }
 
-    function testFileCap() public {
+    function testSetLimits() public {
         vm.expectEmit(true, true, true, true);
-        emit File("cap", address(0x123), address(0x456), 23);
-        swapper.file("cap", address(0x123), address(0x456), 23);
-        (,, uint128 cap) = swapper.limits(address(0x123), address(0x456));
-        assertEq(cap, 23);
-
-        vm.expectRevert("Swapper/not-authorized");
-        vm.prank(address(0x789)); swapper.file("cap", address(0x123), address(0x456), 23);
-    }
-
-    function testFileHop() public {
-        vm.expectEmit(true, true, true, true);
-        emit File("hop", address(0x123), address(0x456), 23);
-        swapper.file("hop", address(0x123), address(0x456), 23);
-        (uint64 hop,,) = swapper.limits(address(0x123), address(0x456));
-        assertEq(hop, 23);
-
-        vm.expectRevert("Swapper/not-authorized");
-        vm.prank(address(0x789)); swapper.file("hop", address(0x123), address(0x456), 23);
-    }
-
-    function testFileUintUnrecognizedParam() public {
-        vm.expectRevert("Swapper/file-unrecognized-param");
-        swapper.file("wrong", address(0x123), address(0x456), 0);
+        emit SetLimits(address(1), address(2), 3, 4);
+        vm.prank(address(this)); swapper.setLimits(address(1), address(2), 3, 4);
+        (uint64 hop, uint64 zzz, uint128 cap) = swapper.limits(address(1), address(2));
+        assertEq(hop, 3);
+        assertEq(zzz, 0);
+        assertEq(cap, 4);
     }
 
     function testRoles() public {
         vm.expectRevert("Swapper/not-authorized");
-        vm.prank(address(0xBEEF)); swapper.file("hop", address(0), address(0), 0);
-        roles.setRoleAction(ilk, uint8(0xF1), address(swapper), bytes4(keccak256("file(bytes32,address,address,uint256)")), true);
+        vm.prank(address(0xBEEF)); swapper.setLimits(address(0), address(0), 0, 0);
+        roles.setRoleAction(ilk, uint8(0xF1), address(swapper), bytes4(keccak256("setLimits(address,address,uint64,uint128)")), true);
         roles.setUserRole(ilk, address(0xBEEF), uint8(0xF1), true);
-        vm.prank(address(0xBEEF)); swapper.file("hop", address(0), address(0), 0);
+        vm.prank(address(0xBEEF)); swapper.setLimits(address(0), address(0), 0, 0);
     }
 
     function testSwap() public {

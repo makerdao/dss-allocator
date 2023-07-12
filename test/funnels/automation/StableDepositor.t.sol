@@ -30,7 +30,7 @@ interface SwapRouterLike {
 contract StableSwapperTest is DssTest, TestUtils {
     event Kiss(address indexed usr);
     event Diss(address indexed usr);
-    event Config(address indexed src, address indexed dst, StableDepositor.PairConfig data);
+    event SetConfig(address indexed src, address indexed dst, StableDepositor.PairConfig data);
     
     AllocatorBuffer public buffer;
     Depositor       public depositor;
@@ -66,8 +66,7 @@ contract StableSwapperTest is DssTest, TestUtils {
         roles.setUserRole(ilk, FACILITATOR, DEPOSITOR_ROLE, true);
         roles.setUserRole(ilk, address(stableDepositor), DEPOSITOR_ROLE, true);
 
-        depositor.file("cap", DAI, USDC, uint128(10_000 * WAD), 10_000 * 10**6);
-        depositor.file("hop", DAI, USDC, 3600);
+        depositor.setLimits(DAI, USDC, 3600 seconds, uint128(10_000 * WAD), uint128(10_000 * 10**6));
 
         deal(DAI,  address(buffer), 1_000_000 * WAD,   true);
         deal(USDC, address(buffer), 1_000_000 * 10**6, true);
@@ -133,27 +132,23 @@ contract StableSwapperTest is DssTest, TestUtils {
 
     function testSetConfig() public {
         stableDepositor.kiss(address(this));
+        StableDepositor.PairConfig memory config = StableDepositor.PairConfig({
+            count    : 23,
+            fee      : uint24(314),
+            tickLower: 5,
+            tickUpper: 6,
+            amt0     : uint128(7),
+            amt1     : uint128(8),
+            amt0Req  : uint128(9),
+            amt1Req  : uint128(10)
+        });
+
+        vm.expectRevert("StableDepositor/wrong-gem-order");
+        stableDepositor.setConfig(address(0x456), address(0x123), config);
+
         vm.expectEmit(true, true, true, true);
-        emit Config(address(0x123), address(0x456), StableDepositor.PairConfig({
-            count    : 23,
-            fee      : uint24(314),
-            tickLower: 5,
-            tickUpper: 6,
-            amt0     : uint128(7),
-            amt1     : uint128(8),
-            amt0Req  : uint128(9),
-            amt1Req  : uint128(10)
-        }));
-        stableDepositor.setConfig(address(0x123), address(0x456), StableDepositor.PairConfig({
-            count    : 23,
-            fee      : uint24(314),
-            tickLower: 5,
-            tickUpper: 6,
-            amt0     : uint128(7),
-            amt1     : uint128(8),
-            amt0Req  : uint128(9),
-            amt1Req  : uint128(10)
-        }));
+        emit SetConfig(address(0x123), address(0x456), config);
+        stableDepositor.setConfig(address(0x123), address(0x456), config);
 
         (
             uint32  count,
