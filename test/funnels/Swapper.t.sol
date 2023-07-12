@@ -76,8 +76,9 @@ contract SwapperTest is DssTest {
     }
 
     function testModifiers() public {
-        bytes4[] memory authedMethods = new bytes4[](1);
-        authedMethods[0] = swapper.swap.selector;
+        bytes4[] memory authedMethods = new bytes4[](2);
+        authedMethods[0] = swapper.setLimits.selector;
+        authedMethods[1] = swapper.swap.selector;
 
         vm.startPrank(address(0xBEEF));
         checkModifier(address(swapper), "Swapper/not-authorized", authedMethods);
