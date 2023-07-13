@@ -165,9 +165,7 @@ contract DepositorTest is DssTest, TestUtils {
         });
         vm.expectEmit(true, true, true, false);
         emit Deposit(FACILITATOR, DAI, USDC, 0, 0, 0);
-        uint256 startGas = gasleft();
         vm.prank(FACILITATOR); depositor.deposit(dp);
-        console.log("Gas used: %d", startGas - gasleft());
 
         assertLt(GemLike(DAI).balanceOf(address(buffer)), prevDAI);
         assertLt(GemLike(USDC).balanceOf(address(buffer)), prevUSDC);
@@ -188,6 +186,54 @@ contract DepositorTest is DssTest, TestUtils {
         assertEq(GemLike(DAI).balanceOf(address(depositor)), 0);
         assertEq(GemLike(USDC).balanceOf(address(depositor)), 0);
         assertGt(_getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100), liquidityAfterDeposit);
+    }
+
+    function testGetPosition() public {
+        Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
+            gem0: DAI,
+            gem1: USDC,
+            fee: uint24(100),
+            tickLower: REF_TICK-100,
+            tickUpper: REF_TICK+100,
+            liquidity: 2,
+            amt0Desired: 0,
+            amt1Desired: 0,
+            amt0Min: 0,
+            amt1Min: 0
+        });
+        vm.prank(FACILITATOR); depositor.deposit(dp);
+
+        // execute a trade to generate fees for the LP position
+        deal(DAI,  address(this), 1_000_000 * WAD,   true);
+        GemLike(DAI).approve(UNIV3_ROUTER, 1_000_000 * WAD);
+            SwapRouterLike.ExactInputParams memory params = SwapRouterLike.ExactInputParams({
+            path:             DAI_USDC_PATH,
+            recipient:        address(this),
+            deadline:         block.timestamp,
+            amountIn:         1_000_000 * WAD,
+            amountOutMinimum: 990_000 * 10**6
+        });
+        SwapRouterLike(UNIV3_ROUTER).exactInput(params);
+
+
+
+        // partial withdraw without fee collection
+        vm.warp(block.timestamp + 3600);
+        dp.liquidity = 1;
+        vm.prank(FACILITATOR); (, uint256 withdrawn0, uint256 withdrawn1) = depositor.withdraw(dp, false);
+
+        (
+            uint128 liquidity,
+            uint256 feeGrowthInside0LastX128,
+            uint256 feeGrowthInside1LastX128,
+            uint128 tokensOwed0,
+            uint128 tokensOwed1
+        ) = depositor.getPosition(DAI, USDC, 100, REF_TICK-100, REF_TICK+100);
+        assertEq(liquidity, 1);
+        //assertGt(feeGrowthInside0LastX128, 0);
+        //assertGt(feeGrowthInside1LastX128, 0);
+        assertGt(tokensOwed0, 0);
+        assertGt(tokensOwed1, 0);
     }
 
     function testCollect() public {

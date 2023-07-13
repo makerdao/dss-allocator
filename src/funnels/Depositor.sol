@@ -29,6 +29,14 @@ interface GemLike {
 
 // https://github.com/Uniswap/v3-core/blob/d8b1c635c275d2a9450bd6a78f3fa2484fef73eb/contracts/UniswapV3Pool.sol
 interface UniV3PoolLike {
+    function positions(bytes32) external view returns (
+        uint128 liquidity,
+        uint256 feeGrowthInside0LastX128,
+        uint256 feeGrowthInside1LastX128,
+        uint128 tokensOwed0,
+        uint128 tokensOwed1
+    );
+
     function slot0() external view returns (
         uint160 sqrtPriceX96,
         int24 tick,
@@ -131,6 +139,23 @@ contract Depositor {
         ))))));
     }
 
+    function getPosition(
+        address gem0,
+        address gem1,
+        uint24  fee,
+        int24   tickLower,
+        int24   tickUpper
+    ) external view returns (
+        uint128 liquidity,
+        uint256 feeGrowthInside0LastX128,
+        uint256 feeGrowthInside1LastX128,
+        uint128 tokensOwed0,
+        uint128 tokensOwed1
+    ) {
+        return _getPool(gem0, gem1, fee).
+            positions(keccak256(abi.encodePacked(address(this), tickLower, tickUpper)));
+    }
+
     function _getLiquidityForAmts(
         UniV3PoolLike pool,
         int24         tickLower,
@@ -184,7 +209,7 @@ contract Depositor {
         uint256 amt1Min;
     }
 
-    function deposit(LiquidityParams memory p)
+    function deposit(LiquidityParams calldata p)
         external
         auth
         returns (uint128 liquidity, uint256 amt0, uint256 amt1)
