@@ -78,8 +78,8 @@ contract Depositor {
         uint128 cap1; // Maximum amt of gem1 that can be added as liquidity each hop for a (gem0, gem1) pool
     }
 
-    event Rely (address indexed usr);
-    event Deny (address indexed usr);
+    event Rely(address indexed usr);
+    event Deny(address indexed usr);
     event SetLimits(address indexed gem0, address indexed gem1, uint64 hop, uint128 cap0, uint128 cap1);
     event Deposit(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1);
     event Withdraw(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1, uint256 collected0, uint256 collected1);
