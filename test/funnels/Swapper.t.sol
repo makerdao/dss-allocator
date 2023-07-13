@@ -115,8 +115,12 @@ contract SwapperTest is DssTest {
         uint256 prevSrc = GemLike(USDC).balanceOf(address(buffer));
         uint256 prevDst = GemLike(DAI).balanceOf(address(buffer));
 
-        vm.expectEmit(true, true, true, false);
-        emit Swap(FACILITATOR, USDC, DAI, 10_000 * 10**6, 0);
+        uint256 snapshot = vm.snapshot();
+        vm.prank(FACILITATOR); uint256 expectedOut = swapper.swap(USDC, DAI, 10_000 * 10**6, 9900 * WAD, address(uniV3Callee), USDC_DAI_PATH);
+        vm.revertTo(snapshot);
+
+        vm.expectEmit(true, true, true, true);
+        emit Swap(FACILITATOR, USDC, DAI, 10_000 * 10**6, expectedOut);
         vm.prank(FACILITATOR); uint256 out = swapper.swap(USDC, DAI, 10_000 * 10**6, 9900 * WAD, address(uniV3Callee), USDC_DAI_PATH);
 
         assertGe(out, 9900 * WAD);

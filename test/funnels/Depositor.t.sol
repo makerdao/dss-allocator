@@ -163,11 +163,14 @@ contract DepositorTest is DssTest, TestUtils {
             amt0Min: 490 * WAD,
             amt1Min: 490 * 10**6
         });
-        vm.expectEmit(true, true, true, false);
-        emit Deposit(FACILITATOR, DAI, USDC, 0, 0, 0);
-        uint256 startGas = gasleft();
+
+        uint256 snapshot = vm.snapshot();
+        (uint128 expectedLiquidity, uint256 expectedAmt0, uint256 expectedAmt1) = depositor.deposit(dp);
+        vm.revertTo(snapshot);
+
+        vm.expectEmit(true, true, true, true);
+        emit Deposit(FACILITATOR, DAI, USDC, expectedLiquidity, expectedAmt0, expectedAmt1);
         vm.prank(FACILITATOR); depositor.deposit(dp);
-        console.log("Gas used: %d", startGas - gasleft());
 
         assertLt(GemLike(DAI).balanceOf(address(buffer)), prevDAI);
         assertLt(GemLike(USDC).balanceOf(address(buffer)), prevUSDC);
@@ -226,8 +229,13 @@ contract DepositorTest is DssTest, TestUtils {
             tickLower: REF_TICK-100, 
             tickUpper: REF_TICK+100
         });
-        vm.expectEmit(true, true, true, false);
-        emit Collect(FACILITATOR, DAI, USDC, 0, 0);
+
+        uint256 snapshot = vm.snapshot();
+        (uint256 expectedCollected0, uint256 expectedCollected1) = depositor.collect(cp);
+        vm.revertTo(snapshot);
+
+        vm.expectEmit(true, true, true, true);
+        emit Collect(FACILITATOR, DAI, USDC, expectedCollected0, expectedCollected1);
         vm.prank(FACILITATOR); (uint256 amt0, uint256 amt1) = depositor.collect(cp);
 
         assertTrue(
@@ -311,7 +319,7 @@ contract DepositorTest is DssTest, TestUtils {
         vm.prank(FACILITATOR); (, uint256 withdrawn0, uint256 withdrawn1) = depositor.withdraw(dp, true);
 
         assertTrue(
-            (withdrawn0 > deposited0 && GemLike(DAI ).balanceOf(address(buffer)) > initialDAI ) || 
+            (withdrawn0 > deposited0 && GemLike(DAI ).balanceOf(address(buffer)) > initialDAI ) ||
             (withdrawn1 > deposited1 && GemLike(USDC).balanceOf(address(buffer)) > initialUSDC)
         );
         assertTrue(GemLike(DAI).balanceOf(address(buffer)) >= prevDAI);

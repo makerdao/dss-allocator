@@ -51,8 +51,8 @@ interface DepositorLike {
     }
 
     function collect(CollectParams memory p) external returns (
-        uint256 amt0,
-        uint256 amt1
+        uint256 collected0,
+        uint256 collected1
     );
 }
 
@@ -190,7 +190,7 @@ contract StableDepositor {
     function collect(address gem0, address gem1)
         toll
         external
-        returns (uint256 amt0, uint256 amt1)
+        returns (uint256 collected0, uint256 collected1)
     {
         PairConfig memory cfg = configs[gem0][gem1];
 
@@ -201,6 +201,6 @@ contract StableDepositor {
             tickLower: cfg.tickLower,
             tickUpper: cfg.tickUpper
         });
-        (amt0, amt1) = depositor.collect(collectParams);
+        (collected0, collected1) = depositor.collect(collectParams);
     }
 }
