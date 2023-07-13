@@ -260,7 +260,7 @@ contract Depositor {
         require(p.gem0 < p.gem1, "Depositor/wrong-gem-order");
 
         UniV3PoolLike pool = _getPool(p.gem0, p.gem1, p.fee);
-        pool.burn(p.tickLower, p.tickUpper, 0); // update the position's owed fees
+        pool.burn({ tickLower: p.tickLower, tickUpper: p.tickUpper, amount: 0 }); // update the position's owed fees
 
         (collected0, collected1) = pool.collect({
             recipient       : buffer,
