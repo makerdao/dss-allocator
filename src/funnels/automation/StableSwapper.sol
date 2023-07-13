@@ -27,6 +27,8 @@ contract StableSwapper {
 
     SwapperLike public immutable swapper;                                // Swapper for this StableSwapper
 
+    uint256 internal constant WAD = 10 ** 18;
+
     event Rely(address indexed usr);
     event Deny(address indexed usr);
     event Kiss(address indexed usr);
@@ -49,8 +51,6 @@ contract StableSwapper {
         require(buds[msg.sender] == 1, "StableSwapper/non-keeper");
         _;
     }
-
-    uint256 internal constant WAD = 10 ** 18;
 
     function rely(address usr) external auth {
         wards[usr] = 1;
