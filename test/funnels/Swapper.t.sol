@@ -87,12 +87,19 @@ contract SwapperTest is DssTest {
     }
 
     function testSetLimits() public {
+        // swap to make sure zzz is set
+        vm.prank(FACILITATOR); swapper.swap(USDC, DAI, 10_000 * 10**6, 9900 * WAD, address(uniV3Callee), USDC_DAI_PATH);
+        (, uint64 zzzBeforeSetLimit,) = swapper.limits(USDC, DAI);
+        assertEq(zzzBeforeSetLimit, block.timestamp);
+
+        vm.warp(block.timestamp + 1 hours);
+
         vm.expectEmit(true, true, true, true);
-        emit SetLimits(address(1), address(2), 3, 4);
-        vm.prank(address(this)); swapper.setLimits(address(1), address(2), 3, 4);
-        (uint64 hop, uint64 zzz, uint128 cap) = swapper.limits(address(1), address(2));
+        emit SetLimits(USDC, DAI, 3, 4);
+        vm.prank(address(this)); swapper.setLimits(USDC, DAI, 3, 4);
+        (uint64 hop, uint64 zzz, uint128 cap) = swapper.limits(USDC, DAI);
         assertEq(hop, 3);
-        assertEq(zzz, 0);
+        assertEq(zzz, zzzBeforeSetLimit);
         assertEq(cap, 4);
     }
 
