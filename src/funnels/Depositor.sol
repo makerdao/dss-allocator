@@ -230,7 +230,7 @@ contract Depositor {
             : p.liquidity;
 
         (amt0, amt1) = pool.burn({ tickLower: p.tickLower, tickUpper: p.tickUpper, amount: liquidity });
-        require(amt0 >= p.amt0Min  && amt1 >= p.amt1Min,  "Depositor/exceeds-slippage");
+        require(amt0 >= p.amt0Min && amt1 >= p.amt1Min,  "Depositor/exceeds-slippage");
         require(amt0 <= limit.cap0 && amt1 <= limit.cap1, "Depositor/exceeds-cap");
 
         (uint256 collected0, uint256 collected1) = pool.collect({
@@ -241,7 +241,7 @@ contract Depositor {
             amount1Requested: takeFees ? type(uint128).max : uint128(amt1)
         });
 
-        emit Withdraw(msg.sender, p.gem0, p.gem1, p.liquidity, amt0, amt1, collected0, collected1);
+        emit Withdraw(msg.sender, p.gem0, p.gem1, liquidity, amt0, amt1, collected0, collected1);
     }
 
     struct CollectParams {

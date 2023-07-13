@@ -17,7 +17,7 @@
 pragma solidity ^0.8.16;
 
 interface SwapperLike {
-    function swap(address src, address dst, uint256 amt, uint256 minOut, address callee, bytes calldata data) external returns (uint256 out);
+    function swap(address, address, uint256, uint256, address, bytes calldata) external returns (uint256);
 }
 
 contract StableSwapper {
@@ -27,11 +27,10 @@ contract StableSwapper {
 
     SwapperLike public immutable swapper;                                // Swapper for this StableSwapper
 
-    event Rely  (address indexed usr);
-    event Deny  (address indexed usr);
-    event Kiss  (address indexed usr);
-    event Diss  (address indexed usr);
-    event File  (bytes32 indexed what, address data);
+    event Rely(address indexed usr);
+    event Deny(address indexed usr);
+    event Kiss(address indexed usr);
+    event Diss(address indexed usr);
     event SetConfig(address indexed src, address indexed dst, PairConfig data);
 
     constructor(address swapper_) {

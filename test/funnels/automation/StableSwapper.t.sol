@@ -83,8 +83,10 @@ contract StableSwapperTest is DssTest, TestUtils {
     }
 
     function testModifiers() public {
-        bytes4[] memory authedMethods = new bytes4[](1);
-        authedMethods[0] = stableSwapper.setConfig.selector;
+        bytes4[] memory authedMethods = new bytes4[](3);
+        authedMethods[0] = stableSwapper.kiss.selector;
+        authedMethods[1] = stableSwapper.diss.selector;
+        authedMethods[2] = stableSwapper.setConfig.selector;
 
         vm.startPrank(address(0xBEEF));
         checkModifierForLargeArgs(address(stableSwapper), "StableSwapper/not-authorized", authedMethods);
@@ -103,17 +105,9 @@ contract StableSwapperTest is DssTest, TestUtils {
         emit Diss(testAddress);
         stableSwapper.diss(testAddress);
         assertEq(stableSwapper.buds(testAddress), 0);
-
-        stableSwapper.deny(address(this));
-
-        vm.expectRevert("StableSwapper/not-authorized");
-        stableSwapper.kiss(testAddress);
-        vm.expectRevert("StableSwapper/not-authorized");
-        stableSwapper.diss(testAddress);
     }
 
     function testSetConfig() public {
-        stableSwapper.kiss(address(this));
         vm.expectEmit(true, true, true, true);
         emit SetConfig(address(0x123), address(0x456), StableSwapper.PairConfig({
             count: 23,
@@ -133,7 +127,6 @@ contract StableSwapperTest is DssTest, TestUtils {
     }
 
     function testSwapByKeeper() public {
-        vm.warp(block.timestamp + 3600);
         uint256 prevSrc = GemLike(USDC).balanceOf(address(buffer));
         uint256 prevDst = GemLike(DAI).balanceOf(address(buffer));
         (uint32 prevUsdcDaiCount,,) = stableSwapper.configs(USDC, DAI);
@@ -177,7 +170,6 @@ contract StableSwapperTest is DssTest, TestUtils {
     }
 
     function testSwapMinZero() public {
-        vm.warp(block.timestamp + 3600);
         vm.expectEmit(true, true, true, false);
         emit Swap(address(stableSwapper), USDC, DAI, 0, 0);
         vm.prank(KEEPER); stableSwapper.swap(USDC, DAI, 0, address(uniV3Callee), USDC_DAI_PATH);

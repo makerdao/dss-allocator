@@ -97,10 +97,11 @@ contract DepositorTest is DssTest, TestUtils {
     }
 
     function testModifiers() public {
-        bytes4[] memory authedMethods = new bytes4[](3);
-        authedMethods[0] = depositor.deposit.selector;
-        authedMethods[1] = depositor.withdraw.selector;
-        authedMethods[2] = depositor.collect.selector;
+        bytes4[] memory authedMethods = new bytes4[](4);
+        authedMethods[0] = depositor.setLimits.selector;
+        authedMethods[1] = depositor.deposit.selector;
+        authedMethods[2] = depositor.withdraw.selector;
+        authedMethods[3] = depositor.collect.selector;
 
         vm.startPrank(address(0xBEEF));
         checkModifierForLargeArgs(address(depositor), "Depositor/not-authorized", authedMethods);

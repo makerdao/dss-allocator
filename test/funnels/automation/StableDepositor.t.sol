@@ -171,8 +171,6 @@ contract StableSwapperTest is DssTest, TestUtils {
     }
 
     function testDepositWithdrawByKeeper() public {
-        vm.warp(block.timestamp + 3600);
-
         uint256 prevDai = GemLike(DAI).balanceOf(address(buffer));
         uint256 prevUsdc = GemLike(USDC).balanceOf(address(buffer));
         (uint32 prevCount,,,,,,,) = stableDepositor.configs(DAI, USDC);
@@ -196,8 +194,6 @@ contract StableSwapperTest is DssTest, TestUtils {
     }
 
     function testDepositWithdrawMinZero() public {
-        vm.warp(block.timestamp + 3600);
-
         uint256 prevDai = GemLike(DAI).balanceOf(address(buffer));
         uint256 prevUsdc = GemLike(USDC).balanceOf(address(buffer));
 
@@ -238,7 +234,6 @@ contract StableSwapperTest is DssTest, TestUtils {
     }
 
     function testCollectByKeeper() public {
-        vm.warp(block.timestamp + 3600);
         vm.prank(KEEPER); stableDepositor.deposit(DAI, USDC, uint128(491 * WAD), uint128(491 * 10**6));
 
         uint256 prevDai = GemLike(DAI).balanceOf(address(buffer));

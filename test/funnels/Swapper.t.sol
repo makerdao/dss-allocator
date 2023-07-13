@@ -149,7 +149,7 @@ contract SwapperTest is DssTest {
 
     function testSwapAferHop() public {
         vm.prank(FACILITATOR); swapper.swap(USDC, DAI, 10_000 * 10**6, 9900 * WAD, address(uniV3Callee), USDC_DAI_PATH);
-        (uint64  hop,,) = swapper.limits(USDC, DAI);
+        (uint64 hop,,) = swapper.limits(USDC, DAI);
         vm.warp(block.timestamp + hop);
 
         vm.expectEmit(true, true, true, false);
@@ -174,6 +174,6 @@ contract SwapperTest is DssTest {
     function testSwapReceivingTooLittle() public {
         CalleeMock callee = new CalleeMock();
         vm.expectRevert("Swapper/too-few-dst-received");
-        vm.prank(FACILITATOR); swapper.swap(USDC, DAI, 100*10**6, 200*10**18, address(callee), USDC_DAI_PATH);
+        vm.prank(FACILITATOR); swapper.swap(USDC, DAI, 100 * 10**6, 200 * WAD, address(callee), USDC_DAI_PATH);
     }
 }
