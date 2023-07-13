@@ -108,12 +108,32 @@ contract DepositorTest is DssTest, TestUtils {
     }
 
     function testSetLimits() public {
+        // deposit to make sure zzz is set
+        Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
+            gem0: DAI,
+            gem1: USDC,
+            fee: uint24(100),
+            tickLower: REF_TICK-100,
+            tickUpper: REF_TICK+100,
+            liquidity: 0,
+            amt0Desired: 500 * WAD,
+            amt1Desired: 500 * 10**6,
+            amt0Min: 490 * WAD,
+            amt1Min: 490 * 10**6
+        });
+        vm.prank(FACILITATOR); depositor.deposit(dp);
+
+        (, uint64 zzzBeforeSetLimit,,) = depositor.limits(DAI, USDC);
+        assertEq(zzzBeforeSetLimit, block.timestamp);
+
+        vm.warp(block.timestamp + 1 hours);
+
         vm.expectEmit(true, true, true, true);
-        emit SetLimits(address(1), address(2), 3, 4, 5);
-        vm.prank(address(this)); depositor.setLimits(address(1), address(2), 3, 4, 5);
-        (uint64 hop, uint64 zzz, uint128 cap0, uint128 cap1) = depositor.limits(address(1), address(2));
+        emit SetLimits(DAI, USDC, 3, 4, 5);
+        vm.prank(address(this)); depositor.setLimits(DAI, USDC, 3, 4, 5);
+        (uint64 hop, uint64 zzz, uint128 cap0, uint128 cap1) = depositor.limits(DAI, USDC);
         assertEq(hop, 3);
-        assertEq(zzz, 0);
+        assertEq(zzz, zzzBeforeSetLimit);
         assertEq(cap0, 4);
         assertEq(cap1, 5);
     }
