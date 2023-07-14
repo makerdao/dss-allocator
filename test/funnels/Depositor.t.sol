@@ -382,7 +382,7 @@ contract DepositorTest is DssTest, TestUtils {
         assertTrue(withdrawn1 * 100001 / 100000 >= deposited1);
         assertEq(GemLike(DAI).balanceOf(address(depositor)), 0);
         assertEq(GemLike(USDC).balanceOf(address(depositor)), 0);
-        assertLe(_getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100), liquidityBeforeWithdraw);
+        assertLt(_getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100), liquidityBeforeWithdraw);
     }
 
     function testDepositWrongGemOrder() public {
@@ -421,7 +421,6 @@ contract DepositorTest is DssTest, TestUtils {
     }
 
     function testDepositExceedingCap() public {
-        (,,uint128 cap0, uint128 cap1) = depositor.limits(DAI, USDC);
         Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
             gem0: DAI,
             gem1: USDC,
@@ -429,13 +428,23 @@ contract DepositorTest is DssTest, TestUtils {
             tickLower: REF_TICK-100,
             tickUpper: REF_TICK+100,
             liquidity: 0,
-            amt0Desired: 2 * cap0,
-            amt1Desired: 2 * cap1,
+            amt0Desired: 2 * uint128(1 * WAD),
+            amt1Desired: 2 * uint128(1 * 10**6),
             amt0Min: 0,
             amt1Min: 0
         });
+        depositor.setLimits(DAI, USDC, 3600, uint128(1 * WAD), type(uint128).max);
 
         vm.expectRevert("Depositor/exceeds-cap");
+        vm.prank(FACILITATOR); depositor.deposit(dp);
+
+        depositor.setLimits(DAI, USDC, 3600, type(uint128).max, 1 * 10**6);
+
+        vm.expectRevert("Depositor/exceeds-cap");
+        vm.prank(FACILITATOR); depositor.deposit(dp);
+
+        depositor.setLimits(DAI, USDC, 3600, type(uint128).max, type(uint128).max);
+
         vm.prank(FACILITATOR); depositor.deposit(dp);
     }
 
@@ -450,8 +459,14 @@ contract DepositorTest is DssTest, TestUtils {
             amt0Desired: 500 * WAD,
             amt1Desired: 500 * 10**6,
             amt0Min: 3 * 500 * WAD,
-            amt1Min: 3 * 500 * 10**6
+            amt1Min: 0
         });
+
+        vm.expectRevert("Depositor/exceeds-slippage");
+        vm.prank(FACILITATOR); depositor.deposit(dp);
+
+        dp.amt0Min = 0;
+        dp.amt1Min = 3 * 500 * 10**6;
 
         vm.expectRevert("Depositor/exceeds-slippage");
         vm.prank(FACILITATOR); depositor.deposit(dp);
@@ -523,18 +538,55 @@ contract DepositorTest is DssTest, TestUtils {
             tickLower: REF_TICK-100,
             tickUpper: REF_TICK+100,
             liquidity: 0,
-            amt0Desired: 500 * WAD,
-            amt1Desired: 500 * 10**6,
-            amt0Min: 490 * WAD,
-            amt1Min: 490 * 10**6
+            amt0Desired: 2 * WAD,
+            amt1Desired: 2 * 10**6,
+            amt0Min: 0,
+            amt1Min: 0
         });
         vm.prank(FACILITATOR); (uint128 liq,,) = depositor.deposit(dp);
-        depositor.setLimits(DAI, USDC, 3600, uint128(1 * WAD), 1 * 10**6);
-
         dp.liquidity = liq;
         vm.warp(block.timestamp + 3600);
 
+        depositor.setLimits(DAI, USDC, 3600, type(uint128).max, 1 * 10**6);
+        
         vm.expectRevert("Depositor/exceeds-cap");
+        vm.prank(FACILITATOR); depositor.withdraw(dp, false);
+
+        depositor.setLimits(DAI, USDC, 3600, uint128(1 * WAD), type(uint128).max);
+
+        vm.expectRevert("Depositor/exceeds-cap");
+        vm.prank(FACILITATOR); depositor.withdraw(dp, false);
+
+        depositor.setLimits(DAI, USDC, 3600, type(uint128).max, type(uint128).max);
+
+        vm.prank(FACILITATOR); depositor.withdraw(dp, false);
+    }
+
+    function testWithdrawExceedingSlippage() public {
+        Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
+            gem0: DAI,
+            gem1: USDC,
+            fee: uint24(100),
+            tickLower: REF_TICK-100,
+            tickUpper: REF_TICK+100,
+            liquidity: 0,
+            amt0Desired: 500 * WAD,
+            amt1Desired: 500 * 10**6,
+            amt0Min: 0,
+            amt1Min: 0
+        });
+        vm.prank(FACILITATOR); (uint128 liq,,) = depositor.deposit(dp);
+        dp.liquidity = liq;
+        vm.warp(block.timestamp + 3600);
+        dp.amt0Min =  3 * 500 * WAD;
+
+        vm.expectRevert("Depositor/exceeds-slippage");
+        vm.prank(FACILITATOR); depositor.withdraw(dp, false);
+
+        dp.amt0Min = 0;
+        dp.amt1Min = 3 * 500 * 10**6;
+
+        vm.expectRevert("Depositor/exceeds-slippage");
         vm.prank(FACILITATOR); depositor.withdraw(dp, false);
     }
 
