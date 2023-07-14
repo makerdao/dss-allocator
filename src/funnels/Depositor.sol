@@ -81,9 +81,9 @@ contract Depositor {
     event Rely(address indexed usr);
     event Deny(address indexed usr);
     event SetLimits(address indexed gem0, address indexed gem1, uint64 hop, uint128 cap0, uint128 cap1);
-    event Deposit(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1);
-    event Withdraw(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1, uint256 collected0, uint256 collected1);
-    event Collect(address indexed sender, address indexed gem0, address indexed gem1, uint256 collected0, uint256 collected1);
+    event Deposit (address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1);
+    event Withdraw(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1, uint256 fees0, uint256 fees1);
+    event Collect (address indexed sender, address indexed gem0, address indexed gem1, uint256 fees0, uint256 fees1);
 
     constructor(address roles_, bytes32 ilk_, address uniV3Factory_, address buffer_) {
         roles        = RolesLike(roles_);
@@ -216,7 +216,7 @@ contract Depositor {
     function withdraw(LiquidityParams memory p, bool takeFees)
         external
         auth
-        returns (uint128 liquidity, uint256 amt0, uint256 amt1)
+        returns (uint128 liquidity, uint256 amt0, uint256 amt1, uint256 fees0, uint256 fees1)
     {
         require(p.gem0 < p.gem1, "Depositor/wrong-gem-order");
 
@@ -240,8 +240,9 @@ contract Depositor {
             amount0Requested: takeFees ? type(uint128).max : uint128(amt0),
             amount1Requested: takeFees ? type(uint128).max : uint128(amt1)
         });
+         (fees0, fees1) = (collected0 - amt0, collected1 - amt1);
 
-        emit Withdraw(msg.sender, p.gem0, p.gem1, liquidity, amt0, amt1, collected0, collected1);
+        emit Withdraw(msg.sender, p.gem0, p.gem1, liquidity, amt0, amt1, fees0, fees1);
     }
 
     struct CollectParams {
@@ -255,14 +256,14 @@ contract Depositor {
     function collect(CollectParams memory p)
         external
         auth
-        returns (uint256 collected0, uint256 collected1)
+        returns (uint256 fees0, uint256 fees1)
     {
         require(p.gem0 < p.gem1, "Depositor/wrong-gem-order");
 
         UniV3PoolLike pool = _getPool(p.gem0, p.gem1, p.fee);
         pool.burn({ tickLower: p.tickLower, tickUpper: p.tickUpper, amount: 0 }); // update the position's owed fees
 
-        (collected0, collected1) = pool.collect({
+        (fees0, fees1) = pool.collect({
             recipient       : buffer,
             tickLower       : p.tickLower,
             tickUpper       : p.tickUpper,
@@ -270,6 +271,6 @@ contract Depositor {
             amount1Requested: type(uint128).max
         });
 
-        emit Collect(msg.sender, p.gem0, p.gem1, collected0, collected1);
+        emit Collect(msg.sender, p.gem0, p.gem1, fees0, fees1);
     }
 }
