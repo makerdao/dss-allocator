@@ -203,8 +203,6 @@ contract DepositorTest is DssTest, TestUtils {
         prevDAI = GemLike(DAI).balanceOf(address(buffer));
 
         vm.warp(block.timestamp + 3600);
-        vm.expectEmit(true, true, true, false);
-        emit Deposit(FACILITATOR, DAI, USDC, 0, 0, 0);
         vm.prank(FACILITATOR); depositor.deposit(dp);
 
         assertLt(GemLike(DAI).balanceOf(address(buffer)), prevDAI);
@@ -288,10 +286,15 @@ contract DepositorTest is DssTest, TestUtils {
         dp.liquidity = liq;
 
         vm.warp(block.timestamp + 3600);
-        vm.expectEmit(true, true, true, false);
-        emit Withdraw(FACILITATOR, DAI, USDC, liq, 0, 0, 0, 0);
-        vm.prank(FACILITATOR); (, uint256 withdrawn0, uint256 withdrawn1, uint256 fees0, uint256 fees1) = depositor.withdraw(dp, false);
-        
+
+        uint256 snapshot = vm.snapshot();
+        vm.prank(FACILITATOR); (uint128 liquidity, uint256 withdrawn0, uint256 withdrawn1, uint256 fees0, uint256 fees1) = depositor.withdraw(dp, false);
+        vm.revertTo(snapshot);
+
+        vm.expectEmit(true, true, true, true);
+        emit Withdraw(FACILITATOR, DAI, USDC, liquidity, withdrawn0, withdrawn1, fees0, fees1);
+        vm.prank(FACILITATOR); (liquidity, withdrawn0, withdrawn1, fees0, fees1) = depositor.withdraw(dp, false);
+
         assertTrue(withdrawn0 + 1 >= deposited0);
         assertTrue(withdrawn1 + 1 >= deposited1);
         assertTrue(GemLike(DAI).balanceOf(address(buffer)) + 1 >= initialDAI);
@@ -301,6 +304,7 @@ contract DepositorTest is DssTest, TestUtils {
         assertEq(_getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100), 0);
         assertEq(fees0, 0);
         assertEq(fees1, 0);
+        assertEq(liquidity, liq);
     }
 
     function testWithdrawWithFeeCollection() public {
@@ -337,9 +341,14 @@ contract DepositorTest is DssTest, TestUtils {
 
         dp.liquidity = liq;
         vm.warp(block.timestamp + 3600);
-        vm.expectEmit(true, true, true, false);
-        emit Withdraw(FACILITATOR, DAI, USDC, liq, 0, 0, 0, 0);
-        vm.prank(FACILITATOR); (, uint256 withdrawn0, uint256 withdrawn1, uint256 fees0, uint256 fees1) = depositor.withdraw(dp, true);
+
+        uint256 snapshot = vm.snapshot();
+        vm.prank(FACILITATOR); (uint128 liquidity, uint256 withdrawn0, uint256 withdrawn1, uint256 fees0, uint256 fees1) = depositor.withdraw(dp, true);
+        vm.revertTo(snapshot);
+
+        vm.expectEmit(true, true, true, true);
+        emit Withdraw(FACILITATOR, DAI, USDC, liquidity, withdrawn0, withdrawn1, fees0, fees1);
+        vm.prank(FACILITATOR); (liquidity, withdrawn0, withdrawn1, fees0, fees1) = depositor.withdraw(dp, true);
 
         assertTrue(
             (fees0 > 0 && withdrawn0 > deposited0 && GemLike(DAI ).balanceOf(address(buffer)) > initialDAI ) ||
@@ -350,6 +359,7 @@ contract DepositorTest is DssTest, TestUtils {
         assertEq(GemLike(DAI).balanceOf(address(depositor)), 0);
         assertEq(GemLike(USDC).balanceOf(address(depositor)), 0);
         assertEq(_getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100), 0);
+        assertEq(liquidity, liq);
     }
 
     function testWithdrawAmounts() public {
@@ -365,7 +375,7 @@ contract DepositorTest is DssTest, TestUtils {
             amt0Min: 490 * WAD,
             amt1Min: 490 * 10**6
         });
-        vm.prank(FACILITATOR); (uint128 liq, uint256 deposited0, uint256 deposited1) = depositor.deposit(dp);
+        vm.prank(FACILITATOR); (, uint256 deposited0, uint256 deposited1) = depositor.deposit(dp);
         assertGt(_getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100), 0);
 
         dp.liquidity = 0;
@@ -375,9 +385,14 @@ contract DepositorTest is DssTest, TestUtils {
         uint256 liquidityBeforeWithdraw = _getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100);
 
         vm.warp(block.timestamp + 3600);
-        vm.expectEmit(true, true, true, false);
-        emit Withdraw(FACILITATOR, DAI, USDC, liq, 0, 0, 0, 0);
-        vm.prank(FACILITATOR); (, uint256 withdrawn0, uint256 withdrawn1, uint256 fees0, uint256 fees1) = depositor.withdraw(dp, false);
+
+        uint256 snapshot = vm.snapshot();
+        vm.prank(FACILITATOR); (uint128 liquidity, uint256 withdrawn0, uint256 withdrawn1, uint256 fees0, uint256 fees1) = depositor.withdraw(dp, true);
+        vm.revertTo(snapshot);
+
+        vm.expectEmit(true, true, true, true);
+        emit Withdraw(FACILITATOR, DAI, USDC, liquidity, withdrawn0, withdrawn1, fees0, fees1);
+        vm.prank(FACILITATOR); (liquidity, withdrawn0, withdrawn1, fees0, fees1) = depositor.withdraw(dp, false);
 
         // due to liquidity from amounts calculation there is rounding dust
         assertTrue(withdrawn0 * 100001 / 100000 >= deposited0);
@@ -387,6 +402,7 @@ contract DepositorTest is DssTest, TestUtils {
         assertLe(_getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100), liquidityBeforeWithdraw);
         assertEq(fees0, 0);
         assertEq(fees1, 0);
+        assertGt(liquidity, 0);
     }
 
     function testDepositWrongGemOrder() public {
