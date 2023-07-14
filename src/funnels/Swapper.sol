@@ -45,7 +45,7 @@ contract Swapper {
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
-    event SetLimits(address indexed gem0, address indexed gem1, uint64 hop, uint128 cap);
+    event SetLimits(address indexed src, address indexed dst, uint64 hop, uint128 cap);
     event Swap(address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
 
     constructor(address roles_, bytes32 ilk_, address buffer_) {
@@ -71,13 +71,13 @@ contract Swapper {
         emit Deny(usr);
     }
 
-    function setLimits(address gem0, address gem1, uint64 hop, uint128 cap) external auth {
-        limits[gem0][gem1] = PairLimit({
+    function setLimits(address src, address dst, uint64 hop, uint128 cap) external auth {
+        limits[src][dst] = PairLimit({
             hop:  hop,
-            zzz:  limits[gem0][gem1].zzz,
+            zzz:  limits[src][dst].zzz,
             cap: cap
         });
-        emit SetLimits(gem0, gem1, hop, cap);
+        emit SetLimits(src, dst, hop, cap);
     }
 
     function swap(address src, address dst, uint256 amt, uint256 minOut, address callee, bytes calldata data) external auth returns (uint256 out) {
