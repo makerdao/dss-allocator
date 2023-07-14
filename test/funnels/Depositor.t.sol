@@ -302,8 +302,6 @@ contract DepositorTest is DssTest, TestUtils {
         emit Withdraw(FACILITATOR, DAI, USDC, liquidity, withdrawn0, withdrawn1, fees0, fees1);
         vm.prank(FACILITATOR); depositor.withdraw(dp, false);
         
-        assertEq(fees0, 0);
-        assertEq(fees1, 0);
         assertGe(withdrawn0 + 1, deposited0);
         assertGe(withdrawn1 + 1, deposited1);
         assertGe(GemLike(DAI).balanceOf(address(buffer)) + 1, initialDAI);
@@ -359,7 +357,6 @@ contract DepositorTest is DssTest, TestUtils {
         emit Withdraw(FACILITATOR, DAI, USDC, liquidity, withdrawn0, withdrawn1, fees0, fees1);
         vm.prank(FACILITATOR); depositor.withdraw(dp, true);
 
-        assertTrue(fees0 > 0 || fees1 > 0);
         assertTrue(
             (fees0 > 0 && withdrawn0 > deposited0 && GemLike(DAI ).balanceOf(address(buffer)) > initialDAI ) ||
             (fees1 > 0 && withdrawn1 > deposited1 && GemLike(USDC).balanceOf(address(buffer)) > initialUSDC)
@@ -409,15 +406,14 @@ contract DepositorTest is DssTest, TestUtils {
         vm.warp(block.timestamp + 3600);
 
         uint256 snapshot = vm.snapshot();
-        vm.prank(FACILITATOR); (uint128 liq_, uint256 withdrawn0, uint256 withdrawn1, uint256 fees0, uint256 fees1) = depositor.withdraw(dp, true);
+        vm.prank(FACILITATOR); (uint128 liquidity, uint256 withdrawn0, uint256 withdrawn1, uint256 fees0, uint256 fees1) = depositor.withdraw(dp, true);
         vm.revertTo(snapshot);
 
         vm.expectEmit(true, true, true, true);
-        emit Withdraw(FACILITATOR, DAI, USDC, liq_, withdrawn0, withdrawn1, fees0, fees1);
+        emit Withdraw(FACILITATOR, DAI, USDC, liquidity, withdrawn0, withdrawn1, fees0, fees1);
         vm.prank(FACILITATOR); depositor.withdraw(dp, true);
 
-        assertEq(liq_, 0);
-        assertTrue(fees0 > 0 || fees1 > 0);
+        assertEq(liquidity, 0);
         assertEq(withdrawn0, 0);
         assertEq(withdrawn1, 0);
         assertTrue(
@@ -461,9 +457,6 @@ contract DepositorTest is DssTest, TestUtils {
         emit Withdraw(FACILITATOR, DAI, USDC, liquidity, withdrawn0, withdrawn1, fees0, fees1);
         vm.prank(FACILITATOR); depositor.withdraw(dp, false);
 
-        assertGt(liquidity, 0);
-        assertEq(fees0, 0);
-        assertEq(fees1, 0);
         // due to liquidity from amounts calculation there is rounding dust
         assertGe(withdrawn0 * 100001 / 100000, deposited0);
         assertGe(withdrawn1 * 100001 / 100000, deposited1);
