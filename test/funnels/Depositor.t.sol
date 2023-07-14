@@ -292,10 +292,10 @@ contract DepositorTest is DssTest, TestUtils {
         emit Withdraw(FACILITATOR, DAI, USDC, liq, 0, 0, 0, 0);
         vm.prank(FACILITATOR); (, uint256 withdrawn0, uint256 withdrawn1) = depositor.withdraw(dp, false);
         
-        assertTrue(withdrawn0 + 1 >= deposited0);
-        assertTrue(withdrawn1 + 1 >= deposited1);
-        assertTrue(GemLike(DAI).balanceOf(address(buffer)) + 1 >= initialDAI);
-        assertTrue(GemLike(USDC).balanceOf(address(buffer)) + 1 >= initialUSDC);
+        assertGe(withdrawn0 + 1, deposited0);
+        assertGe(withdrawn1 + 1, deposited1);
+        assertGe(GemLike(DAI).balanceOf(address(buffer)) + 1, initialDAI);
+        assertGe(GemLike(USDC).balanceOf(address(buffer)) + 1, initialUSDC);
         assertEq(GemLike(DAI).balanceOf(address(depositor)), 0);
         assertEq(GemLike(USDC).balanceOf(address(depositor)), 0);
         assertEq(_getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100), 0);
@@ -343,8 +343,8 @@ contract DepositorTest is DssTest, TestUtils {
             (withdrawn0 > deposited0 && GemLike(DAI ).balanceOf(address(buffer)) > initialDAI ) ||
             (withdrawn1 > deposited1 && GemLike(USDC).balanceOf(address(buffer)) > initialUSDC)
         );
-        assertTrue(GemLike(DAI).balanceOf(address(buffer)) >= prevDAI);
-        assertTrue(GemLike(USDC).balanceOf(address(buffer)) >= prevUSDC);
+        assertGe(GemLike(DAI).balanceOf(address(buffer)), prevDAI);
+        assertGe(GemLike(USDC).balanceOf(address(buffer)), prevUSDC);
         assertEq(GemLike(DAI).balanceOf(address(depositor)), 0);
         assertEq(GemLike(USDC).balanceOf(address(depositor)), 0);
         assertEq(_getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100), 0);
@@ -378,8 +378,8 @@ contract DepositorTest is DssTest, TestUtils {
         vm.prank(FACILITATOR); (, uint256 withdrawn0, uint256 withdrawn1) = depositor.withdraw(dp, false);
 
         // due to liquidity from amounts calculation there is rounding dust
-        assertTrue(withdrawn0 * 100001 / 100000 >= deposited0);
-        assertTrue(withdrawn1 * 100001 / 100000 >= deposited1);
+        assertGe(withdrawn0 * 100001 / 100000, deposited0);
+        assertGe(withdrawn1 * 100001 / 100000, deposited1);
         assertEq(GemLike(DAI).balanceOf(address(depositor)), 0);
         assertEq(GemLike(USDC).balanceOf(address(depositor)), 0);
         assertLt(_getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100), liquidityBeforeWithdraw);

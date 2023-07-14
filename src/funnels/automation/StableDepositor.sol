@@ -63,10 +63,10 @@ contract StableDepositor {
 
     DepositorLike public immutable depositor;
 
-    event Rely  (address indexed usr);
-    event Deny  (address indexed usr);
-    event Kiss  (address indexed usr);
-    event Diss  (address indexed usr);
+    event Rely(address indexed usr);
+    event Deny(address indexed usr);
+    event Kiss(address indexed usr);
+    event Diss(address indexed usr);
     event SetConfig(address indexed gem0, address indexed gem1, PairConfig data);
 
     constructor(address _depositor) {
