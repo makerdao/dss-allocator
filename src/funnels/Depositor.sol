@@ -63,8 +63,8 @@ interface UniV3PoolLike {
 }
 
 contract Depositor {
-    mapping (address => uint256) public wards;
-    mapping (address => mapping (address => PairLimit)) public limits;
+    mapping (address => uint256) public wards;                         // Admins
+    mapping (address => mapping (address => PairLimit)) public limits; // Rate limit parameters per (gem0, gem1) pair
 
     RolesLike public immutable roles;        // Contract managing access control for this Depositor
     bytes32   public immutable ilk;          // Collateral type
@@ -74,8 +74,8 @@ contract Depositor {
     struct PairLimit {
         uint64   hop; // Cooldown one has to wait between changes to the liquidity of a (gem0, gem1) pool
         uint64   zzz; // Timestamp of the last liquidity change for a (gem0, gem1) pool
-        uint128 cap0; // Maximum amt of gem0 that can be added as liquidity each hop for a (gem0, gem1) pool
-        uint128 cap1; // Maximum amt of gem1 that can be added as liquidity each hop for a (gem0, gem1) pool
+        uint128 cap0; // Maximum amount of gem0 that can be added as liquidity each hop for a (gem0, gem1) pool
+        uint128 cap1; // Maximum amount of gem1 that can be added as liquidity each hop for a (gem0, gem1) pool
     }
 
     event Rely(address indexed usr);
@@ -178,8 +178,8 @@ contract Depositor {
         int24   tickLower;
         int24   tickUpper;
         uint128 liquidity;   // Useful for clearing out the entire liquidity of a position
-        uint256 amt0Desired; // relevant only if liquidity == 0
-        uint256 amt1Desired; // relevant only if liquidity == 0
+        uint256 amt0Desired; // Relevant only if liquidity == 0
+        uint256 amt1Desired; // Relevant only if liquidity == 0
         uint256 amt0Min;
         uint256 amt1Min;
     }
@@ -261,7 +261,7 @@ contract Depositor {
         require(p.gem0 < p.gem1, "Depositor/wrong-gem-order");
 
         UniV3PoolLike pool = _getPool(p.gem0, p.gem1, p.fee);
-        pool.burn({ tickLower: p.tickLower, tickUpper: p.tickUpper, amount: 0 }); // update the position's owed fees
+        pool.burn({ tickLower: p.tickLower, tickUpper: p.tickUpper, amount: 0 }); // Update the position's owed fees
 
         (fees0, fees1) = pool.collect({
             recipient       : buffer,

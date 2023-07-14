@@ -24,8 +24,8 @@ interface DepositorLike {
         int24   tickLower;
         int24   tickUpper;
         uint128 liquidity;
-        uint256 amt0Desired; // relevant only if liquidity == 0
-        uint256 amt1Desired; // relevant only if liquidity == 0
+        uint256 amt0Desired; // Relevant only if liquidity == 0
+        uint256 amt1Desired; // Relevant only if liquidity == 0
         uint256 amt0Min;
         uint256 amt1Min;
     }
@@ -59,11 +59,11 @@ interface DepositorLike {
 }
 
 contract StableDepositor {
-    mapping (address => uint256) public wards;
-    mapping (address => uint256) public buds;
-    mapping (address => mapping (address => PairConfig)) public configs;
+    mapping (address => uint256) public wards;                           // Admins
+    mapping (address => uint256) public buds;                            // Whitelisted keepers
+    mapping (address => mapping (address => PairConfig)) public configs; // Configuration for keepers
 
-    DepositorLike public immutable depositor;
+    DepositorLike public immutable depositor; // Depositor for this StableDepositor
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
@@ -83,7 +83,7 @@ contract StableDepositor {
         _;
     }
 
-    // permissionned to whitelisted keepers
+    // Permissionned to whitelisted keepers
     modifier toll {
         require(buds[msg.sender] == 1, "StableDepositor/non-keeper");
         _;
@@ -110,14 +110,14 @@ contract StableDepositor {
     }
 
     struct PairConfig {
-        uint32  count;
-        uint24  fee;
-        int24   tickLower;
-        int24   tickUpper;
-        uint128 amt0;
-        uint128 amt1;
-        uint128 amt0Req;
-        uint128 amt1Req;
+        uint32  count;     // The remaining number of times that a (gem0, gem1) operation can be performed by keepers
+        uint24  fee;       // The Uniswap V3 pool's fee
+        int24   tickLower; // The Uniswap V3 positions' lower tick
+        int24   tickUpper; // The Uniswap V3 positions' upper tick
+        uint128 amt0;      // Amount of gem0 to deposit/withdraw each (gem0, gem1) operation
+        uint128 amt1;      // Amount of gem1 to deposit/withdraw each (gem0, gem1) operation
+        uint128 amt0Req;   // The minimum deposit/withdraw amount of gem0 to insist on in each (gem0, gem1) operation
+        uint128 amt1Req;   // The minimum deposit/withdraw amount of gem1 to insist on in each (gem0, gem1) operation
     }
     function setConfig(address gem0, address gem1, PairConfig memory cfg) external auth {
         require(gem0 < gem1, "StableDepositor/wrong-gem-order");
@@ -148,7 +148,7 @@ contract StableDepositor {
             fee        : cfg.fee,
             tickLower  : cfg.tickLower,
             tickUpper  : cfg.tickUpper,
-            liquidity  : 0,             // use desired amounts
+            liquidity  : 0,             // Use desired amounts
             amt0Desired: cfg.amt0,
             amt1Desired: cfg.amt1,
             amt0Min    : amt0Min,
@@ -180,7 +180,7 @@ contract StableDepositor {
             fee        : cfg.fee,
             tickLower  : cfg.tickLower,
             tickUpper  : cfg.tickUpper,
-            liquidity  : 0,             // use desired amounts
+            liquidity  : 0,             // Use desired amounts
             amt0Desired: cfg.amt0,
             amt1Desired: cfg.amt1,
             amt0Min    : amt0Min,
