@@ -22,7 +22,7 @@ contract CalleeMock is DssTest {
 }
 
 contract SwapperTest is DssTest {
-    event SetLimits(address indexed gem0, address indexed gem1, uint64 hop, uint128 cap);
+    event SetLimits(address indexed src, address indexed dst, uint64 hop, uint128 cap);
     event Swap(address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
 
     AllocatorRoles public roles;
