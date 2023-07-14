@@ -240,7 +240,7 @@ contract Depositor {
             amount0Requested: takeFees ? type(uint128).max : uint128(amt0),
             amount1Requested: takeFees ? type(uint128).max : uint128(amt1)
         });
-         (fees0, fees1) = (collected0 - amt0, collected1 - amt1);
+        (fees0, fees1) = (collected0 - amt0, collected1 - amt1);
 
         emit Withdraw(msg.sender, p.gem0, p.gem1, liquidity, amt0, amt1, fees0, fees1);
     }
