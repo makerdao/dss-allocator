@@ -30,17 +30,17 @@ interface CalleeLike {
 }
 
 contract Swapper {
-    mapping (address => uint256) public wards;
-    mapping (address => mapping (address => PairLimit)) public limits;
+    mapping (address => uint256) public wards;                         // Admins
+    mapping (address => mapping (address => PairLimit)) public limits; // Rate limit parameters per src->dst pair
 
     RolesLike public immutable roles;  // Contract managing access control for this Depositor
     bytes32   public immutable ilk;    // Collateral type
     address   public immutable buffer; // Contract from which the GEM to sell is pulled and to which the bought GEM is pushed
 
     struct PairLimit {
-        uint64  hop;
-        uint64  zzz;
-        uint128 cap;
+        uint64  hop; // Cooldown one has to wait between each src to dst swap
+        uint64  zzz; // Timestamp of the last src to dst swap
+        uint128 cap; // Maximum amount of src token that can be swapped each hop for a src->dst pair
     }
 
     event Rely(address indexed usr);
