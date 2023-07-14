@@ -39,7 +39,9 @@ interface DepositorLike {
     function withdraw(LiquidityParams memory p, bool takeFee) external returns (
         uint128 liquidity,
         uint256 amt0,
-        uint256 amt1
+        uint256 amt1,
+        uint256 fees0,
+        uint256 fees1
     );
 
     struct CollectParams {
@@ -51,8 +53,8 @@ interface DepositorLike {
     }
 
     function collect(CollectParams memory p) external returns (
-        uint256 collected0,
-        uint256 collected1
+        uint256 fees0,
+        uint256 fees1
     );
 }
 
@@ -160,7 +162,7 @@ contract StableDepositor {
     function withdraw(address gem0, address gem1, uint128 amt0Min, uint128 amt1Min)
         toll
         external
-        returns (uint128 liquidity, uint256 amt0, uint256 amt1)
+        returns (uint128 liquidity, uint256 amt0, uint256 amt1, uint256 fees0, uint256 fees1)
     {
         PairConfig memory cfg = configs[gem0][gem1];
 
@@ -184,13 +186,13 @@ contract StableDepositor {
             amt0Min    : amt0Min,
             amt1Min    : amt1Min
         });
-        (liquidity, amt0, amt1) = depositor.withdraw(p, true);
+        (liquidity, amt0, amt1, fees0, fees1) = depositor.withdraw(p, true);
     }
 
     function collect(address gem0, address gem1)
         toll
         external
-        returns (uint256 collected0, uint256 collected1)
+        returns (uint256 fees0, uint256 fees1)
     {
         PairConfig memory cfg = configs[gem0][gem1];
 
@@ -201,6 +203,6 @@ contract StableDepositor {
             tickLower: cfg.tickLower,
             tickUpper: cfg.tickUpper
         });
-        (collected0, collected1) = depositor.collect(collectParams);
+        (fees0, fees1) = depositor.collect(collectParams);
     }
 }
