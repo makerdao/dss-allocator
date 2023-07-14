@@ -73,7 +73,7 @@ contract StableSwapper {
     }
 
     struct PairConfig {
-        uint32 count;   // the remaining number of times that a src-to-dst swap can be performed by keepers
+        uint32  count;  // the remaining number of times that a src-to-dst swap can be performed by keepers
         uint112 lot;    // the amount swapped by keepers from src to dst every hop
         uint112 reqOut; // the minimum output amount to insist on in the swap form src to dst
     }
