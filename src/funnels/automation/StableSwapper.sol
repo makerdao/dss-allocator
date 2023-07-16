@@ -17,21 +17,22 @@
 pragma solidity ^0.8.16;
 
 interface SwapperLike {
-    function swap(address src, address dst, uint256 amt, uint256 minOut, address callee, bytes calldata data) external returns (uint256 out);
+    function swap(address, address, uint256, uint256, address, bytes calldata) external returns (uint256);
 }
 
 contract StableSwapper {
-    mapping (address => uint256) public wards;                           // admin
-    mapping (address => uint256) public buds;                            // whitelisted keepers
-    mapping (address => mapping (address => PairConfig)) public configs;
+    mapping (address => uint256) public wards;                           // Admins
+    mapping (address => uint256) public buds;                            // Whitelisted keepers
+    mapping (address => mapping (address => PairConfig)) public configs; // Configuration for keepers
 
     SwapperLike public immutable swapper;                                // Swapper for this StableSwapper
 
-    event Rely  (address indexed usr);
-    event Deny  (address indexed usr);
-    event Kiss  (address indexed usr);
-    event Diss  (address indexed usr);
-    event File  (bytes32 indexed what, address data);
+    uint256 internal constant WAD = 10 ** 18;
+
+    event Rely(address indexed usr);
+    event Deny(address indexed usr);
+    event Kiss(address indexed usr);
+    event Diss(address indexed usr);
     event SetConfig(address indexed src, address indexed dst, PairConfig data);
 
     constructor(address swapper_) {
@@ -50,8 +51,6 @@ contract StableSwapper {
         require(buds[msg.sender] == 1, "StableSwapper/non-keeper");
         _;
     }
-
-    uint256 internal constant WAD = 10 ** 18;
 
     function rely(address usr) external auth {
         wards[usr] = 1;
@@ -74,9 +73,9 @@ contract StableSwapper {
     }
 
     struct PairConfig {
-        uint32 count;   // the remaining number of times that a src-to-dst swap can be performed by keepers
-        uint112 lot;    // the amount swapped by keepers from src to dst every hop
-        uint112 reqOut; // the minimum output amount to insist on in the swap form src to dst
+        uint32  count;  // The remaining number of times that a src to dst swap can be performed by keepers
+        uint112 lot;    // The amount swapped by keepers from src to dst every hop
+        uint112 reqOut; // The minimum output amount to insist on in the swap form src to dst
     }
 
     function setConfig(address src, address dst, PairConfig memory cfg) external auth {
