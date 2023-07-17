@@ -219,6 +219,79 @@ contract DepositorTest is DssTest, TestUtils {
         assertGt(_getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100), liquidityAfterDeposit);
     }
 
+    function testGetPosition() public {
+        // initially the position doesn't exist
+        (
+            uint128 liquidity,
+            uint256 feeGrowthInside0LastX128,
+            uint256 feeGrowthInside1LastX128,
+            uint128 tokensOwed0,
+            uint128 tokensOwed1
+        ) = depositor.getPosition(DAI, USDC, 100, REF_TICK-100, REF_TICK+100);
+        assertEq(liquidity, 0);
+        assertEq(feeGrowthInside0LastX128, 0);
+        assertEq(feeGrowthInside1LastX128, 0);
+        assertEq(tokensOwed0, 0);
+        assertEq(tokensOwed1, 0);
+
+        // deposit
+        Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
+            gem0: DAI,
+            gem1: USDC,
+            fee: uint24(100),
+            tickLower: REF_TICK-100,
+            tickUpper: REF_TICK+100,
+            liquidity: 99777667447878834,
+            amt0Desired: 0,
+            amt1Desired: 0,
+            amt0Min: 0,
+            amt1Min: 0
+        });
+        vm.prank(FACILITATOR); depositor.deposit(dp);
+
+        (
+            liquidity,
+            feeGrowthInside0LastX128,
+            feeGrowthInside1LastX128,
+            tokensOwed0,
+            tokensOwed1
+        ) = depositor.getPosition(DAI, USDC, 100, REF_TICK-100, REF_TICK+100);
+        assertEq(liquidity, 99777667447878834);
+        assertGt(feeGrowthInside0LastX128, 0); // initial value now that the position is created
+        assertGt(feeGrowthInside1LastX128, 0); // initial value now that the position is created
+        assertEq(tokensOwed0, 0);
+        assertEq(tokensOwed1, 0);
+
+        // execute a trade to generate fees for the LP position
+        deal(DAI,  address(this), 1_000_000 * WAD,   true);
+        GemLike(DAI).approve(UNIV3_ROUTER, 1_000_000 * WAD);
+            SwapRouterLike.ExactInputParams memory params = SwapRouterLike.ExactInputParams({
+            path:             DAI_USDC_PATH,
+            recipient:        address(this),
+            deadline:         block.timestamp,
+            amountIn:         1_000_000 * WAD,
+            amountOutMinimum: 990_000 * 10**6
+        });
+        SwapRouterLike(UNIV3_ROUTER).exactInput(params);
+
+        // withdraw without collecting fees
+        vm.warp(block.timestamp + 3600);
+        vm.prank(FACILITATOR); depositor.withdraw(dp, false);
+
+        uint256 updatedfeeGrowthInside0LastX128;
+        uint256 updatedfeeGrowthInside1LastX128;
+        (
+            liquidity,
+            updatedfeeGrowthInside0LastX128,
+            updatedfeeGrowthInside1LastX128,
+            tokensOwed0,
+            tokensOwed1
+        ) = depositor.getPosition(DAI, USDC, 100, REF_TICK-100, REF_TICK+100);
+        assertEq(liquidity, 0);
+        assertTrue(updatedfeeGrowthInside0LastX128 > feeGrowthInside0LastX128 || updatedfeeGrowthInside1LastX128 > feeGrowthInside1LastX128);
+        assertTrue(tokensOwed0 > 0 || tokensOwed1 > 0);
+    }
+
     function testCollect() public {
         Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
             gem0: DAI,
