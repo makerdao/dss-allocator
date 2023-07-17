@@ -131,7 +131,6 @@ contract StableSwapperTest is DssTest, TestUtils {
     }
 
     function testSetConfig() public {
-        stableDepositor.kiss(address(this));
         StableDepositor.PairConfig memory config = StableDepositor.PairConfig({
             count    : 23,
             fee      : uint24(314),

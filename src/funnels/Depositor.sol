@@ -89,9 +89,9 @@ contract Depositor {
     event Rely(address indexed usr);
     event Deny(address indexed usr);
     event SetLimits(address indexed gem0, address indexed gem1, uint64 hop, uint128 cap0, uint128 cap1);
-    event Deposit (address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1);
+    event Deposit(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1);
     event Withdraw(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1, uint256 fees0, uint256 fees1);
-    event Collect (address indexed sender, address indexed gem0, address indexed gem1, uint256 fees0, uint256 fees1);
+    event Collect(address indexed sender, address indexed gem0, address indexed gem1, uint256 fees0, uint256 fees1);
 
     constructor(address roles_, bytes32 ilk_, address uniV3Factory_, address buffer_) {
         roles        = RolesLike(roles_);
