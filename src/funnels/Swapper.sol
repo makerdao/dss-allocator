@@ -39,8 +39,9 @@ contract Swapper {
 
     struct PairLimit {
         uint64  hop; // Cooldown one has to wait between each src to dst swap
-        uint64  zzz; // Timestamp of the last src to dst swap
         uint128 cap; // Maximum amount of src token that can be swapped each hop for a src->dst pair
+        uint64  zzz; // Timestamp of the last src to dst swap
+        uint128 amt; // Amount already swapped during the last hop
     }
 
     event Rely(address indexed usr);
@@ -73,19 +74,31 @@ contract Swapper {
 
     function setLimits(address src, address dst, uint64 hop, uint128 cap) external auth {
         limits[src][dst] = PairLimit({
-            hop:  hop,
-            zzz:  limits[src][dst].zzz,
-            cap: cap
+            hop: hop,
+            cap: cap,
+            zzz: limits[src][dst].zzz,
+            amt: limits[src][dst].amt
         });
         emit SetLimits(src, dst, hop, cap);
     }
 
     function swap(address src, address dst, uint256 amt, uint256 minOut, address callee, bytes calldata data) external auth returns (uint256 out) {
         PairLimit memory limit = limits[src][dst];
-        require(block.timestamp >= limit.zzz + limit.hop, "Swapper/too-soon");
-        limits[src][dst].zzz = uint64(block.timestamp);
 
-        require(amt <= limit.cap, "Swapper/exceeds-max-amt");
+        unchecked {
+            if (block.timestamp - limit.zzz >= limit.hop) {
+                // Reset batch
+                limit.zzz = uint64(block.timestamp);
+                limit.amt = limit.cap;
+            }
+        }
+
+        require(amt <= limit.amt, "Swapper/exceeds-max-amt");
+
+        unchecked {
+            limits[src][dst].zzz = limit.zzz;
+            limits[src][dst].amt = limit.amt - uint128(amt);
+        }
 
         uint256 prevDstBalance = GemLike(dst).balanceOf(buffer);
         GemLike(src).transferFrom(buffer, callee, amt);
