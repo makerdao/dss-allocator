@@ -252,10 +252,9 @@ contract StableSwapperTest is DssTest, TestUtils {
 
         vm.prank(KEEPER); (uint256 fees0, uint256 fees1) = stableDepositor.collect(DAI, USDC);
 
-        assertTrue(
-            (fees0 > 0 && GemLike(DAI ).balanceOf(address(buffer)) > prevDai ) ||
-            (fees1 > 0 && GemLike(USDC).balanceOf(address(buffer)) > prevUsdc)
-        );
+        assertTrue(fees0 > 0 || fees1 > 0);
+        assertEq(GemLike(DAI).balanceOf(address(buffer)), prevDai + fees0);
+        assertEq(GemLike(USDC).balanceOf(address(buffer)), prevUsdc + fees1);
     }
 
     function testOperationsNonKeeper() public {
