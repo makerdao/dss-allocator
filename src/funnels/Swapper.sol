@@ -30,22 +30,22 @@ interface CalleeLike {
 }
 
 contract Swapper {
-    mapping (address => uint256) public wards;
-    mapping (address => mapping (address => PairLimit)) public limits;
+    mapping (address => uint256) public wards;                         // Admins
+    mapping (address => mapping (address => PairLimit)) public limits; // Rate limit parameters per src->dst pair
 
     RolesLike public immutable roles;  // Contract managing access control for this Depositor
     bytes32   public immutable ilk;    // Collateral type
     address   public immutable buffer; // Contract from which the GEM to sell is pulled and to which the bought GEM is pushed
 
     struct PairLimit {
-        uint64  hop;
-        uint64  zzz;
-        uint128 cap;
+        uint64  hop; // Cooldown one has to wait between each src to dst swap
+        uint64  zzz; // Timestamp of the last src to dst swap
+        uint128 cap; // Maximum amount of src token that can be swapped each hop for a src->dst pair
     }
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
-    event SetLimits(address indexed gem0, address indexed gem1, uint64 hop, uint128 cap);
+    event SetLimits(address indexed src, address indexed dst, uint64 hop, uint128 cap);
     event Swap(address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
 
     constructor(address roles_, bytes32 ilk_, address buffer_) {
@@ -71,13 +71,13 @@ contract Swapper {
         emit Deny(usr);
     }
 
-    function setLimits(address gem0, address gem1, uint64 hop, uint128 cap) external auth {
-        limits[gem0][gem1] = PairLimit({
+    function setLimits(address src, address dst, uint64 hop, uint128 cap) external auth {
+        limits[src][dst] = PairLimit({
             hop:  hop,
-            zzz:  limits[gem0][gem1].zzz,
+            zzz:  limits[src][dst].zzz,
             cap: cap
         });
-        emit SetLimits(gem0, gem1, hop, cap);
+        emit SetLimits(src, dst, hop, cap);
     }
 
     function swap(address src, address dst, uint256 amt, uint256 minOut, address callee, bytes calldata data) external auth returns (uint256 out) {
