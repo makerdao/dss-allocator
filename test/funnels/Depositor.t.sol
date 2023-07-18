@@ -337,10 +337,9 @@ contract DepositorTest is DssTest, TestUtils {
         emit Collect(FACILITATOR, DAI, USDC, expectedFees0, expectedFees1);
         vm.prank(FACILITATOR); (uint256 fees0, uint256 fees1) = depositor.collect(cp);
 
-        assertTrue(
-            (fees0 > 0 && GemLike(DAI ).balanceOf(address(buffer)) > prevDAI ) ||
-            (fees1 > 0 && GemLike(USDC).balanceOf(address(buffer)) > prevUSDC)
-        );
+        assertTrue(fees0 > 0 || fees1 > 0);
+        assertEq(GemLike(DAI).balanceOf(address(buffer)), prevDAI + fees0);
+        assertEq(GemLike(USDC).balanceOf(address(buffer)), prevUSDC + fees1);
         assertEq(GemLike(DAI).balanceOf(address(depositor)), 0);
         assertEq(GemLike(USDC).balanceOf(address(depositor)), 0);
     }
@@ -430,12 +429,10 @@ contract DepositorTest is DssTest, TestUtils {
         emit Withdraw(FACILITATOR, DAI, USDC, liquidity, withdrawn0, withdrawn1, fees0, fees1);
         vm.prank(FACILITATOR); depositor.withdraw(dp, true);
 
-        assertTrue(
-            (fees0 > 0 && withdrawn0 > deposited0 && GemLike(DAI ).balanceOf(address(buffer)) > initialDAI ) ||
-            (fees1 > 0 && withdrawn1 > deposited1 && GemLike(USDC).balanceOf(address(buffer)) > initialUSDC)
-        );
-        assertGe(GemLike(DAI).balanceOf(address(buffer)), prevDAI);
-        assertGe(GemLike(USDC).balanceOf(address(buffer)), prevUSDC);
+        assertTrue(fees0 > 0 || fees1 > 0);
+        assertTrue(withdrawn0 > 0 || withdrawn1 > 0);
+        assertEq(GemLike(DAI).balanceOf(address(buffer)), prevDAI + withdrawn0 + fees0);
+        assertEq(GemLike(USDC).balanceOf(address(buffer)), prevUSDC + withdrawn1 + fees1);
         assertEq(GemLike(DAI).balanceOf(address(depositor)), 0);
         assertEq(GemLike(USDC).balanceOf(address(depositor)), 0);
         assertEq(_getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100), 0);
@@ -489,10 +486,9 @@ contract DepositorTest is DssTest, TestUtils {
         assertEq(liquidity, 0);
         assertEq(withdrawn0, 0);
         assertEq(withdrawn1, 0);
-        assertTrue(
-            (fees0 > 0 && GemLike(DAI ).balanceOf(address(buffer)) > prevDAI ) ||
-            (fees1 > 0 && GemLike(USDC).balanceOf(address(buffer)) > prevUSDC)
-        );
+        assertTrue(fees0 > 0 || fees1 > 0);
+        assertEq(GemLike(DAI).balanceOf(address(buffer)), prevDAI + fees0);
+        assertEq(GemLike(USDC).balanceOf(address(buffer)), prevUSDC + fees1);
         assertEq(GemLike(DAI).balanceOf(address(depositor)), 0);
         assertEq(GemLike(USDC).balanceOf(address(depositor)), 0);
         assertEq(_getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100), liq);
