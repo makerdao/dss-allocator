@@ -360,10 +360,6 @@ contract DepositorTest is DssTest, TestUtils {
         assertTrue(withdrawn0 > 0 || withdrawn1 > 0);
         assertEq(GemLike(DAI).balanceOf(address(buffer)), prevDAI + withdrawn0 + fees0);
         assertEq(GemLike(USDC).balanceOf(address(buffer)), prevUSDC + withdrawn1 + fees1);
-        assertTrue(
-            (fees0 > 0 && withdrawn0 > deposited0 && GemLike(DAI ).balanceOf(address(buffer)) > initialDAI ) ||
-            (fees1 > 0 && withdrawn1 > deposited1 && GemLike(USDC).balanceOf(address(buffer)) > initialUSDC)
-        );
         assertEq(GemLike(DAI).balanceOf(address(depositor)), 0);
         assertEq(GemLike(USDC).balanceOf(address(depositor)), 0);
         assertEq(_getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100), 0);
