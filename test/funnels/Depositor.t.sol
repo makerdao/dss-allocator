@@ -387,8 +387,6 @@ contract DepositorTest is DssTest, TestUtils {
     }
 
     function testWithdrawWithFeeCollection() public {
-        uint256 initialUSDC = GemLike(USDC).balanceOf(address(buffer));
-        uint256 initialDAI = GemLike(DAI).balanceOf(address(buffer));
         Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
             gem0: DAI,
             gem1: USDC,
@@ -401,7 +399,7 @@ contract DepositorTest is DssTest, TestUtils {
             amt0Min: 490 * WAD,
             amt1Min: 490 * 10**6
         });
-        vm.prank(FACILITATOR); (uint128 liq, uint256 deposited0, uint256 deposited1) = depositor.deposit(dp);
+        vm.prank(FACILITATOR); (uint128 liq,,) = depositor.deposit(dp);
         assertGt(_getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100), 0);
         uint256 prevUSDC = GemLike(USDC).balanceOf(address(buffer));
         uint256 prevDAI = GemLike(DAI).balanceOf(address(buffer));
