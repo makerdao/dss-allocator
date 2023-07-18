@@ -101,8 +101,10 @@ contract StableSwapperTest is DssTest, TestUtils {
     }
 
     function testModifiers() public {
-        bytes4[] memory authedMethods = new bytes4[](1);
-        authedMethods[0] = stableDepositor.setConfig.selector;
+        bytes4[] memory authedMethods = new bytes4[](3);
+        authedMethods[0] = stableDepositor.kiss.selector;
+        authedMethods[1] = stableDepositor.diss.selector;
+        authedMethods[2] = stableDepositor.setConfig.selector;
 
         vm.startPrank(address(0xBEEF));
         checkModifierForLargeArgs(address(stableDepositor), "StableDepositor/not-authorized", authedMethods);
@@ -121,13 +123,6 @@ contract StableSwapperTest is DssTest, TestUtils {
         emit Diss(testAddress);
         stableDepositor.diss(testAddress);
         assertEq(stableDepositor.buds(testAddress), 0);
-
-        stableDepositor.deny(address(this));
-
-        vm.expectRevert("StableDepositor/not-authorized");
-        stableDepositor.kiss(testAddress);
-        vm.expectRevert("StableDepositor/not-authorized");
-        stableDepositor.diss(testAddress);
     }
 
     function testSetConfig() public {
@@ -252,10 +247,9 @@ contract StableSwapperTest is DssTest, TestUtils {
 
         vm.prank(KEEPER); (uint256 fees0, uint256 fees1) = stableDepositor.collect(DAI, USDC);
 
-        assertTrue(
-            (fees0 > 0 && GemLike(DAI ).balanceOf(address(buffer)) > prevDai ) ||
-            (fees1 > 0 && GemLike(USDC).balanceOf(address(buffer)) > prevUsdc)
-        );
+        assertTrue(fees0 > 0 || fees1 > 0);
+        assertEq(GemLike(DAI).balanceOf(address(buffer)), prevDai + fees0);
+        assertEq(GemLike(USDC).balanceOf(address(buffer)), prevUsdc + fees1);
     }
 
     function testOperationsNonKeeper() public {
