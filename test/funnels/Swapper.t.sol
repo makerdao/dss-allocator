@@ -22,7 +22,7 @@ contract CalleeMock is DssTest {
 }
 
 contract SwapperTest is DssTest {
-    event SetLimits(address indexed src, address indexed dst, uint64 hop, uint128 cap);
+    event SetLimits(address indexed src, address indexed dst, uint128 cap, uint64 hop);
     event Swap(address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
 
     AllocatorRoles public roles;
@@ -55,8 +55,8 @@ contract SwapperTest is DssTest {
         roles.setRoleAction(ilk, SWAPPER_ROLE, address(swapper), swapper.swap.selector, true);
         roles.setUserRole(ilk, FACILITATOR, SWAPPER_ROLE, true);
 
-        swapper.setLimits(DAI, USDC, 3600 seconds, uint128(10_000 * WAD));
-        swapper.setLimits(USDC, DAI, 3600 seconds, uint128(10_000 * 10**6));
+        swapper.setLimits(DAI, USDC, uint128(10_000 * WAD), 3600 seconds);
+        swapper.setLimits(USDC, DAI, uint128(10_000 * 10**6), 3600 seconds);
 
         deal(DAI,  address(buffer), 1_000_000 * WAD,   true);
         deal(USDC, address(buffer), 1_000_000 * 10**6, true);
@@ -89,26 +89,26 @@ contract SwapperTest is DssTest {
     function testSetLimits() public {
         // swap to make sure zzz is set
         vm.prank(FACILITATOR); swapper.swap(USDC, DAI, 1_000 * 10**6, 990 * WAD, address(uniV3Callee), USDC_DAI_PATH);
-        (,, uint64 zzzBeforeSetLimit, uint128 amtBeforeSetLimit) = swapper.limits(USDC, DAI);
-        assertEq(zzzBeforeSetLimit, block.timestamp);
+        (,, uint128 amtBeforeSetLimit, uint64 zzzBeforeSetLimit) = swapper.limits(USDC, DAI);
         assertEq(amtBeforeSetLimit, 9_000 * 10**6);
+        assertEq(zzzBeforeSetLimit, block.timestamp);
 
         vm.warp(block.timestamp + 1 hours);
 
         vm.expectEmit(true, true, true, true);
-        emit SetLimits(USDC, DAI, 3, 4);
-        vm.prank(address(this)); swapper.setLimits(USDC, DAI, 3, 4);
-        (uint64 hop, uint128 cap, uint64 zzz, uint128 amt) = swapper.limits(USDC, DAI);
-        assertEq(hop, 3);
+        emit SetLimits(USDC, DAI, 4, 3);
+        vm.prank(address(this)); swapper.setLimits(USDC, DAI, 4, 3);
+        (uint128 cap, uint64 hop, uint128 amt, uint64 zzz) = swapper.limits(USDC, DAI);
         assertEq(cap, 4);
-        assertEq(zzz, zzzBeforeSetLimit);
+        assertEq(hop, 3);
         assertEq(amt, amtBeforeSetLimit);
+        assertEq(zzz, zzzBeforeSetLimit);
     }
 
     function testRoles() public {
         vm.expectRevert("Swapper/not-authorized");
         vm.prank(address(0xBEEF)); swapper.setLimits(address(0), address(0), 0, 0);
-        roles.setRoleAction(ilk, uint8(0xF1), address(swapper), bytes4(keccak256("setLimits(address,address,uint64,uint128)")), true);
+        roles.setRoleAction(ilk, uint8(0xF1), address(swapper), swapper.setLimits.selector, true);
         roles.setUserRole(ilk, address(0xBEEF), uint8(0xF1), true);
         vm.prank(address(0xBEEF)); swapper.setLimits(address(0), address(0), 0, 0);
     }
@@ -151,7 +151,7 @@ contract SwapperTest is DssTest {
 
     function testSwapAferHop() public {
         vm.prank(FACILITATOR); swapper.swap(USDC, DAI, 10_000 * 10**6, 9900 * WAD, address(uniV3Callee), USDC_DAI_PATH);
-        (uint64 hop,,,) = swapper.limits(USDC, DAI);
+        (, uint64 hop,,) = swapper.limits(USDC, DAI);
         vm.warp(block.timestamp + hop);
 
         vm.expectEmit(true, true, true, false);
@@ -160,7 +160,7 @@ contract SwapperTest is DssTest {
     }
 
     function testSwapExceedingMax() public {
-        (, uint128 cap,,) = swapper.limits(USDC, DAI);
+        (uint128 cap ,,,) = swapper.limits(USDC, DAI);
         uint256 amt = cap + 1;
         vm.expectRevert("Swapper/exceeds-max-amt");
         vm.prank(FACILITATOR); swapper.swap(USDC, DAI, amt, 0, address(uniV3Callee), USDC_DAI_PATH);

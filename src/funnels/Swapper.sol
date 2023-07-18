@@ -38,15 +38,15 @@ contract Swapper {
     address   public immutable buffer; // Contract from which the GEM to sell is pulled and to which the bought GEM is pushed
 
     struct PairLimit {
-        uint64  hop; // Cooldown one has to wait between each src to dst swap
         uint128 cap; // Maximum amount of src token that can be swapped each hop for a src->dst pair
-        uint64  zzz; // Timestamp of the last src to dst swap
+        uint64  hop; // Cooldown one has to wait between each src to dst swap
         uint128 amt; // Amount already swapped during the last hop
+        uint64  zzz; // Timestamp of the last src to dst swap
     }
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
-    event SetLimits(address indexed src, address indexed dst, uint64 hop, uint128 cap);
+    event SetLimits(address indexed src, address indexed dst, uint128 cap, uint64 hop);
     event Swap(address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
 
     constructor(address roles_, bytes32 ilk_, address buffer_) {
@@ -72,14 +72,14 @@ contract Swapper {
         emit Deny(usr);
     }
 
-    function setLimits(address src, address dst, uint64 hop, uint128 cap) external auth {
+    function setLimits(address src, address dst, uint128 cap, uint64 hop) external auth {
         limits[src][dst] = PairLimit({
-            hop: hop,
             cap: cap,
-            zzz: limits[src][dst].zzz,
-            amt: limits[src][dst].amt
+            hop: hop,
+            amt: limits[src][dst].amt,
+            zzz: limits[src][dst].zzz
         });
-        emit SetLimits(src, dst, hop, cap);
+        emit SetLimits(src, dst, cap, hop);
     }
 
     function swap(address src, address dst, uint256 amt, uint256 minOut, address callee, bytes calldata data) external auth returns (uint256 out) {
@@ -88,8 +88,8 @@ contract Swapper {
         unchecked {
             if (block.timestamp - limit.zzz >= limit.hop) {
                 // Reset batch
-                limit.zzz = uint64(block.timestamp);
                 limit.amt = limit.cap;
+                limit.zzz = uint64(block.timestamp);
             }
         }
 

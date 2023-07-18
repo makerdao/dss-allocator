@@ -48,8 +48,8 @@ contract StableSwapperTest is DssTest, TestUtils {
         roles.setUserRole(ilk, FACILITATOR, SWAPPER_ROLE, true);
         roles.setUserRole(ilk, address(stableSwapper), SWAPPER_ROLE, true);
 
-        swapper.setLimits(DAI, USDC, 3600 seconds, uint128(10_000 * WAD));
-        swapper.setLimits(USDC, DAI, 3600 seconds, uint128(10_000 * 10**6));
+        swapper.setLimits(DAI, USDC, uint128(10_000 * WAD), 3600 seconds);
+        swapper.setLimits(USDC, DAI, uint128(10_000 * 10**6), 3600 seconds);
 
         deal(DAI,  address(buffer), 1_000_000 * WAD,   true);
         deal(USDC, address(buffer), 1_000_000 * 10**6, true);
