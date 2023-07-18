@@ -13,7 +13,7 @@ import { TestUtils } from "test/utils/TestUtils.sol";
 contract StableSwapperTest is DssTest, TestUtils {
     event Kiss(address indexed usr);
     event Diss(address indexed usr);
-    event SetConfig(address indexed src, address indexed dst, StableSwapper.PairConfig data);
+    event SetConfig(address indexed src, address indexed dst, uint128 count, uint64 hop, uint128 lot, uint128 reqOut);
     event Swap(address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
 
     AllocatorBuffer public buffer;
@@ -58,16 +58,8 @@ contract StableSwapperTest is DssTest, TestUtils {
 
         stableSwapper.rely(FACILITATOR);
         vm.startPrank(FACILITATOR); 
-        stableSwapper.setConfig(DAI, USDC, StableSwapper.PairConfig({ 
-               count: 10,
-                 lot: uint112(10_000 * WAD), 
-              reqOut: uint112(9900 * 10**6)
-        }));
-        stableSwapper.setConfig(USDC, DAI, StableSwapper.PairConfig({ 
-               count: 10,
-                 lot: uint96(10_000 * 10**6), 
-              reqOut: uint112(9900 * WAD)
-        }));
+        stableSwapper.setConfig(DAI, USDC, 10, 3600 seconds, uint112(10_000 * WAD), uint112(9900 * 10**6));
+        stableSwapper.setConfig(USDC, DAI, 10, 3600 seconds, uint96(10_000 * 10**6),  uint112(9900 * WAD));
         stableSwapper.kiss(KEEPER);
         vm.stopPrank();
     }
@@ -109,19 +101,12 @@ contract StableSwapperTest is DssTest, TestUtils {
 
     function testSetConfig() public {
         vm.expectEmit(true, true, true, true);
-        emit SetConfig(address(0x123), address(0x456), StableSwapper.PairConfig({
-            count: 23,
-            lot: uint96(314),
-            reqOut: uint112(42)
-        }));
-        stableSwapper.setConfig(address(0x123), address(0x456), StableSwapper.PairConfig({
-            count: 23,
-            lot: uint96(314),
-            reqOut: uint112(42)
-        }));
+        emit SetConfig(address(0x123), address(0x456), uint128(23), uint64(3600 seconds), uint128(314), uint128(42));
+        stableSwapper.setConfig(address(0x123), address(0x456), uint128(23), uint64(3600 seconds), uint128(314), uint128(42));
 
-        (uint32 count, uint112 lot, uint112 reqOut) = stableSwapper.configs(address(0x123), address(0x456));
+        (uint128 count, uint64 hop,, uint128 lot, uint128 reqOut) = stableSwapper.configs(address(0x123), address(0x456));
         assertEq(count, 23);
+        assertEq(hop, 3600);
         assertEq(lot, 314);
         assertEq(reqOut, 42);
     }
@@ -129,8 +114,8 @@ contract StableSwapperTest is DssTest, TestUtils {
     function testSwapByKeeper() public {
         uint256 prevSrc = GemLike(USDC).balanceOf(address(buffer));
         uint256 prevDst = GemLike(DAI).balanceOf(address(buffer));
-        (uint32 prevUsdcDaiCount,,) = stableSwapper.configs(USDC, DAI);
-        (uint32 prevDaiUsdcCount,,) = stableSwapper.configs(DAI, USDC);
+        (uint128 prevUsdcDaiCount,,,,) = stableSwapper.configs(USDC, DAI);
+        (uint128 prevDaiUsdcCount,,,,) = stableSwapper.configs(DAI, USDC);
 
         vm.expectEmit(true, true, true, false);
         emit Swap(address(stableSwapper), USDC, DAI, 0, 0);
@@ -145,7 +130,7 @@ contract StableSwapperTest is DssTest, TestUtils {
         assertEq(GemLike(USDC).balanceOf(address(swapper)), 0);
         assertEq(GemLike(DAI).balanceOf(address(uniV3Callee)), 0);
         assertEq(GemLike(USDC).balanceOf(address(uniV3Callee)), 0);
-        (uint32 currentUsdcDaiCount,,) = stableSwapper.configs(USDC, DAI);
+        (uint128 currentUsdcDaiCount,,,,) = stableSwapper.configs(USDC, DAI);
         assertEq(currentUsdcDaiCount, prevUsdcDaiCount - 1);
 
         vm.warp(block.timestamp + 3600);
@@ -165,7 +150,7 @@ contract StableSwapperTest is DssTest, TestUtils {
         assertEq(GemLike(USDC).balanceOf(address(swapper)), 0);
         assertEq(GemLike(DAI).balanceOf(address(uniV3Callee)), 0);
         assertEq(GemLike(USDC).balanceOf(address(uniV3Callee)), 0);
-        (uint32 currentDaiUsdcCount,,) = stableSwapper.configs(DAI, USDC);
+        (uint128 currentDaiUsdcCount,,,,) = stableSwapper.configs(DAI, USDC);
         assertEq(currentDaiUsdcCount, prevDaiUsdcCount - 1);
     }
 
@@ -187,7 +172,7 @@ contract StableSwapperTest is DssTest, TestUtils {
     }
 
     function testSwapWithMinTooSmall() public {
-        (,,uint256 reqOut) = stableSwapper.configs(USDC, DAI);
+        (,,,, uint128 reqOut) = stableSwapper.configs(USDC, DAI);
         vm.expectRevert("StableSwapper/min-too-small");
         vm.prank(KEEPER); stableSwapper.swap(USDC, DAI, reqOut - 1, address(uniV3Callee), USDC_DAI_PATH);
     }

@@ -33,7 +33,7 @@ contract StableSwapper {
     event Deny(address indexed usr);
     event Kiss(address indexed usr);
     event Diss(address indexed usr);
-    event SetConfig(address indexed src, address indexed dst, PairConfig data);
+    event SetConfig(address indexed src, address indexed dst, uint128 count, uint64 hop, uint128 lot, uint128 reqOut);
 
     constructor(address swapper_) {
         swapper = SwapperLike(swapper_);
@@ -73,14 +73,22 @@ contract StableSwapper {
     }
 
     struct PairConfig {
-        uint32  count;  // The remaining number of times that a src to dst swap can be performed by keepers
-        uint112 lot;    // The amount swapped by keepers from src to dst every hop
-        uint112 reqOut; // The minimum output amount to insist on in the swap form src to dst
+        uint128 count;  // The remaining number of times that a src to dst swap can be performed by keepers
+        uint64  hop;
+        uint64  zzz;
+        uint128 lot;    // The amount swapped by keepers from src to dst every hop
+        uint128 reqOut; // The minimum output amount to insist on in the swap form src to dst
     }
 
-    function setConfig(address src, address dst, PairConfig memory cfg) external auth {
-        configs[src][dst] = cfg;
-        emit SetConfig(src, dst, cfg);
+    function setConfig(address src, address dst, uint128 count, uint64 hop, uint128 lot, uint128 reqOut) external auth {
+        configs[src][dst] = PairConfig({
+            count: count,
+            hop: hop,
+            zzz: configs[src][dst].zzz,
+            lot: lot,
+            reqOut: reqOut
+        });
+        emit SetConfig(src, dst, count, hop, lot, reqOut);
     }
 
     // Note: the keeper's minOut value must be updated whenever configs[src][dst] is changed.
@@ -89,7 +97,9 @@ contract StableSwapper {
         PairConfig memory cfg = configs[src][dst];
 
         require(cfg.count > 0, "StableSwapper/exceeds-count");
+        require(block.timestamp >= cfg.zzz + cfg.hop, "StableSwapper/too-soon");
         configs[src][dst].count = cfg.count - 1;
+        configs[src][dst].zzz   = uint64(block.timestamp);
 
         if (minOut == 0) minOut = cfg.reqOut;
         require(minOut >= cfg.reqOut, "StableSwapper/min-too-small");
