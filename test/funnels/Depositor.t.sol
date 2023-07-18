@@ -387,8 +387,6 @@ contract DepositorTest is DssTest, TestUtils {
     }
 
     function testWithdrawWithFeeCollection() public {
-        uint256 initialUSDC = GemLike(USDC).balanceOf(address(buffer));
-        uint256 initialDAI = GemLike(DAI).balanceOf(address(buffer));
         Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
             gem0: DAI,
             gem1: USDC,
