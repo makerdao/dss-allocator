@@ -30,7 +30,7 @@ interface SwapRouterLike {
 contract StableSwapperTest is DssTest, TestUtils {
     event Kiss(address indexed usr);
     event Diss(address indexed usr);
-    event SetConfig(address indexed src, address indexed dst, StableDepositor.PairConfig data);
+    event SetConfig(address indexed gem0, address indexed gem1, uint32 count, uint64 hop, uint24 fee, int24 tickLower, int24 tickUpper, uint128 amt0, uint128 amt1, uint128 amt0Req, uint128 amt1Req);
     
     AllocatorBuffer public buffer;
     Depositor       public depositor;
@@ -66,7 +66,7 @@ contract StableSwapperTest is DssTest, TestUtils {
         roles.setUserRole(ilk, FACILITATOR, DEPOSITOR_ROLE, true);
         roles.setUserRole(ilk, address(stableDepositor), DEPOSITOR_ROLE, true);
 
-        depositor.setLimits(DAI, USDC, 3600 seconds, uint128(10_000 * WAD), uint128(10_000 * 10**6));
+        depositor.setLimits(DAI, USDC, uint128(10_000 * WAD), uint128(10_000 * 10**6), 3600 seconds);
 
         deal(DAI,  address(buffer), 1_000_000 * WAD,   true);
         deal(USDC, address(buffer), 1_000_000 * 10**6, true);
@@ -75,16 +75,7 @@ contract StableSwapperTest is DssTest, TestUtils {
 
         stableDepositor.rely(FACILITATOR);
         vm.startPrank(FACILITATOR); 
-        stableDepositor.setConfig(DAI, USDC, StableDepositor.PairConfig({ 
-            count    : 10,
-            fee      : uint24(100),
-            tickLower: REF_TICK-100,
-            tickUpper: REF_TICK+100,
-            amt0     : uint128(500 * WAD),
-            amt1     : uint128(500 * 10**6),
-            amt0Req  : uint128(490 * WAD),
-            amt1Req  : uint128(490 * 10**6)
-        }));
+        stableDepositor.setConfig(DAI, USDC, 10, 3600, uint24(100), REF_TICK-100, REF_TICK+100, uint128(500 * WAD), uint128(500 * 10**6), uint128(490 * WAD), uint128(490 * 10**6));
 
         stableDepositor.kiss(KEEPER);
         vm.stopPrank();
@@ -126,26 +117,17 @@ contract StableSwapperTest is DssTest, TestUtils {
     }
 
     function testSetConfig() public {
-        StableDepositor.PairConfig memory config = StableDepositor.PairConfig({
-            count    : 23,
-            fee      : uint24(314),
-            tickLower: 5,
-            tickUpper: 6,
-            amt0     : uint128(7),
-            amt1     : uint128(8),
-            amt0Req  : uint128(9),
-            amt1Req  : uint128(10)
-        });
-
         vm.expectRevert("StableDepositor/wrong-gem-order");
-        stableDepositor.setConfig(address(0x456), address(0x123), config);
+        stableDepositor.setConfig(address(0x456), address(0x123), 23, 3600, uint24(314), 5, 6, uint128(7), uint128(8), uint128(9), uint128(10));
 
         vm.expectEmit(true, true, true, true);
-        emit SetConfig(address(0x123), address(0x456), config);
-        stableDepositor.setConfig(address(0x123), address(0x456), config);
+        emit SetConfig(address(0x123), address(0x456), 23, 3600, uint24(314), 5, 6, uint128(7), uint128(8), uint128(9), uint128(10));
+        stableDepositor.setConfig(address(0x123), address(0x456), 23, 3600, uint24(314), 5, 6, uint128(7), uint128(8), uint128(9), uint128(10));
 
         (
             uint32  count,
+            uint64  hop,
+            ,
             uint24  fee,
             int24   tickLower,
             int24   tickUpper,
@@ -155,6 +137,7 @@ contract StableSwapperTest is DssTest, TestUtils {
             uint128 amt1Req
         ) = stableDepositor.configs(address(0x123), address(0x456));
         assertEq(count    , 23);
+        assertEq(hop      , 3600);
         assertEq(fee      , uint24(314));
         assertEq(tickLower, 5);
         assertEq(tickUpper, 6);
@@ -167,20 +150,20 @@ contract StableSwapperTest is DssTest, TestUtils {
     function testDepositWithdrawByKeeper() public {
         uint256 prevDai = GemLike(DAI).balanceOf(address(buffer));
         uint256 prevUsdc = GemLike(USDC).balanceOf(address(buffer));
-        (uint32 prevCount,,,,,,,) = stableDepositor.configs(DAI, USDC);
+        (uint32 prevCount,,,,,,,,,) = stableDepositor.configs(DAI, USDC);
 
         vm.prank(KEEPER); stableDepositor.deposit(DAI, USDC, uint128(491 * WAD), uint128(491 * 10**6));
 
         uint256 afterDepositDai  = GemLike(DAI).balanceOf(address(buffer));
         uint256 afterDepositUsdc = GemLike(USDC).balanceOf(address(buffer));
-        (uint32 afterDepositCount,,,,,,,) = stableDepositor.configs(DAI, USDC);
+        (uint32 afterDepositCount,,,,,,,,,) = stableDepositor.configs(DAI, USDC);
         assertLt(afterDepositDai, prevDai);
         assertLt(afterDepositUsdc, prevUsdc);
         assertEq(afterDepositCount, prevCount - 1);
 
         vm.warp(block.timestamp + 3600);
         vm.prank(KEEPER); stableDepositor.withdraw(DAI, USDC, uint128(491 * WAD), uint128(491 * 10**6));
-        (uint32 afterWithdrawCount,,,,,,,) = stableDepositor.configs(DAI, USDC);
+        (uint32 afterWithdrawCount,,,,,,,,,) = stableDepositor.configs(DAI, USDC);
 
         assertGt(GemLike(DAI).balanceOf(address(buffer)), afterDepositDai);
         assertGt(GemLike(USDC).balanceOf(address(buffer)), afterDepositUsdc);
@@ -214,14 +197,14 @@ contract StableSwapperTest is DssTest, TestUtils {
     }
 
     function testDepositWithMin0TooSmall() public {
-        (,,,,,, uint128 amt0Req,) = stableDepositor.configs(DAI, USDC);
+        (,,,,,,,, uint128 amt0Req,) = stableDepositor.configs(DAI, USDC);
 
         vm.expectRevert("StableDepositor/min-amt0-too-small");
         vm.prank(KEEPER); stableDepositor.deposit(DAI, USDC, amt0Req - 1, uint128(491 * 10**6));
     }
 
     function testDepositWithMin1TooSmall() public {
-        (,,,,,,, uint128 amt1Req) = stableDepositor.configs(DAI, USDC);
+        (,,,,,,,,, uint128 amt1Req) = stableDepositor.configs(DAI, USDC);
 
         vm.expectRevert("StableDepositor/min-amt1-too-small");
         vm.prank(KEEPER); stableDepositor.deposit(DAI, USDC, uint128(491 * WAD), amt1Req - 1);

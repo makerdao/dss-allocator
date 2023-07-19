@@ -69,7 +69,7 @@ contract StableDepositor {
     event Deny(address indexed usr);
     event Kiss(address indexed usr);
     event Diss(address indexed usr);
-    event SetConfig(address indexed gem0, address indexed gem1, PairConfig data);
+    event SetConfig(address indexed gem0, address indexed gem1, uint32 count, uint64 hop, uint24 fee, int24 tickLower, int24 tickUpper, uint128 amt0, uint128 amt1, uint128 amt0Req, uint128 amt1Req);
 
     constructor(address _depositor) {
         depositor = DepositorLike(_depositor);
@@ -111,6 +111,8 @@ contract StableDepositor {
 
     struct PairConfig {
         uint32  count;     // The remaining number of times that a (gem0, gem1) operation can be performed by keepers
+        uint64  hop;
+        uint64  zzz;
         uint24  fee;       // The Uniswap V3 pool's fee
         int24   tickLower; // The Uniswap V3 positions' lower tick
         int24   tickUpper; // The Uniswap V3 positions' upper tick
@@ -119,10 +121,30 @@ contract StableDepositor {
         uint128 amt0Req;   // The minimum deposit/withdraw amount of gem0 to insist on in each (gem0, gem1) operation
         uint128 amt1Req;   // The minimum deposit/withdraw amount of gem1 to insist on in each (gem0, gem1) operation
     }
-    function setConfig(address gem0, address gem1, PairConfig memory cfg) external auth {
+    function setConfig(
+        address gem0,
+        address gem1,
+        uint32 count,
+        uint64 hop,
+        uint24 fee,
+        int24 tickLower,
+        int24 tickUpper,
+        uint128 amt0,
+        uint128 amt1,
+        uint128 amt0Req,
+        uint128 amt1Req
+    ) external auth {
         require(gem0 < gem1, "StableDepositor/wrong-gem-order");
-        configs[gem0][gem1] = cfg;
-        emit SetConfig(gem0, gem1, cfg);
+        configs[gem0][gem1].count = count;
+        configs[gem0][gem1].hop = hop;
+        configs[gem0][gem1].fee = fee;
+        configs[gem0][gem1].tickLower = tickLower;
+        configs[gem0][gem1].tickUpper = tickUpper;
+        configs[gem0][gem1].amt0 = amt0;
+        configs[gem0][gem1].amt1 = amt1;
+        configs[gem0][gem1].amt0Req = amt0Req;
+        configs[gem0][gem1].amt1Req = amt1Req;
+        emit SetConfig(gem0, gem1, count, hop, fee, tickLower, tickUpper, amt0, amt1, amt0Req, amt1Req);
     }
 
     // Note: the keeper's minAmts value must be updated whenever configs[gem0][gem1] is changed.
@@ -167,7 +189,9 @@ contract StableDepositor {
         PairConfig memory cfg = configs[gem0][gem1];
 
         require(cfg.count > 0, "StableDepositor/exceeds-count");
+        require(block.timestamp >= cfg.zzz + cfg.hop, "StableSwapper/too-soon");
         configs[gem0][gem1].count = cfg.count - 1;
+        configs[gem0][gem1].zzz   = uint64(block.timestamp);
 
         if (amt0Min == 0) amt0Min = cfg.amt0Req;
         if (amt1Min == 0) amt1Min = cfg.amt1Req;

@@ -39,7 +39,7 @@ interface SwapRouterLike {
 }
 
 contract DepositorTest is DssTest, TestUtils {
-    event SetLimits(address indexed gem0, address indexed gem1, uint64 hop, uint128 cap0, uint128 cap1);
+    event SetLimits(address indexed gem0, address indexed gem1, uint128 cap0, uint128 cap1, uint64 hop);
     event Deposit(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1);
     event Withdraw(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1, uint256 fees0, uint256 fees1);
     event Collect(address indexed sender, address indexed gem0, address indexed gem1, uint256 fees0, uint256 fees1);
@@ -75,7 +75,7 @@ contract DepositorTest is DssTest, TestUtils {
         roles.setRoleAction(ilk, DEPOSITOR_ROLE, address(depositor), depositor.collect.selector, true);
         roles.setUserRole(ilk, FACILITATOR, DEPOSITOR_ROLE, true);
 
-        depositor.setLimits(DAI, USDC, 3600 seconds, uint128(10_000 * WAD), uint128(10_000 * 10**6));
+        depositor.setLimits(DAI, USDC, uint128(10_000 * WAD), uint128(10_000 * 10**6), 3600 seconds);
 
         deal(DAI,  address(buffer), 1_000_000 * WAD,   true);
         deal(USDC, address(buffer), 1_000_000 * 10**6, true);
@@ -124,7 +124,7 @@ contract DepositorTest is DssTest, TestUtils {
         });
         vm.prank(FACILITATOR); depositor.deposit(dp);
 
-        (, uint64 zzzBeforeSetLimit,,) = depositor.limits(DAI, USDC);
+        (,,uint128 amt0BeforeSetLimit, uint128 amt1BeforeSetLimit,, uint64 zzzBeforeSetLimit) = depositor.limits(DAI, USDC);
         assertEq(zzzBeforeSetLimit, block.timestamp);
 
         vm.warp(block.timestamp + 1 hours);
@@ -132,17 +132,19 @@ contract DepositorTest is DssTest, TestUtils {
         vm.expectEmit(true, true, true, true);
         emit SetLimits(DAI, USDC, 3, 4, 5);
         vm.prank(address(this)); depositor.setLimits(DAI, USDC, 3, 4, 5);
-        (uint64 hop, uint64 zzz, uint128 cap0, uint128 cap1) = depositor.limits(DAI, USDC);
-        assertEq(hop, 3);
+        (uint128 cap0, uint128 cap1, uint256 amt0, uint256 amt1, uint64 hop, uint64 zzz) = depositor.limits(DAI, USDC);
+        assertEq(cap0, 3);
+        assertEq(cap1, 4);
+        assertEq(amt0, amt0BeforeSetLimit);
+        assertEq(amt1, amt1BeforeSetLimit);
+        assertEq(hop, 5);
         assertEq(zzz, zzzBeforeSetLimit);
-        assertEq(cap0, 4);
-        assertEq(cap1, 5);
     }
 
     function testRoles() public {
         vm.expectRevert("Depositor/not-authorized");
         vm.prank(address(0xBEEF)); depositor.setLimits(address(0), address(1), 0, 0, 0);
-        roles.setRoleAction(ilk, uint8(0xF1), address(depositor), bytes4(keccak256("setLimits(address,address,uint64,uint128,uint128)")), true);
+        roles.setRoleAction(ilk, uint8(0xF1), address(depositor), depositor.setLimits.selector, true);
         roles.setUserRole(ilk, address(0xBEEF), uint8(0xF1), true);
         vm.prank(address(0xBEEF)); depositor.setLimits(address(0), address(1), 0, 0, 0);
     }
@@ -552,25 +554,7 @@ contract DepositorTest is DssTest, TestUtils {
         vm.prank(FACILITATOR); depositor.deposit(dp);
     }
 
-    function testDepositTooSoon() public {
-        Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
-            gem0: DAI,
-            gem1: USDC,
-            fee: uint24(100),
-            tickLower: REF_TICK-100,
-            tickUpper: REF_TICK+100,
-            liquidity: 0,
-            amt0Desired: 500 * WAD,
-            amt1Desired: 500 * 10**6,
-            amt0Min: 490 * WAD,
-            amt1Min: 490 * 10**6
-        });
-        vm.prank(FACILITATOR); depositor.deposit(dp);
-        vm.expectRevert("Depositor/too-soon");
-        vm.prank(FACILITATOR); depositor.deposit(dp);
-    }
-
-    function testDepositExceedingCap() public {
+    function testDepositExceedingAmt() public {
         Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
             gem0: DAI,
             gem1: USDC,
@@ -583,17 +567,17 @@ contract DepositorTest is DssTest, TestUtils {
             amt0Min: 0,
             amt1Min: 0
         });
-        depositor.setLimits(DAI, USDC, 3600, uint128(1 * WAD), type(uint128).max);
+        depositor.setLimits(DAI, USDC, uint128(1 * WAD), type(uint128).max, 3600);
 
-        vm.expectRevert("Depositor/exceeds-cap");
+        vm.expectRevert("Depositor/exceeds-amt");
         vm.prank(FACILITATOR); depositor.deposit(dp);
 
-        depositor.setLimits(DAI, USDC, 3600, type(uint128).max, 1 * 10**6);
+        depositor.setLimits(DAI, USDC, type(uint128).max, 1 * 10**6, 3600);
 
-        vm.expectRevert("Depositor/exceeds-cap");
+        vm.expectRevert("Depositor/exceeds-amt");
         vm.prank(FACILITATOR); depositor.deposit(dp);
 
-        depositor.setLimits(DAI, USDC, 3600, type(uint128).max, type(uint128).max);
+        depositor.setLimits(DAI, USDC, type(uint128).max, type(uint128).max, 3600);
 
         vm.prank(FACILITATOR); depositor.deposit(dp);
     }
@@ -640,27 +624,6 @@ contract DepositorTest is DssTest, TestUtils {
         vm.prank(FACILITATOR); depositor.withdraw(dp, false);
     }
 
-    function testWithdrawTooSoon() public {
-        Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
-            gem0: DAI,
-            gem1: USDC,
-            fee: uint24(100),
-            tickLower: REF_TICK-100,
-            tickUpper: REF_TICK+100,
-            liquidity: 0,
-            amt0Desired: 500 * WAD,
-            amt1Desired: 500 * 10**6,
-            amt0Min: 490 * WAD,
-            amt1Min: 490 * 10**6
-        });
-
-        vm.prank(FACILITATOR); (uint128 liq,,) = depositor.deposit(dp);
-        dp.liquidity = liq;
-
-        vm.expectRevert("Depositor/too-soon");
-        vm.prank(FACILITATOR); depositor.withdraw(dp, false);
-    }
-
     function testWithdrawNoPosition() public {
         Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
             gem0: DAI,
@@ -680,7 +643,7 @@ contract DepositorTest is DssTest, TestUtils {
         vm.prank(FACILITATOR); depositor.withdraw(dp, false);
     }
 
-    function testWithdrawExceedingCap() public {
+    function testWithdrawExceedingAmt() public {
         Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
             gem0: DAI,
             gem1: USDC,
@@ -697,17 +660,17 @@ contract DepositorTest is DssTest, TestUtils {
         dp.liquidity = liq;
         vm.warp(block.timestamp + 3600);
 
-        depositor.setLimits(DAI, USDC, 3600, type(uint128).max, 1 * 10**6);
+        depositor.setLimits(DAI, USDC, type(uint128).max, 1 * 10**6, 3600);
         
-        vm.expectRevert("Depositor/exceeds-cap");
+        vm.expectRevert("Depositor/exceeds-amt");
         vm.prank(FACILITATOR); depositor.withdraw(dp, false);
 
-        depositor.setLimits(DAI, USDC, 3600, uint128(1 * WAD), type(uint128).max);
+        depositor.setLimits(DAI, USDC, uint128(1 * WAD), type(uint128).max, 3600);
 
-        vm.expectRevert("Depositor/exceeds-cap");
+        vm.expectRevert("Depositor/exceeds-amt");
         vm.prank(FACILITATOR); depositor.withdraw(dp, false);
 
-        depositor.setLimits(DAI, USDC, 3600, type(uint128).max, type(uint128).max);
+        depositor.setLimits(DAI, USDC, type(uint128).max, type(uint128).max, 3600);
 
         vm.prank(FACILITATOR); depositor.withdraw(dp, false);
     }
