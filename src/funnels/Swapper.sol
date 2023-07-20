@@ -96,8 +96,8 @@ contract Swapper {
         require(amt <= limit.amt, "Swapper/exceeds-max-amt");
 
         unchecked {
-            limits[src][dst].zzz = limit.zzz;
             limits[src][dst].amt = limit.amt - uint128(amt);
+            limits[src][dst].zzz = limit.zzz;
         }
 
         uint256 prevDstBalance = GemLike(dst).balanceOf(buffer);
