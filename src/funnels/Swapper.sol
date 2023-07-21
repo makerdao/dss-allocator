@@ -73,10 +73,11 @@ contract Swapper {
     }
 
     function setLimits(address src, address dst, uint128 cap, uint64 hop) external auth {
+        uint128 amt = limits[src][dst].amt;
         limits[src][dst] = PairLimit({
             cap: cap,
             hop: hop,
-            amt: limits[src][dst].amt,
+            amt: amt > cap ? cap : amt,
             zzz: limits[src][dst].zzz
         });
         emit SetLimits(src, dst, cap, hop);

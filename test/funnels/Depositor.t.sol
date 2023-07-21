@@ -123,7 +123,7 @@ contract DepositorTest is DssTest {
         });
         vm.prank(FACILITATOR); depositor.deposit(dp);
 
-        (,,uint128 amt0BeforeSetLimit, uint128 amt1BeforeSetLimit,, uint64 zzzBeforeSetLimit) = depositor.limits(DAI, USDC);
+        (,,,,, uint64 zzzBeforeSetLimit) = depositor.limits(DAI, USDC);
         assertEq(zzzBeforeSetLimit, block.timestamp);
 
         vm.warp(block.timestamp + 1 hours);
@@ -134,8 +134,8 @@ contract DepositorTest is DssTest {
         (uint128 cap0, uint128 cap1, uint256 amt0, uint256 amt1, uint64 hop, uint64 zzz) = depositor.limits(DAI, USDC);
         assertEq(cap0, 3);
         assertEq(cap1, 4);
-        assertEq(amt0, amt0BeforeSetLimit);
-        assertEq(amt1, amt1BeforeSetLimit);
+        assertEq(amt0, 3);
+        assertEq(amt1, 4);
         assertEq(hop, 5);
         assertEq(zzz, zzzBeforeSetLimit);
     }

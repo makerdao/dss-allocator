@@ -101,7 +101,7 @@ contract SwapperTest is DssTest {
         (uint128 cap, uint64 hop, uint128 amt, uint64 zzz) = swapper.limits(USDC, DAI);
         assertEq(cap, 4);
         assertEq(hop, 3);
-        assertEq(amt, amtBeforeSetLimit);
+        assertEq(amt, 4);
         assertEq(zzz, zzzBeforeSetLimit);
     }
 

@@ -124,6 +124,8 @@ contract Depositor {
         require(gem0 < gem1, "Depositor/wrong-gem-order");
         limits[gem0][gem1].cap0 = cap0;
         limits[gem0][gem1].cap1 = cap1;
+        if (limits[gem0][gem1].amt0 > cap0) { limits[gem0][gem1].amt0 = cap0; }
+        if (limits[gem0][gem1].amt1 > cap1) { limits[gem0][gem1].amt1 = cap1; }
         limits[gem0][gem1].hop = hop;
         emit SetLimits(gem0, gem1, cap0, cap1, hop);
     }
