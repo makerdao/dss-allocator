@@ -7,7 +7,6 @@ import { Depositor } from "src/funnels/Depositor.sol";
 import { UniV3SwapperCallee } from "src/funnels/callees/UniV3SwapperCallee.sol";
 import { AllocatorRoles } from "src/AllocatorRoles.sol";
 import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
-import { TestUtils } from "test/utils/TestUtils.sol";
 
 interface GemLike {
     function approve(address, uint256) external;
@@ -38,7 +37,7 @@ interface SwapRouterLike {
     }
 }
 
-contract DepositorTest is DssTest, TestUtils {
+contract DepositorTest is DssTest {
     event SetLimits(address indexed gem0, address indexed gem1, uint64 hop, uint128 cap0, uint128 cap1);
     event Deposit(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1);
     event Withdraw(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1, uint256 fees0, uint256 fees1);
@@ -104,7 +103,7 @@ contract DepositorTest is DssTest, TestUtils {
         authedMethods[3] = depositor.collect.selector;
 
         vm.startPrank(address(0xBEEF));
-        checkModifierForLargeArgs(address(depositor), "Depositor/not-authorized", authedMethods);
+        checkModifier(address(depositor), "Depositor/not-authorized", authedMethods);
         vm.stopPrank();
     }
 

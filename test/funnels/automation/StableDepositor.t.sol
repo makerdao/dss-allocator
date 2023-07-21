@@ -7,7 +7,6 @@ import { Depositor } from "src/funnels/Depositor.sol";
 import { StableDepositor } from "src/funnels/automation/StableDepositor.sol";
 import { AllocatorRoles } from "src/AllocatorRoles.sol";
 import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
-import { TestUtils } from "test/utils/TestUtils.sol";
 
 interface GemLike {
     function balanceOf(address) external view returns (uint256);
@@ -27,7 +26,7 @@ interface SwapRouterLike {
     }
 }
 
-contract StableSwapperTest is DssTest, TestUtils {
+contract StableSwapperTest is DssTest {
     event Kiss(address indexed usr);
     event Diss(address indexed usr);
     event SetConfig(address indexed src, address indexed dst, StableDepositor.PairConfig data);
@@ -107,7 +106,7 @@ contract StableSwapperTest is DssTest, TestUtils {
         authedMethods[2] = stableDepositor.setConfig.selector;
 
         vm.startPrank(address(0xBEEF));
-        checkModifierForLargeArgs(address(stableDepositor), "StableDepositor/not-authorized", authedMethods);
+        checkModifier(address(stableDepositor), "StableDepositor/not-authorized", authedMethods);
         vm.stopPrank();
     }
 
