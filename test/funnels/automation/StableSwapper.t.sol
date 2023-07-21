@@ -8,9 +8,8 @@ import { StableSwapper } from "src/funnels/automation/StableSwapper.sol";
 import { UniV3SwapperCallee } from "src/funnels/callees/UniV3SwapperCallee.sol";
 import { AllocatorRoles } from "src/AllocatorRoles.sol";
 import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
-import { TestUtils } from "test/utils/TestUtils.sol";
 
-contract StableSwapperTest is DssTest, TestUtils {
+contract StableSwapperTest is DssTest {
     event Kiss(address indexed usr);
     event Diss(address indexed usr);
     event SetConfig(address indexed src, address indexed dst, StableSwapper.PairConfig data);
@@ -89,7 +88,7 @@ contract StableSwapperTest is DssTest, TestUtils {
         authedMethods[2] = stableSwapper.setConfig.selector;
 
         vm.startPrank(address(0xBEEF));
-        checkModifierForLargeArgs(address(stableSwapper), "StableSwapper/not-authorized", authedMethods);
+        checkModifier(address(stableSwapper), "StableSwapper/not-authorized", authedMethods);
         vm.stopPrank();
     }
 
