@@ -84,7 +84,7 @@ contract Depositor {
         uint128 cap1; // Maximum amount of gem1 that can be added as liquidity each hop for a (gem0, gem1) pool
         uint128 due0; // Pending amount of gem0 that can still be added until next hop for a (gem0, gem1) pool
         uint128 due1; // Pending amount of gem1 that can still be added until next hop for a (gem0, gem1) pool
-        uint64   hop; // Cooldown one has to wait between changes to the liquidity of a (gem0, gem1) pool
+        uint64   hop; // Cooldown period it has to wait between changes to the liquidity of a (gem0, gem1) pool
         uint64   zzz; // Timestamp of the last liquidity change for a (gem0, gem1) pool
     }
 

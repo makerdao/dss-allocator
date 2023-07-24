@@ -111,8 +111,8 @@ contract StableDepositor {
 
     struct PairConfig {
         uint32  count;     // The remaining number of times that a (gem0, gem1) operation can be performed by keepers
-        uint64  hop;
-        uint64  zzz;
+        uint64  hop;       // Cooldown period it has to wait between deposit/withdraw executions
+        uint64  zzz;       // Timestamp of the last deposit/withdraw execution
         uint24  fee;       // The Uniswap V3 pool's fee
         int24   tickLower; // The Uniswap V3 positions' lower tick
         int24   tickUpper; // The Uniswap V3 positions' upper tick

@@ -39,7 +39,7 @@ contract Swapper {
 
     struct PairLimit {
         uint128 cap; // Maximum amount of src token that can be swapped each hop for a src->dst pair
-        uint64  hop; // Cooldown one has to wait between each src to dst swap
+        uint64  hop; // Cooldown period it has to wait between each src to dst swap
         uint128 due; // Pending amount of src token that can still be swapped until next hop
         uint64  zzz; // Timestamp of the last src to dst swap
     }
