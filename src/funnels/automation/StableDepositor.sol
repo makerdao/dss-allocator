@@ -158,6 +158,7 @@ contract StableDepositor {
 
         require(cfg.count > 0, "StableDepositor/exceeds-count");
         configs[gem0][gem1].count = cfg.count - 1;
+        configs[gem0][gem1].zzz   = uint64(block.timestamp);
 
         if (amt0Min == 0) amt0Min = cfg.amt0Req;
         if (amt1Min == 0) amt1Min = cfg.amt1Req;
