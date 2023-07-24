@@ -22,7 +22,7 @@ contract CalleeMock is DssTest {
 }
 
 contract SwapperTest is DssTest {
-    event SetLimits(address indexed src, address indexed dst, uint128 cap, uint64 hop);
+    event SetLimits(address indexed src, address indexed dst, uint96 cap, uint32 hop);
     event Swap(address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
 
     AllocatorRoles public roles;
@@ -55,8 +55,8 @@ contract SwapperTest is DssTest {
         roles.setRoleAction(ilk, SWAPPER_ROLE, address(swapper), swapper.swap.selector, true);
         roles.setUserRole(ilk, FACILITATOR, SWAPPER_ROLE, true);
 
-        swapper.setLimits(DAI, USDC, uint128(10_000 * WAD), 3600 seconds);
-        swapper.setLimits(USDC, DAI, uint128(10_000 * 10**6), 3600 seconds);
+        swapper.setLimits(DAI, USDC, uint96(10_000 * WAD), 3600 seconds);
+        swapper.setLimits(USDC, DAI, uint96(10_000 * 10**6), 3600 seconds);
 
         deal(DAI,  address(buffer), 1_000_000 * WAD,   true);
         deal(USDC, address(buffer), 1_000_000 * 10**6, true);
@@ -89,7 +89,7 @@ contract SwapperTest is DssTest {
     function testSetLimits() public {
         // swap to make sure zzz is set
         vm.prank(FACILITATOR); swapper.swap(USDC, DAI, 1_000 * 10**6, 990 * WAD, address(uniV3Callee), USDC_DAI_PATH);
-        (,, uint128 dueBeforeSetLimit, uint64 zzzBeforeSetLimit) = swapper.limits(USDC, DAI);
+        (,, uint96 dueBeforeSetLimit, uint32 zzzBeforeSetLimit) = swapper.limits(USDC, DAI);
         assertEq(dueBeforeSetLimit, 9_000 * 10**6);
         assertEq(zzzBeforeSetLimit, block.timestamp);
 
@@ -98,7 +98,7 @@ contract SwapperTest is DssTest {
         vm.expectEmit(true, true, true, true);
         emit SetLimits(USDC, DAI, 4, 3);
         vm.prank(address(this)); swapper.setLimits(USDC, DAI, 4, 3);
-        (uint128 cap, uint64 hop, uint128 due, uint64 zzz) = swapper.limits(USDC, DAI);
+        (uint96 cap, uint32 hop, uint96 due, uint32 zzz) = swapper.limits(USDC, DAI);
         assertEq(cap, 4);
         assertEq(hop, 3);
         assertEq(due, 4);

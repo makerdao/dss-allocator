@@ -61,15 +61,25 @@ interface DepositorLike {
 contract StableDepositor {
     mapping (address => uint256) public wards;                           // Admins
     mapping (address => uint256) public buds;                            // Whitelisted keepers
-    mapping (address => mapping (address => PairConfig)) public configs; // Configuration for keepers
+    mapping (address => mapping (address => mapping (uint24 => mapping (int24 => mapping (int24 => PairConfig))))) public configs; // Configuration for keepers
 
     DepositorLike public immutable depositor; // Depositor for this StableDepositor
+
+    struct PairConfig {
+        uint32 num;  // The remaining number of times that a (gem0, gem1) operation can be performed by keepers
+        uint32 zzz;  // Timestamp of the last deposit/withdraw execution
+        uint32 hop;  // Cooldown period it has to wait between deposit/withdraw executions
+        uint96 amt0; // Amount of gem0 to deposit/withdraw each (gem0, gem1) operation
+        uint96 amt1; // Amount of gem1 to deposit/withdraw each (gem0, gem1) operation
+        uint96 min0; // The minimum deposit/withdraw amount of gem0 to insist on in each (gem0, gem1) operation
+        uint96 min1; // The minimum deposit/withdraw amount of gem1 to insist on in each (gem0, gem1) operation
+    }
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
     event Kiss(address indexed usr);
     event Diss(address indexed usr);
-    event SetConfig(address indexed gem0, address indexed gem1, uint32 count, uint64 hop, uint24 fee, int24 tickLower, int24 tickUpper, uint128 amt0, uint128 amt1, uint128 amt0Req, uint128 amt1Req);
+    event SetConfig(address indexed gem0, address indexed gem1, uint24 indexed fee, int24 tickLower, int24 tickUpper, uint32 num, uint32 hop, uint96 amt0, uint96 amt1, uint96 min0, uint96 min1);
 
     constructor(address _depositor) {
         depositor = DepositorLike(_depositor);
@@ -109,68 +119,41 @@ contract StableDepositor {
         emit Diss(usr);
     }
 
-    struct PairConfig {
-        uint32  count;     // The remaining number of times that a (gem0, gem1) operation can be performed by keepers
-        uint64  hop;       // Cooldown period it has to wait between deposit/withdraw executions
-        uint64  zzz;       // Timestamp of the last deposit/withdraw execution
-        uint24  fee;       // The Uniswap V3 pool's fee
-        int24   tickLower; // The Uniswap V3 positions' lower tick
-        int24   tickUpper; // The Uniswap V3 positions' upper tick
-        uint128 amt0;      // Amount of gem0 to deposit/withdraw each (gem0, gem1) operation
-        uint128 amt1;      // Amount of gem1 to deposit/withdraw each (gem0, gem1) operation
-        uint128 amt0Req;   // The minimum deposit/withdraw amount of gem0 to insist on in each (gem0, gem1) operation
-        uint128 amt1Req;   // The minimum deposit/withdraw amount of gem1 to insist on in each (gem0, gem1) operation
-    }
-    function setConfig(
-        address gem0,
-        address gem1,
-        uint32 count,
-        uint64 hop,
-        uint24 fee,
-        int24 tickLower,
-        int24 tickUpper,
-        uint128 amt0,
-        uint128 amt1,
-        uint128 amt0Req,
-        uint128 amt1Req
-    ) external auth {
+    function setConfig(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tickUpper, uint32 num, uint32 hop, uint96 amt0, uint96 amt1, uint96 min0, uint96 min1) external auth {
         require(gem0 < gem1, "StableDepositor/wrong-gem-order");
-        configs[gem0][gem1].count = count;
-        configs[gem0][gem1].hop = hop;
-        configs[gem0][gem1].fee = fee;
-        configs[gem0][gem1].tickLower = tickLower;
-        configs[gem0][gem1].tickUpper = tickUpper;
-        configs[gem0][gem1].amt0 = amt0;
-        configs[gem0][gem1].amt1 = amt1;
-        configs[gem0][gem1].amt0Req = amt0Req;
-        configs[gem0][gem1].amt1Req = amt1Req;
-        emit SetConfig(gem0, gem1, count, hop, fee, tickLower, tickUpper, amt0, amt1, amt0Req, amt1Req);
+        configs[gem0][gem1][fee][tickLower][tickUpper].num = num;
+        configs[gem0][gem1][fee][tickLower][tickUpper].hop = hop;
+        configs[gem0][gem1][fee][tickLower][tickUpper].amt0 = amt0;
+        configs[gem0][gem1][fee][tickLower][tickUpper].amt1 = amt1;
+        configs[gem0][gem1][fee][tickLower][tickUpper].min0 = min0;
+        configs[gem0][gem1][fee][tickLower][tickUpper].min1 = min1;
+        emit SetConfig(gem0, gem1, fee, tickLower, tickUpper, num, hop, amt0, amt1, min0, min1);
     }
 
-    // Note: the keeper's minAmts value must be updated whenever configs[gem0][gem1] is changed.
+    // Note: the keeper's minAmts value must be updated whenever configs[gem0][gem1][fee][tickLower][tickUpper] is changed.
     // Failing to do so may result in this call reverting or in taking on more slippage than intended (up to a limit controlled by configs[src][dst].reqOut).
-    function deposit(address gem0, address gem1, uint128 amt0Min, uint128 amt1Min)
+    function deposit(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tickUpper, uint128 amt0Min, uint128 amt1Min)
         toll
         external
         returns (uint128 liquidity, uint256 amt0, uint256 amt1)
     {
-        PairConfig memory cfg = configs[gem0][gem1];
+        PairConfig memory cfg = configs[gem0][gem1][fee][tickLower][tickUpper];
 
-        require(cfg.count > 0, "StableDepositor/exceeds-count");
-        configs[gem0][gem1].count = cfg.count - 1;
-        configs[gem0][gem1].zzz   = uint64(block.timestamp);
+        require(cfg.num > 0, "StableDepositor/exceeds-num");
+        configs[gem0][gem1][fee][tickLower][tickUpper].num = cfg.num - 1;
+        configs[gem0][gem1][fee][tickLower][tickUpper].zzz   = uint32(block.timestamp);
 
-        if (amt0Min == 0) amt0Min = cfg.amt0Req;
-        if (amt1Min == 0) amt1Min = cfg.amt1Req;
-        require(amt0Min >= cfg.amt0Req, "StableDepositor/min-amt0-too-small");
-        require(amt1Min >= cfg.amt1Req, "StableDepositor/min-amt1-too-small");
+        if (amt0Min == 0) amt0Min = cfg.min0;
+        if (amt1Min == 0) amt1Min = cfg.min1;
+        require(amt0Min >= cfg.min0, "StableDepositor/min-amt0-too-small");
+        require(amt1Min >= cfg.min1, "StableDepositor/min-amt1-too-small");
 
         DepositorLike.LiquidityParams memory p = DepositorLike.LiquidityParams({
             gem0       : gem0,
             gem1       : gem1,
-            fee        : cfg.fee,
-            tickLower  : cfg.tickLower,
-            tickUpper  : cfg.tickUpper,
+            fee        : fee,
+            tickLower  : tickLower,
+            tickUpper  : tickUpper,
             liquidity  : 0,             // Use desired amounts
             amt0Desired: cfg.amt0,
             amt1Desired: cfg.amt1,
@@ -180,31 +163,31 @@ contract StableDepositor {
         (liquidity, amt0, amt1) = depositor.deposit(p);
     }
 
-    // Note: the keeper's minAmts value must be updated whenever configs[gem0][gem1] is changed.
+    // Note: the keeper's minAmts value must be updated whenever configs[gem0][gem1][fee][tickLower][tickUpper] is changed.
     // Failing to do so may result in this call reverting or in taking on more slippage than intended (up to a limit controlled by configs[src][dst].reqOut).
-    function withdraw(address gem0, address gem1, uint128 amt0Min, uint128 amt1Min)
+    function withdraw(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tickUpper, uint128 amt0Min, uint128 amt1Min)
         toll
         external
         returns (uint128 liquidity, uint256 amt0, uint256 amt1, uint256 fees0, uint256 fees1)
     {
-        PairConfig memory cfg = configs[gem0][gem1];
+        PairConfig memory cfg = configs[gem0][gem1][fee][tickLower][tickUpper];
 
-        require(cfg.count > 0, "StableDepositor/exceeds-count");
+        require(cfg.num > 0, "StableDepositor/exceeds-num");
         require(block.timestamp >= cfg.zzz + cfg.hop, "StableSwapper/too-soon");
-        configs[gem0][gem1].count = cfg.count - 1;
-        configs[gem0][gem1].zzz   = uint64(block.timestamp);
+        configs[gem0][gem1][fee][tickLower][tickUpper].num = cfg.num - 1;
+        configs[gem0][gem1][fee][tickLower][tickUpper].zzz   = uint32(block.timestamp);
 
-        if (amt0Min == 0) amt0Min = cfg.amt0Req;
-        if (amt1Min == 0) amt1Min = cfg.amt1Req;
-        require(amt0Min >= cfg.amt0Req, "StableDepositor/min-amt0-too-small");
-        require(amt1Min >= cfg.amt1Req, "StableDepositor/min-amt1-too-small");
+        if (amt0Min == 0) amt0Min = cfg.min0;
+        if (amt1Min == 0) amt1Min = cfg.min1;
+        require(amt0Min >= cfg.min0, "StableDepositor/min-amt0-too-small");
+        require(amt1Min >= cfg.min1, "StableDepositor/min-amt1-too-small");
 
         DepositorLike.LiquidityParams memory p = DepositorLike.LiquidityParams({
             gem0       : gem0,
             gem1       : gem1,
-            fee        : cfg.fee,
-            tickLower  : cfg.tickLower,
-            tickUpper  : cfg.tickUpper,
+            fee        : fee,
+            tickLower  : tickLower,
+            tickUpper  : tickUpper,
             liquidity  : 0,             // Use desired amounts
             amt0Desired: cfg.amt0,
             amt1Desired: cfg.amt1,
@@ -214,19 +197,17 @@ contract StableDepositor {
         (liquidity, amt0, amt1, fees0, fees1) = depositor.withdraw(p, true);
     }
 
-    function collect(address gem0, address gem1)
+    function collect(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tickUpper)
         toll
         external
         returns (uint256 fees0, uint256 fees1)
     {
-        PairConfig memory cfg = configs[gem0][gem1];
-
         DepositorLike.CollectParams memory collectParams = DepositorLike.CollectParams({
             gem0     : gem0,
             gem1     : gem1,
-            fee      : cfg.fee,
-            tickLower: cfg.tickLower,
-            tickUpper: cfg.tickUpper
+            fee      : fee,
+            tickLower: tickLower,
+            tickUpper: tickUpper
         });
         (fees0, fees1) = depositor.collect(collectParams);
     }

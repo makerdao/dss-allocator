@@ -38,15 +38,15 @@ contract Swapper {
     address   public immutable buffer; // Contract from which the GEM to sell is pulled and to which the bought GEM is pushed
 
     struct PairLimit {
-        uint128 cap; // Maximum amount of src token that can be swapped each hop for a src->dst pair
-        uint64  hop; // Cooldown period it has to wait between each src to dst swap
-        uint128 due; // Pending amount of src token that can still be swapped until next hop
-        uint64  zzz; // Timestamp of the last src to dst swap
+        uint96  cap; // Maximum amount of src token that can be swapped each hop for a src->dst pair
+        uint32  hop; // Cooldown period it has to wait between each src to dst swap
+        uint96  due; // Pending amount of src token that can still be swapped until next hop
+        uint32  zzz; // Timestamp of the last src to dst swap
     }
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
-    event SetLimits(address indexed src, address indexed dst, uint128 cap, uint64 hop);
+    event SetLimits(address indexed src, address indexed dst, uint96 cap, uint32 hop);
     event Swap(address indexed sender, address indexed src, address indexed dst, uint256 due, uint256 out);
 
     constructor(address roles_, bytes32 ilk_, address buffer_) {
@@ -72,8 +72,8 @@ contract Swapper {
         emit Deny(usr);
     }
 
-    function setLimits(address src, address dst, uint128 cap, uint64 hop) external auth {
-        uint128 due = limits[src][dst].due;
+    function setLimits(address src, address dst, uint96 cap, uint32 hop) external auth {
+        uint96 due = limits[src][dst].due;
         limits[src][dst] = PairLimit({
             cap: cap,
             hop: hop,
@@ -90,14 +90,14 @@ contract Swapper {
             if (block.timestamp - limit.zzz >= limit.hop) {
                 // Reset batch
                 limit.due = limit.cap;
-                limit.zzz = uint64(block.timestamp);
+                limit.zzz = uint32(block.timestamp);
             }
         }
 
         require(amt <= limit.due, "Swapper/exceeds-due-amt");
 
         unchecked {
-            limits[src][dst].due = limit.due - uint128(amt);
+            limits[src][dst].due = limit.due - uint96(amt);
             limits[src][dst].zzz = limit.zzz;
         }
 
