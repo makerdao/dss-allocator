@@ -82,8 +82,8 @@ contract Depositor {
     struct PairLimit {
         uint128 cap0; // Maximum amount of gem0 that can be added as liquidity each hop for a (gem0, gem1) pool
         uint128 cap1; // Maximum amount of gem1 that can be added as liquidity each hop for a (gem0, gem1) pool
-        uint128 amt0;
-        uint128 amt1;
+        uint128 due0; // Pending amount of gem0 that can still be added until next hop for a (gem0, gem1) pool
+        uint128 due1; // Pending amount of gem1 that can still be added until next hop for a (gem0, gem1) pool
         uint64   hop; // Cooldown one has to wait between changes to the liquidity of a (gem0, gem1) pool
         uint64   zzz; // Timestamp of the last liquidity change for a (gem0, gem1) pool
     }
@@ -124,8 +124,8 @@ contract Depositor {
         require(gem0 < gem1, "Depositor/wrong-gem-order");
         limits[gem0][gem1].cap0 = cap0;
         limits[gem0][gem1].cap1 = cap1;
-        if (limits[gem0][gem1].amt0 > cap0) { limits[gem0][gem1].amt0 = cap0; }
-        if (limits[gem0][gem1].amt1 > cap1) { limits[gem0][gem1].amt1 = cap1; }
+        if (limits[gem0][gem1].due0 > cap0) { limits[gem0][gem1].due0 = cap0; }
+        if (limits[gem0][gem1].due1 > cap1) { limits[gem0][gem1].due1 = cap1; }
         limits[gem0][gem1].hop = hop;
         emit SetLimits(gem0, gem1, cap0, cap1, hop);
     }
@@ -224,12 +224,12 @@ contract Depositor {
         unchecked {
             if (block.timestamp - limit.zzz >= limit.hop) {
                 // Reset batch
-                limit.amt0 = limits[p.gem0][p.gem1].cap0;
-                limit.amt1 = limits[p.gem0][p.gem1].cap1;
+                limit.due0 = limits[p.gem0][p.gem1].cap0;
+                limit.due1 = limits[p.gem0][p.gem1].cap1;
                 limits[p.gem0][p.gem1].zzz = uint64(block.timestamp);
             } else {
-                limit.amt0 = limits[p.gem0][p.gem1].amt0;
-                limit.amt1 = limits[p.gem0][p.gem1].amt1;
+                limit.due0 = limits[p.gem0][p.gem1].due0;
+                limit.due1 = limits[p.gem0][p.gem1].due1;
             }
         }
 
@@ -246,10 +246,10 @@ contract Depositor {
             data     : abi.encode(MintCallbackData({gem0: p.gem0, gem1: p.gem1, fee: p.fee}))
         });
         require(amt0 >= p.amt0Min && amt1 >= p.amt1Min, "Depositor/exceeds-slippage");
-        require(amt0 <= limit.amt0 && amt1 <= limit.amt1, "Depositor/exceeds-amt");
+        require(amt0 <= limit.due0 && amt1 <= limit.due1, "Depositor/exceeds-due-amt");
 
-        limits[p.gem0][p.gem1].amt0 = limit.amt0 - uint128(amt0);
-        limits[p.gem0][p.gem1].amt1 = limit.amt1 - uint128(amt1);
+        limits[p.gem0][p.gem1].due0 = limit.due0 - uint128(amt0);
+        limits[p.gem0][p.gem1].due1 = limit.due1 - uint128(amt1);
 
         emit Deposit(msg.sender, p.gem0, p.gem1, liquidity, amt0, amt1);
     }
@@ -268,12 +268,12 @@ contract Depositor {
         unchecked {
             if (block.timestamp - limit.zzz >= limit.hop) {
                 // Reset batch
-                limit.amt0 = limits[p.gem0][p.gem1].cap0;
-                limit.amt1 = limits[p.gem0][p.gem1].cap1;
+                limit.due0 = limits[p.gem0][p.gem1].cap0;
+                limit.due1 = limits[p.gem0][p.gem1].cap1;
                 limits[p.gem0][p.gem1].zzz = uint64(block.timestamp);
             } else {
-                limit.amt0 = limits[p.gem0][p.gem1].amt0;
-                limit.amt1 = limits[p.gem0][p.gem1].amt1;
+                limit.due0 = limits[p.gem0][p.gem1].due0;
+                limit.due1 = limits[p.gem0][p.gem1].due1;
             }
         }
 
@@ -284,10 +284,10 @@ contract Depositor {
 
         (amt0, amt1) = pool.burn({ tickLower: p.tickLower, tickUpper: p.tickUpper, amount: liquidity });
         require(amt0 >= p.amt0Min && amt1 >= p.amt1Min,  "Depositor/exceeds-slippage");
-        require(amt0 <= limit.amt0 && amt1 <= limit.amt1, "Depositor/exceeds-amt");
+        require(amt0 <= limit.due0 && amt1 <= limit.due1, "Depositor/exceeds-due-amt");
 
-        limits[p.gem0][p.gem1].amt0 = limit.amt0 - uint128(amt0);
-        limits[p.gem0][p.gem1].amt1 = limit.amt1 - uint128(amt1);
+        limits[p.gem0][p.gem1].due0 = limit.due0 - uint128(amt0);
+        limits[p.gem0][p.gem1].due1 = limit.due1 - uint128(amt1);
 
         (uint256 collected0, uint256 collected1) = pool.collect({
             recipient       : buffer,

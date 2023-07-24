@@ -89,8 +89,8 @@ contract SwapperTest is DssTest {
     function testSetLimits() public {
         // swap to make sure zzz is set
         vm.prank(FACILITATOR); swapper.swap(USDC, DAI, 1_000 * 10**6, 990 * WAD, address(uniV3Callee), USDC_DAI_PATH);
-        (,, uint128 amtBeforeSetLimit, uint64 zzzBeforeSetLimit) = swapper.limits(USDC, DAI);
-        assertEq(amtBeforeSetLimit, 9_000 * 10**6);
+        (,, uint128 dueBeforeSetLimit, uint64 zzzBeforeSetLimit) = swapper.limits(USDC, DAI);
+        assertEq(dueBeforeSetLimit, 9_000 * 10**6);
         assertEq(zzzBeforeSetLimit, block.timestamp);
 
         vm.warp(block.timestamp + 1 hours);
@@ -98,10 +98,10 @@ contract SwapperTest is DssTest {
         vm.expectEmit(true, true, true, true);
         emit SetLimits(USDC, DAI, 4, 3);
         vm.prank(address(this)); swapper.setLimits(USDC, DAI, 4, 3);
-        (uint128 cap, uint64 hop, uint128 amt, uint64 zzz) = swapper.limits(USDC, DAI);
+        (uint128 cap, uint64 hop, uint128 due, uint64 zzz) = swapper.limits(USDC, DAI);
         assertEq(cap, 4);
         assertEq(hop, 3);
-        assertEq(amt, 4);
+        assertEq(due, 4);
         assertEq(zzz, zzzBeforeSetLimit);
     }
 
@@ -162,7 +162,7 @@ contract SwapperTest is DssTest {
     function testSwapExceedingMax() public {
         (uint128 cap ,,,) = swapper.limits(USDC, DAI);
         uint256 amt = cap + 1;
-        vm.expectRevert("Swapper/exceeds-max-amt");
+        vm.expectRevert("Swapper/exceeds-due-amt");
         vm.prank(FACILITATOR); swapper.swap(USDC, DAI, amt, 0, address(uniV3Callee), USDC_DAI_PATH);
     }
 

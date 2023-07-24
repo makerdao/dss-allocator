@@ -40,14 +40,14 @@ contract Swapper {
     struct PairLimit {
         uint128 cap; // Maximum amount of src token that can be swapped each hop for a src->dst pair
         uint64  hop; // Cooldown one has to wait between each src to dst swap
-        uint128 amt; // Amount already swapped during the last hop
+        uint128 due; // Pending amount of src token that can still be swapped until next hop
         uint64  zzz; // Timestamp of the last src to dst swap
     }
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
     event SetLimits(address indexed src, address indexed dst, uint128 cap, uint64 hop);
-    event Swap(address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
+    event Swap(address indexed sender, address indexed src, address indexed dst, uint256 due, uint256 out);
 
     constructor(address roles_, bytes32 ilk_, address buffer_) {
         roles = RolesLike(roles_);
@@ -73,11 +73,11 @@ contract Swapper {
     }
 
     function setLimits(address src, address dst, uint128 cap, uint64 hop) external auth {
-        uint128 amt = limits[src][dst].amt;
+        uint128 due = limits[src][dst].due;
         limits[src][dst] = PairLimit({
             cap: cap,
             hop: hop,
-            amt: amt > cap ? cap : amt,
+            due: due > cap ? cap : due,
             zzz: limits[src][dst].zzz
         });
         emit SetLimits(src, dst, cap, hop);
@@ -89,15 +89,15 @@ contract Swapper {
         unchecked {
             if (block.timestamp - limit.zzz >= limit.hop) {
                 // Reset batch
-                limit.amt = limit.cap;
+                limit.due = limit.cap;
                 limit.zzz = uint64(block.timestamp);
             }
         }
 
-        require(amt <= limit.amt, "Swapper/exceeds-max-amt");
+        require(amt <= limit.due, "Swapper/exceeds-due-amt");
 
         unchecked {
-            limits[src][dst].amt = limit.amt - uint128(amt);
+            limits[src][dst].due = limit.due - uint128(amt);
             limits[src][dst].zzz = limit.zzz;
         }
 

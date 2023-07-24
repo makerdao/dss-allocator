@@ -131,11 +131,11 @@ contract DepositorTest is DssTest {
         vm.expectEmit(true, true, true, true);
         emit SetLimits(DAI, USDC, 3, 4, 5);
         vm.prank(address(this)); depositor.setLimits(DAI, USDC, 3, 4, 5);
-        (uint128 cap0, uint128 cap1, uint256 amt0, uint256 amt1, uint64 hop, uint64 zzz) = depositor.limits(DAI, USDC);
+        (uint128 cap0, uint128 cap1, uint256 due0, uint256 due1, uint64 hop, uint64 zzz) = depositor.limits(DAI, USDC);
         assertEq(cap0, 3);
         assertEq(cap1, 4);
-        assertEq(amt0, 3);
-        assertEq(amt1, 4);
+        assertEq(due0, 3);
+        assertEq(due1, 4);
         assertEq(hop, 5);
         assertEq(zzz, zzzBeforeSetLimit);
     }
@@ -568,12 +568,12 @@ contract DepositorTest is DssTest {
         });
         depositor.setLimits(DAI, USDC, uint128(1 * WAD), type(uint128).max, 3600);
 
-        vm.expectRevert("Depositor/exceeds-amt");
+        vm.expectRevert("Depositor/exceeds-due-amt");
         vm.prank(FACILITATOR); depositor.deposit(dp);
 
         depositor.setLimits(DAI, USDC, type(uint128).max, 1 * 10**6, 3600);
 
-        vm.expectRevert("Depositor/exceeds-amt");
+        vm.expectRevert("Depositor/exceeds-due-amt");
         vm.prank(FACILITATOR); depositor.deposit(dp);
 
         depositor.setLimits(DAI, USDC, type(uint128).max, type(uint128).max, 3600);
@@ -661,12 +661,12 @@ contract DepositorTest is DssTest {
 
         depositor.setLimits(DAI, USDC, type(uint128).max, 1 * 10**6, 3600);
         
-        vm.expectRevert("Depositor/exceeds-amt");
+        vm.expectRevert("Depositor/exceeds-due-amt");
         vm.prank(FACILITATOR); depositor.withdraw(dp, false);
 
         depositor.setLimits(DAI, USDC, uint128(1 * WAD), type(uint128).max, 3600);
 
-        vm.expectRevert("Depositor/exceeds-amt");
+        vm.expectRevert("Depositor/exceeds-due-amt");
         vm.prank(FACILITATOR); depositor.withdraw(dp, false);
 
         depositor.setLimits(DAI, USDC, type(uint128).max, type(uint128).max, 3600);
