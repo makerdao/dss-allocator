@@ -26,7 +26,7 @@ interface SwapRouterLike {
     }
 }
 
-contract StableSwapperTest is DssTest {
+contract StableDepositorTest is DssTest {
     event Kiss(address indexed usr);
     event Diss(address indexed usr);
     event SetConfig(address indexed gem0, address indexed gem1, uint32 count, uint64 hop, uint24 fee, int24 tickLower, int24 tickUpper, uint128 amt0, uint128 amt1, uint128 amt0Req, uint128 amt1Req);
