@@ -123,8 +123,10 @@ contract DepositorTest is DssTest {
         });
         vm.prank(FACILITATOR); depositor.deposit(dp);
 
-        (uint32 zzzBeforeSetLimit,,,,,) = depositor.limits(DAI, USDC, 100);
-        assertEq(zzzBeforeSetLimit, block.timestamp);
+        (uint32 zzzBefore,, uint96 due0Before, uint96 due1Before,,) = depositor.limits(DAI, USDC, 100);
+        assertGt(zzzBefore, 0);
+        assertGt(due0Before, 0);
+        assertGt(due1Before, 0);
 
         vm.warp(block.timestamp + 1 hours);
 
@@ -132,10 +134,10 @@ contract DepositorTest is DssTest {
         emit SetLimits(DAI, USDC, 100, 3, 4, 5);
         vm.prank(address(this)); depositor.setLimits(DAI, USDC, 100, 3, 4, 5);
         (uint32 zzz, uint32 hop, uint96 due0, uint96 due1, uint96 cap0, uint96 cap1) = depositor.limits(DAI, USDC, 100);
-        assertEq(zzz,  zzzBeforeSetLimit);
+        assertEq(zzz,  0);
         assertEq(hop,  3);
-        assertEq(due0, 4);
-        assertEq(due1, 5);
+        assertEq(due0, 0);
+        assertEq(due1, 0);
         assertEq(cap0, 4);
         assertEq(cap1, 5);
     }

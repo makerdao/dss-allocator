@@ -89,9 +89,9 @@ contract SwapperTest is DssTest {
     function testSetLimits() public {
         // swap to make sure zzz is set
         vm.prank(FACILITATOR); swapper.swap(USDC, DAI, 1_000 * 10**6, 990 * WAD, address(uniV3Callee), USDC_DAI_PATH);
-        (,, uint96 dueBeforeSetLimit, uint32 zzzBeforeSetLimit) = swapper.limits(USDC, DAI);
-        assertEq(dueBeforeSetLimit, 9_000 * 10**6);
-        assertEq(zzzBeforeSetLimit, block.timestamp);
+        (,, uint96 dueBefore, uint32 zzzBefore) = swapper.limits(USDC, DAI);
+        assertGt(zzzBefore, 0);
+        assertGt(dueBefore, 0);
 
         vm.warp(block.timestamp + 1 hours);
 
@@ -101,8 +101,8 @@ contract SwapperTest is DssTest {
         (uint96 cap, uint32 hop, uint96 due, uint32 zzz) = swapper.limits(USDC, DAI);
         assertEq(cap, 4);
         assertEq(hop, 3);
-        assertEq(due, 4);
-        assertEq(zzz, zzzBeforeSetLimit);
+        assertEq(due, 0);
+        assertEq(zzz, 0);
     }
 
     function testRoles() public {

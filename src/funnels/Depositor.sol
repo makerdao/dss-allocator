@@ -122,11 +122,14 @@ contract Depositor {
 
     function setLimits(address gem0, address gem1, uint24 fee, uint32 hop, uint96 cap0, uint96 cap1) external auth {
         require(gem0 < gem1, "Depositor/wrong-gem-order");
-        limits[gem0][gem1][fee].hop = hop;
-        if (limits[gem0][gem1][fee].due0 > cap0) { limits[gem0][gem1][fee].due0 = cap0; }
-        if (limits[gem0][gem1][fee].due1 > cap1) { limits[gem0][gem1][fee].due1 = cap1; }
-        limits[gem0][gem1][fee].cap0 = cap0;
-        limits[gem0][gem1][fee].cap1 = cap1;
+        limits[gem0][gem1][fee] = PairLimit({
+            zzz: 0,
+            hop: hop,
+            due0: 0,
+            due1: 0,
+            cap0: cap0,
+            cap1: cap1
+        });
         emit SetLimits(gem0, gem1, fee, hop, cap0, cap1);
     }
 
