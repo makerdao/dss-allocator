@@ -290,6 +290,7 @@ contract Depositor {
 
         limits[p.gem0][p.gem1][p.fee].due0 = limit.due0 - uint96(amt0);
         limits[p.gem0][p.gem1][p.fee].due1 = limit.due1 - uint96(amt1);
+        limits[p.gem0][p.gem1][p.fee].zzz  = limit.zzz;
 
         (uint256 collected0, uint256 collected1) = pool.collect({
             recipient       : buffer,
