@@ -82,10 +82,10 @@ contract Depositor {
     struct PairLimit {
         uint32  zzz; // Timestamp of the last liquidity change for a (gem0, gem1) pool
         uint32  hop; // Cooldown period it has to wait between changes to the liquidity of a (gem0, gem1) pool
-        uint96 due0; // Pending amount of gem0 that can still be added until next hop for a (gem0, gem1) pool
-        uint96 due1; // Pending amount of gem1 that can still be added until next hop for a (gem0, gem1) pool
-        uint96 cap0; // Maximum amount of gem0 that can be added as liquidity each hop for a (gem0, gem1) pool
-        uint96 cap1; // Maximum amount of gem1 that can be added as liquidity each hop for a (gem0, gem1) pool
+        uint96 due0; // Pending amount of gem0 that can still be added or removed until next hop for a (gem0, gem1) pool
+        uint96 due1; // Pending amount of gem1 that can still be added or removed until next hop for a (gem0, gem1) pool
+        uint96 cap0; // Maximum amount of gem0 that can be added or removed as liquidity each hop for a (gem0, gem1) pool
+        uint96 cap1; // Maximum amount of gem1 that can be added or removed as liquidity each hop for a (gem0, gem1) pool
     }
 
     event Rely(address indexed usr);
