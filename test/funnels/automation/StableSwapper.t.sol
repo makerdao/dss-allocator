@@ -135,6 +135,7 @@ contract StableSwapperTest is DssTest {
         assertEq(usdcDaiNum, initUsdcDaiNum - 1);
         assertEq(usdcDaiZzz, initialTime);
 
+        vm.warp(initialTime + 180);
         vm.expectRevert("StableSwapper/too-soon");
         vm.prank(KEEPER); stableSwapper.swap(USDC, DAI, 990 * WAD, address(uniV3Callee), USDC_DAI_PATH);
 
