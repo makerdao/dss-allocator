@@ -85,7 +85,7 @@ contract Swapper {
     function swap(address src, address dst, uint256 amt, uint256 minOut, address callee, bytes calldata data) external auth returns (uint256 out) {
         PairLimit memory limit = limits[src][dst];
 
-        if (block.timestamp - limit.zzz >= limit.hop) {
+        if (block.timestamp >= limit.zzz + limit.hop) {
             // Reset batch
             limit.due = limit.cap;
             limit.zzz = uint32(block.timestamp);

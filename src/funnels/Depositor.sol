@@ -226,7 +226,7 @@ contract Depositor {
         limit.due0 = limits[p.gem0][p.gem1][p.fee].due0;
         limit.due1 = limits[p.gem0][p.gem1][p.fee].due1;
 
-        if (block.timestamp - limit.zzz >= limit.hop) {
+        if (block.timestamp >= limit.zzz + limit.hop) {
             // Reset batch
             limit.due0 = limits[p.gem0][p.gem1][p.fee].cap0;
             limit.due1 = limits[p.gem0][p.gem1][p.fee].cap1;
@@ -268,7 +268,7 @@ contract Depositor {
         limit.due0 = limits[p.gem0][p.gem1][p.fee].due0;
         limit.due1 = limits[p.gem0][p.gem1][p.fee].due1;
 
-        if (block.timestamp - limit.zzz >= limit.hop) {
+        if (block.timestamp >= limit.zzz + limit.hop) {
             // Reset batch
             limit.due0 = limits[p.gem0][p.gem1][p.fee].cap0;
             limit.due1 = limits[p.gem0][p.gem1][p.fee].cap1;
