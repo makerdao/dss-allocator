@@ -174,6 +174,7 @@ contract DepositorTest is DssTest {
         assertEq(_getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100), 0);
         uint256 prevUSDC = GemLike(USDC).balanceOf(address(buffer));
         uint256 prevDAI = GemLike(DAI).balanceOf(address(buffer));
+        uint32 initialTime = uint32(block.timestamp);
 
         Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
             gem0: DAI,
@@ -182,18 +183,18 @@ contract DepositorTest is DssTest {
             tickLower: REF_TICK-100,
             tickUpper: REF_TICK+100,
             liquidity: 0,
-            amt0Desired: 500 * WAD,
-            amt1Desired: 500 * 10**6,
-            amt0Min: 490 * WAD,
-            amt1Min: 490 * 10**6
+            amt0Desired: 5_000 * WAD,
+            amt1Desired: 5_000 * 10**6,
+            amt0Min: 4_900 * WAD,
+            amt1Min: 4_900 * 10**6
         });
 
         uint256 snapshot = vm.snapshot();
-        (uint128 expectedLiquidity, uint256 expectedAmt0, uint256 expectedAmt1) = depositor.deposit(dp);
+        (uint128 liq, uint256 amt0, uint256 amt1) = depositor.deposit(dp);
         vm.revertTo(snapshot);
 
         vm.expectEmit(true, true, true, true);
-        emit Deposit(FACILITATOR, DAI, USDC, expectedLiquidity, expectedAmt0, expectedAmt1);
+        emit Deposit(FACILITATOR, DAI, USDC, liq, amt0, amt1);
         vm.prank(FACILITATOR); depositor.deposit(dp);
 
         assertLt(GemLike(DAI).balanceOf(address(buffer)), prevDAI);
@@ -202,24 +203,47 @@ contract DepositorTest is DssTest {
         assertEq(GemLike(USDC).balanceOf(address(depositor)), 0);
         uint128 liquidityAfterDeposit = _getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100);
         assertGt(liquidityAfterDeposit, 0);
+        (uint32 zzz,, uint96 due0, uint96 due1,,) = depositor.limits(DAI, USDC, 100);
+        assertEq(zzz, initialTime);
+        assertEq(due0, 10_000 * WAD - amt0);
+        assertEq(due1, 10_000 * 10**6 - amt1);
+
         prevUSDC = GemLike(USDC).balanceOf(address(buffer));
         prevDAI = GemLike(DAI).balanceOf(address(buffer));
 
-        vm.warp(block.timestamp + 3600);
+        dp.amt0Desired = 2_000 * WAD;
+        dp.amt1Desired = 2_000 * 10**6;
+        dp.amt0Min     = 1_960 * WAD;
+        dp.amt1Min     = 1_960 * 10**6;
 
-        snapshot = vm.snapshot();
-        vm.prank(FACILITATOR); (expectedLiquidity, expectedAmt0, expectedAmt1) = depositor.deposit(dp);
-        vm.revertTo(snapshot);
-
-        vm.expectEmit(true, true, true, true);
-        emit Deposit(FACILITATOR, DAI, USDC, expectedLiquidity, expectedAmt0, expectedAmt1);
+        vm.warp(initialTime + 1800);
         vm.prank(FACILITATOR); depositor.deposit(dp);
 
+        (zzz,, due0, due1,,) = depositor.limits(DAI, USDC, 100);
+        assertEq(zzz, initialTime);
         assertLt(GemLike(DAI).balanceOf(address(buffer)), prevDAI);
         assertLt(GemLike(USDC).balanceOf(address(buffer)), prevUSDC);
         assertEq(GemLike(DAI).balanceOf(address(depositor)), 0);
         assertEq(GemLike(USDC).balanceOf(address(depositor)), 0);
         assertGt(_getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100), liquidityAfterDeposit);
+        assertLt(due0, 10_000 * WAD - amt0);
+        assertLt(due1, 10_000 * 10**6 - amt1);
+
+        dp.amt0Desired = 8_000 * WAD;
+        dp.amt1Desired = 8_000 * 10**6;
+        dp.amt0Min     = 7_840 * WAD;
+        dp.amt1Min     = 7_840 * 10**6;
+
+        vm.expectRevert("Depositor/exceeds-due-amt");
+        vm.prank(FACILITATOR); depositor.deposit(dp);
+
+        vm.warp(initialTime + 3600);
+        vm.prank(FACILITATOR); (, amt0, amt1) = depositor.deposit(dp);
+
+        (zzz,, due0, due1,,) = depositor.limits(DAI, USDC, 100);
+        assertEq(zzz, initialTime + 3600);
+        assertEq(due0, 10_000 * WAD - amt0);
+        assertEq(due1, 10_000 * 10**6 - amt1);
     }
 
     function testGetPosition() public {
@@ -350,6 +374,8 @@ contract DepositorTest is DssTest {
     function testWithdrawWithNoFeeCollection() public {
         uint256 initialUSDC = GemLike(USDC).balanceOf(address(buffer));
         uint256 initialDAI = GemLike(DAI).balanceOf(address(buffer));
+        uint256 initialTime = uint32(block.timestamp);
+
         Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
             gem0: DAI,
             gem1: USDC,
@@ -366,8 +392,6 @@ contract DepositorTest is DssTest {
         assertGt(_getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100), 0);
 
         dp.liquidity = liq;
-
-        vm.warp(block.timestamp + 3600);
 
         uint256 snapshot = vm.snapshot();
         (uint128 liquidity, uint256 withdrawn0, uint256 withdrawn1, uint256 fees0, uint256 fees1) = depositor.withdraw(dp, false);
@@ -387,6 +411,37 @@ contract DepositorTest is DssTest {
         assertEq(fees0, 0);
         assertEq(fees1, 0);
         assertEq(liquidity, liq);
+        (uint32 zzz,, uint96 due0, uint96 due1,,) = depositor.limits(DAI, USDC, 100);
+        assertEq(zzz, initialTime);
+        assertEq(due0, 10_000 * WAD - deposited0 - withdrawn0);
+        assertEq(due1, 10_000 * 10**6 - deposited1 - withdrawn1);
+
+        dp.liquidity   = 0;
+        dp.amt0Desired = 8_000 * WAD;
+        dp.amt1Desired = 8_000 * 10**6;
+        dp.amt0Min     = 7_840 * WAD;
+        dp.amt1Min     = 7_840 * 10**6;
+
+        vm.warp(initialTime + 1800);
+        vm.prank(FACILITATOR); (liq,,) = depositor.deposit(dp);
+
+        (zzz,, due0, due1,,) = depositor.limits(DAI, USDC, 100);
+        assertEq(zzz, initialTime);
+        assertLt(due0, 10_000 * WAD - deposited0 - withdrawn0);
+        assertLt(due1, 10_000 * 10**6 - deposited1 - withdrawn1);
+
+        dp.liquidity = liq;
+
+        vm.expectRevert("Depositor/exceeds-due-amt");
+        vm.prank(FACILITATOR); depositor.withdraw(dp, false);
+
+        vm.warp(initialTime + 3600);
+        vm.prank(FACILITATOR); (, withdrawn0, withdrawn1,,) = depositor.withdraw(dp, false);
+
+        (zzz,, due0, due1,,) = depositor.limits(DAI, USDC, 100);
+        assertEq(zzz, initialTime + 3600);
+        assertEq(due0, 10_000 * WAD - withdrawn0);
+        assertEq(due1, 10_000 * 10**6 - withdrawn1);
     }
 
     function testWithdrawWithFeeCollection() public {

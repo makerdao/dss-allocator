@@ -74,7 +74,7 @@ contract StableDepositorTest is DssTest {
 
         stableDepositor.rely(FACILITATOR);
         vm.startPrank(FACILITATOR); 
-        stableDepositor.setConfig(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, 10, 3600, uint96(500 * WAD), uint96(500 * 10**6), uint96(490 * WAD), uint96(490 * 10**6));
+        stableDepositor.setConfig(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, 10, 360, uint96(500 * WAD), uint96(500 * 10**6), uint96(490 * WAD), uint96(490 * 10**6));
 
         stableDepositor.kiss(KEEPER);
         vm.stopPrank();
@@ -143,24 +143,50 @@ contract StableDepositorTest is DssTest {
     function testDepositWithdrawByKeeper() public {
         uint256 prevDai = GemLike(DAI).balanceOf(address(buffer));
         uint256 prevUsdc = GemLike(USDC).balanceOf(address(buffer));
-        (uint32 prevNum,,,,,,) = stableDepositor.configs(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
+        (uint32 initNum,,,,,,) = stableDepositor.configs(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
+        uint32 initialTime = uint32(block.timestamp);
 
         vm.prank(KEEPER); stableDepositor.deposit(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, uint128(491 * WAD), uint128(491 * 10**6));
 
         uint256 afterDepositDai  = GemLike(DAI).balanceOf(address(buffer));
         uint256 afterDepositUsdc = GemLike(USDC).balanceOf(address(buffer));
-        (uint32 afterDepositNum,,,,,,) = stableDepositor.configs(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
+        (uint32 num, uint32 zzz,,,,,) = stableDepositor.configs(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
         assertLt(afterDepositDai, prevDai);
         assertLt(afterDepositUsdc, prevUsdc);
-        assertEq(afterDepositNum, prevNum - 1);
+        assertEq(num, initNum - 1);
+        assertEq(zzz, initialTime);
 
-        vm.warp(block.timestamp + 3600);
+        vm.warp(initialTime + 180);
+        vm.expectRevert("StableDepositor/too-soon");
+        vm.prank(KEEPER); stableDepositor.deposit(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, uint128(491 * WAD), uint128(491 * 10**6));
+
+        vm.warp(initialTime + 360);
+        vm.prank(KEEPER); stableDepositor.deposit(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, uint128(491 * WAD), uint128(491 * 10**6));
+        (num, zzz,,,,,) = stableDepositor.configs(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
+
+        assertEq(num, initNum - 2);
+        assertEq(zzz, initialTime + 360);
+
+        vm.warp(initialTime + 540);
+        vm.expectRevert("StableDepositor/too-soon");
         vm.prank(KEEPER); stableDepositor.withdraw(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, uint128(491 * WAD), uint128(491 * 10**6));
-        (uint32 afterWithdrawNum,,,,,,) = stableDepositor.configs(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
+
+        vm.warp(initialTime + 720);
+        vm.prank(KEEPER); stableDepositor.withdraw(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, uint128(491 * WAD), uint128(491 * 10**6));
+        (num, zzz,,,,,) = stableDepositor.configs(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
+
+        assertEq(num, initNum - 3);
+        assertEq(zzz, initialTime + 720);
+
+        vm.warp(initialTime + 1080);
+        vm.prank(KEEPER); stableDepositor.withdraw(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, uint128(491 * WAD), uint128(491 * 10**6));
+        (num, zzz,,,,,) = stableDepositor.configs(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
 
         assertGt(GemLike(DAI).balanceOf(address(buffer)), afterDepositDai);
         assertGt(GemLike(USDC).balanceOf(address(buffer)), afterDepositUsdc);
-        assertEq(afterWithdrawNum, afterDepositNum - 1);
+        assertEq(num, initNum - 4);
+        assertEq(zzz, initialTime + 1080);
+
     }
 
     function testDepositWithdrawMinZero() public {
@@ -174,7 +200,7 @@ contract StableDepositorTest is DssTest {
         assertLt(afterDepositDai, prevDai);
         assertLt(afterDepositUsdc, prevUsdc);
 
-        vm.warp(block.timestamp + 3600);
+        vm.warp(block.timestamp + 360);
         vm.prank(KEEPER); stableDepositor.withdraw(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, 0, 0);
 
         assertGt(GemLike(DAI).balanceOf(address(buffer)), afterDepositDai);

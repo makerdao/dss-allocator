@@ -117,36 +117,59 @@ contract SwapperTest is DssTest {
         uint256 prevSrc = GemLike(USDC).balanceOf(address(buffer));
         uint256 prevDst = GemLike(DAI).balanceOf(address(buffer));
 
+        uint32 initialTime = uint32(block.timestamp);
+
         uint256 snapshot = vm.snapshot();
-        vm.prank(FACILITATOR); uint256 expectedOut = swapper.swap(USDC, DAI, 10_000 * 10**6, 9900 * WAD, address(uniV3Callee), USDC_DAI_PATH);
+        vm.prank(FACILITATOR); uint256 expectedOut = swapper.swap(USDC, DAI, 1_000 * 10**6, 990 * WAD, address(uniV3Callee), USDC_DAI_PATH);
         vm.revertTo(snapshot);
 
         vm.expectEmit(true, true, true, true);
-        emit Swap(FACILITATOR, USDC, DAI, 10_000 * 10**6, expectedOut);
-        vm.prank(FACILITATOR); uint256 out = swapper.swap(USDC, DAI, 10_000 * 10**6, 9900 * WAD, address(uniV3Callee), USDC_DAI_PATH);
+        emit Swap(FACILITATOR, USDC, DAI, 1_000 * 10**6, expectedOut);
+        vm.prank(FACILITATOR); uint256 out = swapper.swap(USDC, DAI, 1_000 * 10**6, 990 * WAD, address(uniV3Callee), USDC_DAI_PATH);
 
-        assertGe(out, 9900 * WAD);
-        assertEq(GemLike(USDC).balanceOf(address(buffer)), prevSrc - 10_000 * 10**6);
+        assertGe(out, 990 * WAD);
+        assertEq(GemLike(USDC).balanceOf(address(buffer)), prevSrc - 1_000 * 10**6);
         assertEq(GemLike(DAI).balanceOf(address(buffer)), prevDst + out);
         assertEq(GemLike(DAI).balanceOf(address(swapper)), 0);
         assertEq(GemLike(USDC).balanceOf(address(swapper)), 0);
         assertEq(GemLike(DAI).balanceOf(address(uniV3Callee)), 0);
         assertEq(GemLike(USDC).balanceOf(address(uniV3Callee)), 0);
+        (,, uint96 due, uint32 zzz) = swapper.limits(USDC, DAI);
+        assertEq(due, 9_000 * 10**6);
+        assertEq(zzz, initialTime);
+
+        vm.warp(initialTime + 1800);
+        vm.prank(FACILITATOR); swapper.swap(USDC, DAI, 5_000 * 10**6, 4_950 * WAD, address(uniV3Callee), USDC_DAI_PATH);
+        (,, due, zzz) = swapper.limits(USDC, DAI);
+        assertEq(due, 4_000 * 10**6);
+        assertEq(zzz, initialTime);
+
+        vm.expectRevert("Swapper/exceeds-due-amt");
+        vm.prank(FACILITATOR); swapper.swap(USDC, DAI, 8_000 * 10**6, 7_920 * WAD, address(uniV3Callee), USDC_DAI_PATH);
+
+        vm.warp(initialTime + 1 hours);
+        vm.prank(FACILITATOR); swapper.swap(USDC, DAI, 8_000 * 10**6, 7_920 * WAD, address(uniV3Callee), USDC_DAI_PATH);
+        (,, due, zzz) = swapper.limits(USDC, DAI);
+        assertEq(due, 2_000 * 10**6);
+        assertEq(zzz, initialTime + 3600);
 
         prevSrc = GemLike(DAI).balanceOf(address(buffer));
         prevDst = GemLike(USDC).balanceOf(address(buffer));
 
         vm.expectEmit(true, true, true, false);
-        emit Swap(FACILITATOR, DAI, USDC, 10_000 * WAD, 0);
-        vm.prank(FACILITATOR); out = swapper.swap(DAI, USDC, 10_000 * WAD, 9900 * 10**6, address(uniV3Callee), DAI_USDC_PATH);
+        emit Swap(FACILITATOR, DAI, USDC, 1_000 * WAD, 0);
+        vm.prank(FACILITATOR); out = swapper.swap(DAI, USDC, 1_000 * WAD, 990 * 10**6, address(uniV3Callee), DAI_USDC_PATH);
         
-        assertGe(out, 9900 * 10**6);
-        assertEq(GemLike(DAI).balanceOf(address(buffer)), prevSrc - 10_000 * WAD);
+        assertGe(out, 990 * 10**6);
+        assertEq(GemLike(DAI).balanceOf(address(buffer)), prevSrc - 1_000 * WAD);
         assertEq(GemLike(USDC).balanceOf(address(buffer)), prevDst + out);
         assertEq(GemLike(DAI).balanceOf(address(swapper)), 0);
         assertEq(GemLike(USDC).balanceOf(address(swapper)), 0);
         assertEq(GemLike(DAI).balanceOf(address(uniV3Callee)), 0);
         assertEq(GemLike(USDC).balanceOf(address(uniV3Callee)), 0);
+        (,, due, zzz) = swapper.limits(DAI, USDC);
+        assertEq(due, 9_000 * WAD);
+        assertEq(zzz, uint32(block.timestamp));
     }
 
     function testSwapAferHop() public {
