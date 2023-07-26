@@ -185,8 +185,8 @@ contract StableSwapperTest is DssTest {
     }
 
     function testSwapWithMinTooSmall() public {
-        (,,,, uint128 reqOut) = stableSwapper.configs(USDC, DAI);
+        (,,,, uint96 min) = stableSwapper.configs(USDC, DAI);
         vm.expectRevert("StableSwapper/min-too-small");
-        vm.prank(KEEPER); stableSwapper.swap(USDC, DAI, reqOut - 1, address(uniV3Callee), USDC_DAI_PATH);
+        vm.prank(KEEPER); stableSwapper.swap(USDC, DAI, min - 1, address(uniV3Callee), USDC_DAI_PATH);
     }
 }
