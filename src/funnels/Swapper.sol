@@ -22,6 +22,7 @@ interface RolesLike {
 
 interface GemLike {
     function balanceOf(address) external view returns (uint256);
+    function transfer(address, uint256) external;
     function transferFrom(address, address, uint256) external;
 }
 
@@ -100,12 +101,16 @@ contract Swapper {
             limits[src][dst].zzz = limit.zzz;
         }
 
-        uint256 prevDstBalance = GemLike(dst).balanceOf(buffer);
+        uint256 prevBalance = GemLike(dst).balanceOf(address(this));
         GemLike(src).transferFrom(buffer, callee, amt);
-        CalleeLike(callee).swap(src, dst, amt, minOut, buffer, data);
 
-        out = GemLike(dst).balanceOf(buffer) - prevDstBalance;
+        // Avoid swapping directly to buffer to prevent piggybacking another operation to satisfy the balance check
+        CalleeLike(callee).swap(src, dst, amt, minOut, address(this), data);
+
+        out = GemLike(dst).balanceOf(address(this)) - prevBalance;
         require(out >= minOut, "Swapper/too-few-dst-received");
+
+        GemLike(dst).transfer(buffer, out);
 
         emit Swap(msg.sender, src, dst, amt, out);
     }
