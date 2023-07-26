@@ -121,12 +121,15 @@ contract StableDepositor {
 
     function setConfig(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tickUpper, uint32 num, uint32 hop, uint96 amt0, uint96 amt1, uint96 min0, uint96 min1) external auth {
         require(gem0 < gem1, "StableDepositor/wrong-gem-order");
-        configs[gem0][gem1][fee][tickLower][tickUpper].num = num;
-        configs[gem0][gem1][fee][tickLower][tickUpper].hop = hop;
-        configs[gem0][gem1][fee][tickLower][tickUpper].amt0 = amt0;
-        configs[gem0][gem1][fee][tickLower][tickUpper].amt1 = amt1;
-        configs[gem0][gem1][fee][tickLower][tickUpper].min0 = min0;
-        configs[gem0][gem1][fee][tickLower][tickUpper].min1 = min1;
+        configs[gem0][gem1][fee][tickLower][tickUpper] = PairConfig({
+            num:  num,
+            zzz:  0,
+            hop:  hop,
+            amt0: amt0,
+            amt1: amt1,
+            min0: min0,
+            min1: min1
+        });
         emit SetConfig(gem0, gem1, fee, tickLower, tickUpper, num, hop, amt0, amt1, min0, min1);
     }
 

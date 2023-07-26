@@ -124,15 +124,16 @@ contract StableDepositorTest is DssTest {
         stableDepositor.setConfig(address(0x123), address(0x456), uint24(314), 5, 6, 23, 3600, uint96(7), uint96(8), uint96(9), uint96(10));
 
         (
-            uint32  num,
-            ,
-            uint32  hop,
+            uint32 num,
+            uint32 zzz,
+            uint32 hop,
             uint96 amt0,
             uint96 amt1,
             uint96 min0,
             uint96 min1
         ) = stableDepositor.configs(address(0x123), address(0x456), uint24(314), 5, 6);
         assertEq(num,  23);
+        assertEq(zzz,  0);
         assertEq(hop,  3600);
         assertEq(amt0, uint96(7));
         assertEq(amt1, uint96(8));

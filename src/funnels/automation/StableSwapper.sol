@@ -84,7 +84,7 @@ contract StableSwapper {
         configs[src][dst] = PairConfig({
             num: num,
             hop: hop,
-            zzz: configs[src][dst].zzz,
+            zzz: 0,
             lot: lot,
             min: min
         });

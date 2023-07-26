@@ -103,9 +103,10 @@ contract StableSwapperTest is DssTest {
         emit SetConfig(address(0x123), address(0x456), uint128(23), uint32(360 seconds), uint96(314), uint96(42));
         stableSwapper.setConfig(address(0x123), address(0x456), uint128(23), uint32(360 seconds), uint96(314), uint96(42));
 
-        (uint128 num, uint32 hop,, uint96 lot, uint96 min) = stableSwapper.configs(address(0x123), address(0x456));
+        (uint128 num, uint32 hop, uint32 zzz, uint96 lot, uint96 min) = stableSwapper.configs(address(0x123), address(0x456));
         assertEq(num, 23);
         assertEq(hop, 360);
+        assertEq(zzz, 0);
         assertEq(lot, 314);
         assertEq(min, 42);
     }
