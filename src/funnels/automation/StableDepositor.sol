@@ -140,6 +140,7 @@ contract StableDepositor {
         PairConfig memory cfg = configs[gem0][gem1][fee][tickLower][tickUpper];
 
         require(cfg.num > 0, "StableDepositor/exceeds-num");
+        require(block.timestamp >= cfg.zzz + cfg.hop, "StableDepositor/too-soon");
         configs[gem0][gem1][fee][tickLower][tickUpper].num = cfg.num - 1;
         configs[gem0][gem1][fee][tickLower][tickUpper].zzz   = uint32(block.timestamp);
 
@@ -173,7 +174,7 @@ contract StableDepositor {
         PairConfig memory cfg = configs[gem0][gem1][fee][tickLower][tickUpper];
 
         require(cfg.num > 0, "StableDepositor/exceeds-num");
-        require(block.timestamp >= cfg.zzz + cfg.hop, "StableSwapper/too-soon");
+        require(block.timestamp >= cfg.zzz + cfg.hop, "StableDepositor/too-soon");
         configs[gem0][gem1][fee][tickLower][tickUpper].num = cfg.num - 1;
         configs[gem0][gem1][fee][tickLower][tickUpper].zzz   = uint32(block.timestamp);
 
