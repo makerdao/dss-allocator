@@ -169,7 +169,7 @@ contract SwapperTest is DssTest {
         assertEq(GemLike(USDC).balanceOf(address(uniV3Callee)), 0);
         (,, due, zzz) = swapper.limits(DAI, USDC);
         assertEq(due, 9_000 * WAD);
-        assertEq(zzz, initialTime + 3600);
+        assertEq(zzz, uint32(block.timestamp));
     }
 
     function testSwapAferHop() public {
