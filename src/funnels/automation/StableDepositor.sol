@@ -145,7 +145,7 @@ contract StableDepositor {
         require(cfg.num > 0, "StableDepositor/exceeds-num");
         require(block.timestamp >= cfg.zzz + cfg.hop, "StableDepositor/too-soon");
         configs[gem0][gem1][fee][tickLower][tickUpper].num = cfg.num - 1;
-        configs[gem0][gem1][fee][tickLower][tickUpper].zzz   = uint32(block.timestamp);
+        configs[gem0][gem1][fee][tickLower][tickUpper].zzz = uint32(block.timestamp);
 
         if (amt0Min == 0) amt0Min = cfg.min0;
         if (amt1Min == 0) amt1Min = cfg.min1;
@@ -179,7 +179,7 @@ contract StableDepositor {
         require(cfg.num > 0, "StableDepositor/exceeds-num");
         require(block.timestamp >= cfg.zzz + cfg.hop, "StableDepositor/too-soon");
         configs[gem0][gem1][fee][tickLower][tickUpper].num = cfg.num - 1;
-        configs[gem0][gem1][fee][tickLower][tickUpper].zzz   = uint32(block.timestamp);
+        configs[gem0][gem1][fee][tickLower][tickUpper].zzz = uint32(block.timestamp);
 
         if (amt0Min == 0) amt0Min = cfg.min0;
         if (amt1Min == 0) amt1Min = cfg.min1;
