@@ -226,13 +226,11 @@ contract Depositor {
         limit.due0 = limits[p.gem0][p.gem1][p.fee].due0;
         limit.due1 = limits[p.gem0][p.gem1][p.fee].due1;
 
-        unchecked {
-            if (block.timestamp - limit.zzz >= limit.hop) {
-                // Reset batch
-                limit.due0 = limits[p.gem0][p.gem1][p.fee].cap0;
-                limit.due1 = limits[p.gem0][p.gem1][p.fee].cap1;
-                limit.zzz  = uint32(block.timestamp);
-            }
+        if (block.timestamp - limit.zzz >= limit.hop) {
+            // Reset batch
+            limit.due0 = limits[p.gem0][p.gem1][p.fee].cap0;
+            limit.due1 = limits[p.gem0][p.gem1][p.fee].cap1;
+            limit.zzz  = uint32(block.timestamp);
         }
 
         UniV3PoolLike pool = _getPool(p.gem0, p.gem1, p.fee);
@@ -270,13 +268,11 @@ contract Depositor {
         limit.due0 = limits[p.gem0][p.gem1][p.fee].due0;
         limit.due1 = limits[p.gem0][p.gem1][p.fee].due1;
 
-        unchecked {
-            if (block.timestamp - limit.zzz >= limit.hop) {
-                // Reset batch
-                limit.due0 = limits[p.gem0][p.gem1][p.fee].cap0;
-                limit.due1 = limits[p.gem0][p.gem1][p.fee].cap1;
-                limit.zzz  = uint32(block.timestamp);
-            }
+        if (block.timestamp - limit.zzz >= limit.hop) {
+            // Reset batch
+            limit.due0 = limits[p.gem0][p.gem1][p.fee].cap0;
+            limit.due1 = limits[p.gem0][p.gem1][p.fee].cap1;
+            limit.zzz  = uint32(block.timestamp);
         }
 
         UniV3PoolLike pool = _getPool(p.gem0, p.gem1, p.fee);
