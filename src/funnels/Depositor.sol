@@ -72,7 +72,7 @@ interface UniV3PoolLike {
 
 contract Depositor {
     mapping (address => uint256) public wards;                         // Admins
-    mapping (address => mapping (address => mapping (uint24 => PairLimit))) public limits; // Rate limit parameters per (gem0, gem1) pair
+    mapping (address => mapping (address => mapping (uint24 => PairLimit))) public limits; // Rate limit parameters per (gem0, gem1, fee) pool
 
     RolesLike public immutable roles;        // Contract managing access control for this Depositor
     bytes32   public immutable ilk;          // Collateral type
