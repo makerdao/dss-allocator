@@ -131,7 +131,7 @@ contract StableDepositor {
     }
 
     // Note: the keeper's minAmts value must be updated whenever configs[gem0][gem1][fee][tickLower][tickUpper] is changed.
-    // Failing to do so may result in this call reverting or in taking on more slippage than intended (up to a limit controlled by configs[src][dst].reqOut).
+    // Failing to do so may result in this call reverting or in taking on more slippage than intended (up to a limit controlled by configs[gem0][gem1][fee][tickLower][tickUpper].min0/1).
     function deposit(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tickUpper, uint128 amt0Min, uint128 amt1Min)
         toll
         external
@@ -165,7 +165,7 @@ contract StableDepositor {
     }
 
     // Note: the keeper's minAmts value must be updated whenever configs[gem0][gem1][fee][tickLower][tickUpper] is changed.
-    // Failing to do so may result in this call reverting or in taking on more slippage than intended (up to a limit controlled by configs[src][dst].reqOut).
+    // Failing to do so may result in this call reverting or in taking on more slippage than intended (up to a limit controlled by configs[gem0][gem1][fee][tickLower][tickUpper].min0/1).
     function withdraw(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tickUpper, uint128 amt0Min, uint128 amt1Min)
         toll
         external
