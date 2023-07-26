@@ -68,11 +68,11 @@ contract StableDepositor {
     struct PairConfig {
         uint32 num;  // The remaining number of times that a (gem0, gem1) operation can be performed by keepers
         uint32 zzz;  // Timestamp of the last deposit/withdraw execution
-        uint32 hop;  // Cooldown period it has to wait between deposit/withdraw executions
         uint96 amt0; // Amount of gem0 to deposit/withdraw each (gem0, gem1) operation
         uint96 amt1; // Amount of gem1 to deposit/withdraw each (gem0, gem1) operation
         uint96 min0; // The minimum deposit/withdraw amount of gem0 to insist on in each (gem0, gem1) operation
         uint96 min1; // The minimum deposit/withdraw amount of gem1 to insist on in each (gem0, gem1) operation
+        uint32 hop;  // Cooldown period it has to wait between deposit/withdraw executions
     }
 
     event Rely(address indexed usr);
@@ -124,11 +124,11 @@ contract StableDepositor {
         configs[gem0][gem1][fee][tickLower][tickUpper] = PairConfig({
             num:  num,
             zzz:  0,
-            hop:  hop,
             amt0: amt0,
             amt1: amt1,
             min0: min0,
-            min1: min1
+            min1: min1,
+            hop:  hop
         });
         emit SetConfig(gem0, gem1, fee, tickLower, tickUpper, num, hop, amt0, amt1, min0, min1);
     }

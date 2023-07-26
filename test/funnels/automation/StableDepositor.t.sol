@@ -126,19 +126,19 @@ contract StableDepositorTest is DssTest {
         (
             uint32 num,
             uint32 zzz,
-            uint32 hop,
             uint96 amt0,
             uint96 amt1,
             uint96 min0,
-            uint96 min1
+            uint96 min1,
+            uint32 hop
         ) = stableDepositor.configs(address(0x123), address(0x456), uint24(314), 5, 6);
         assertEq(num,  23);
         assertEq(zzz,  0);
-        assertEq(hop,  3600);
         assertEq(amt0, uint96(7));
         assertEq(amt1, uint96(8));
         assertEq(min0, uint96(9));
         assertEq(min1, uint96(10));
+        assertEq(hop,  3600);
     }
 
     function testDepositWithdrawByKeeper() public {
