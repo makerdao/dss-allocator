@@ -172,7 +172,7 @@ contract SwapperTest is DssTest {
         assertEq(zzz, initialTime + 3600);
     }
 
-    function testSwapAferHop() public {
+    function testSwapAllAferHop() public {
         vm.prank(FACILITATOR); swapper.swap(USDC, DAI, 10_000 * 10**6, 9900 * WAD, address(uniV3Callee), USDC_DAI_PATH);
         (, uint64 hop,,) = swapper.limits(USDC, DAI);
         vm.warp(block.timestamp + hop);
@@ -183,7 +183,7 @@ contract SwapperTest is DssTest {
     }
 
     function testSwapExceedingMax() public {
-        (uint128 cap ,,,) = swapper.limits(USDC, DAI);
+        (uint128 cap,,,) = swapper.limits(USDC, DAI);
         uint256 amt = cap + 1;
         vm.expectRevert("Swapper/exceeds-due-amt");
         vm.prank(FACILITATOR); swapper.swap(USDC, DAI, amt, 0, address(uniV3Callee), USDC_DAI_PATH);
