@@ -22,7 +22,7 @@ contract CalleeMock is DssTest {
 }
 
 contract SwapperTest is DssTest {
-    event SetLimits(address indexed src, address indexed dst, uint96 cap, uint32 hop);
+    event SetLimits(address indexed src, address indexed dst, uint96 cap, uint32 era);
     event Swap(address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
 
     AllocatorRoles public roles;
@@ -87,10 +87,10 @@ contract SwapperTest is DssTest {
     }
 
     function testSetLimits() public {
-        // swap to make sure zzz is set
+        // swap to make sure due and end are set
         vm.prank(FACILITATOR); swapper.swap(USDC, DAI, 1_000 * 10**6, 990 * WAD, address(uniV3Callee), USDC_DAI_PATH);
-        (,, uint96 dueBefore, uint32 zzzBefore) = swapper.limits(USDC, DAI);
-        assertGt(zzzBefore, 0);
+        (,, uint96 dueBefore, uint32 endBefore) = swapper.limits(USDC, DAI);
+        assertGt(endBefore, 0);
         assertGt(dueBefore, 0);
 
         vm.warp(block.timestamp + 1 hours);
@@ -98,11 +98,11 @@ contract SwapperTest is DssTest {
         vm.expectEmit(true, true, true, true);
         emit SetLimits(USDC, DAI, 4, 3);
         vm.prank(address(this)); swapper.setLimits(USDC, DAI, 4, 3);
-        (uint96 cap, uint32 hop, uint96 due, uint32 zzz) = swapper.limits(USDC, DAI);
+        (uint96 cap, uint32 era, uint96 due, uint32 end) = swapper.limits(USDC, DAI);
         assertEq(cap, 4);
-        assertEq(hop, 3);
+        assertEq(era, 3);
         assertEq(due, 0);
-        assertEq(zzz, 0);
+        assertEq(end, 0);
     }
 
     function testRoles() public {
@@ -134,24 +134,24 @@ contract SwapperTest is DssTest {
         assertEq(GemLike(USDC).balanceOf(address(swapper)), 0);
         assertEq(GemLike(DAI).balanceOf(address(uniV3Callee)), 0);
         assertEq(GemLike(USDC).balanceOf(address(uniV3Callee)), 0);
-        (,, uint96 due, uint32 zzz) = swapper.limits(USDC, DAI);
+        (,, uint96 due, uint32 end) = swapper.limits(USDC, DAI);
         assertEq(due, 9_000 * 10**6);
-        assertEq(zzz, initialTime);
+        assertEq(end, initialTime + 3600);
 
         vm.warp(initialTime + 1800);
         vm.prank(FACILITATOR); swapper.swap(USDC, DAI, 5_000 * 10**6, 4_950 * WAD, address(uniV3Callee), USDC_DAI_PATH);
-        (,, due, zzz) = swapper.limits(USDC, DAI);
+        (,, due, end) = swapper.limits(USDC, DAI);
         assertEq(due, 4_000 * 10**6);
-        assertEq(zzz, initialTime);
+        assertEq(end, initialTime + 3600);
 
         vm.expectRevert("Swapper/exceeds-due-amt");
         vm.prank(FACILITATOR); swapper.swap(USDC, DAI, 8_000 * 10**6, 7_920 * WAD, address(uniV3Callee), USDC_DAI_PATH);
 
-        vm.warp(initialTime + 1 hours);
+        vm.warp(initialTime + 3600);
         vm.prank(FACILITATOR); swapper.swap(USDC, DAI, 8_000 * 10**6, 7_920 * WAD, address(uniV3Callee), USDC_DAI_PATH);
-        (,, due, zzz) = swapper.limits(USDC, DAI);
+        (,, due, end) = swapper.limits(USDC, DAI);
         assertEq(due, 2_000 * 10**6);
-        assertEq(zzz, initialTime + 3600);
+        assertEq(end, initialTime + 7200);
 
         prevSrc = GemLike(DAI).balanceOf(address(buffer));
         prevDst = GemLike(USDC).balanceOf(address(buffer));
@@ -167,15 +167,15 @@ contract SwapperTest is DssTest {
         assertEq(GemLike(USDC).balanceOf(address(swapper)), 0);
         assertEq(GemLike(DAI).balanceOf(address(uniV3Callee)), 0);
         assertEq(GemLike(USDC).balanceOf(address(uniV3Callee)), 0);
-        (,, due, zzz) = swapper.limits(DAI, USDC);
+        (,, due, end) = swapper.limits(DAI, USDC);
         assertEq(due, 9_000 * WAD);
-        assertEq(zzz, initialTime + 3600);
+        assertEq(end, initialTime + 7200);
     }
 
-    function testSwapAllAferHop() public {
+    function testSwapAllAferEra() public {
         vm.prank(FACILITATOR); swapper.swap(USDC, DAI, 10_000 * 10**6, 9900 * WAD, address(uniV3Callee), USDC_DAI_PATH);
-        (, uint64 hop,,) = swapper.limits(USDC, DAI);
-        vm.warp(block.timestamp + hop);
+        (, uint64 era,,) = swapper.limits(USDC, DAI);
+        vm.warp(block.timestamp + era);
 
         vm.expectEmit(true, true, true, false);
         emit Swap(FACILITATOR, USDC, DAI, 10_000 * 10**6, 0);
