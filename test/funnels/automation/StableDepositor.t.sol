@@ -65,7 +65,7 @@ contract StableDepositorTest is DssTest {
         roles.setUserRole(ilk, FACILITATOR, DEPOSITOR_ROLE, true);
         roles.setUserRole(ilk, address(stableDepositor), DEPOSITOR_ROLE, true);
 
-        depositor.setLimits(DAI, USDC, 100, 3600 seconds, uint96(10_000 * WAD), uint96(10_000 * 10**6));
+        depositor.setLimits(DAI, USDC, 100, uint96(10_000 * WAD), uint96(10_000 * 10**6), 3600 seconds);
 
         deal(DAI,  address(buffer), 1_000_000 * WAD,   true);
         deal(USDC, address(buffer), 1_000_000 * 10**6, true);
