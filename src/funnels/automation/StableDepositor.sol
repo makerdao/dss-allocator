@@ -70,8 +70,8 @@ contract StableDepositor {
         uint32 zzz;  // Timestamp of the last deposit/withdraw execution
         uint96 amt0; // Amount of gem0 to deposit/withdraw each (gem0, gem1) operation
         uint96 amt1; // Amount of gem1 to deposit/withdraw each (gem0, gem1) operation
-        uint96 min0; // The minimum deposit/withdraw amount of gem0 to insist on in each (gem0, gem1) operation
-        uint96 min1; // The minimum deposit/withdraw amount of gem1 to insist on in each (gem0, gem1) operation
+        uint96 req0; // The minimum required deposit/withdraw amount of gem0 to insist on in each (gem0, gem1) operation
+        uint96 req1; // The minimum required deposit/withdraw amount of gem1 to insist on in each (gem0, gem1) operation
         uint32 hop;  // Cooldown period it has to wait between deposit/withdraw executions
     }
 
@@ -79,7 +79,7 @@ contract StableDepositor {
     event Deny(address indexed usr);
     event Kiss(address indexed usr);
     event Diss(address indexed usr);
-    event SetConfig(address indexed gem0, address indexed gem1, uint24 indexed fee, int24 tickLower, int24 tickUpper, uint32 num, uint32 hop, uint96 amt0, uint96 amt1, uint96 min0, uint96 min1);
+    event SetConfig(address indexed gem0, address indexed gem1, uint24 indexed fee, int24 tickLower, int24 tickUpper, uint32 num, uint32 hop, uint96 amt0, uint96 amt1, uint96 req0, uint96 req1);
 
     constructor(address _depositor) {
         depositor = DepositorLike(_depositor);
@@ -119,22 +119,22 @@ contract StableDepositor {
         emit Diss(usr);
     }
 
-    function setConfig(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tickUpper, uint32 num, uint32 hop, uint96 amt0, uint96 amt1, uint96 min0, uint96 min1) external auth {
+    function setConfig(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tickUpper, uint32 num, uint32 hop, uint96 amt0, uint96 amt1, uint96 req0, uint96 req1) external auth {
         require(gem0 < gem1, "StableDepositor/wrong-gem-order");
         configs[gem0][gem1][fee][tickLower][tickUpper] = PairConfig({
             num:  num,
             zzz:  0,
             amt0: amt0,
             amt1: amt1,
-            min0: min0,
-            min1: min1,
+            req0: req0,
+            req1: req1,
             hop:  hop
         });
-        emit SetConfig(gem0, gem1, fee, tickLower, tickUpper, num, hop, amt0, amt1, min0, min1);
+        emit SetConfig(gem0, gem1, fee, tickLower, tickUpper, num, hop, amt0, amt1, req0, req1);
     }
 
     // Note: the keeper's minAmts value must be updated whenever configs[gem0][gem1][fee][tickLower][tickUpper] is changed.
-    // Failing to do so may result in this call reverting or in taking on more slippage than intended (up to a limit controlled by configs[gem0][gem1][fee][tickLower][tickUpper].min0/1).
+    // Failing to do so may result in this call reverting or in taking on more slippage than intended (up to a limit controlled by configs[gem0][gem1][fee][tickLower][tickUpper].req0/1).
     function deposit(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tickUpper, uint128 amt0Min, uint128 amt1Min)
         toll
         external
@@ -147,10 +147,10 @@ contract StableDepositor {
         configs[gem0][gem1][fee][tickLower][tickUpper].num = cfg.num - 1;
         configs[gem0][gem1][fee][tickLower][tickUpper].zzz = uint32(block.timestamp);
 
-        if (amt0Min == 0) amt0Min = cfg.min0;
-        if (amt1Min == 0) amt1Min = cfg.min1;
-        require(amt0Min >= cfg.min0, "StableDepositor/min-amt0-too-small");
-        require(amt1Min >= cfg.min1, "StableDepositor/min-amt1-too-small");
+        if (amt0Min == 0) amt0Min = cfg.req0;
+        if (amt1Min == 0) amt1Min = cfg.req1;
+        require(amt0Min >= cfg.req0, "StableDepositor/min-amt0-too-small");
+        require(amt1Min >= cfg.req1, "StableDepositor/min-amt1-too-small");
 
         DepositorLike.LiquidityParams memory p = DepositorLike.LiquidityParams({
             gem0       : gem0,
@@ -168,7 +168,7 @@ contract StableDepositor {
     }
 
     // Note: the keeper's minAmts value must be updated whenever configs[gem0][gem1][fee][tickLower][tickUpper] is changed.
-    // Failing to do so may result in this call reverting or in taking on more slippage than intended (up to a limit controlled by configs[gem0][gem1][fee][tickLower][tickUpper].min0/1).
+    // Failing to do so may result in this call reverting or in taking on more slippage than intended (up to a limit controlled by configs[gem0][gem1][fee][tickLower][tickUpper].req0/1).
     function withdraw(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tickUpper, uint128 amt0Min, uint128 amt1Min)
         toll
         external
@@ -181,10 +181,10 @@ contract StableDepositor {
         configs[gem0][gem1][fee][tickLower][tickUpper].num = cfg.num - 1;
         configs[gem0][gem1][fee][tickLower][tickUpper].zzz = uint32(block.timestamp);
 
-        if (amt0Min == 0) amt0Min = cfg.min0;
-        if (amt1Min == 0) amt1Min = cfg.min1;
-        require(amt0Min >= cfg.min0, "StableDepositor/min-amt0-too-small");
-        require(amt1Min >= cfg.min1, "StableDepositor/min-amt1-too-small");
+        if (amt0Min == 0) amt0Min = cfg.req0;
+        if (amt1Min == 0) amt1Min = cfg.req1;
+        require(amt0Min >= cfg.req0, "StableDepositor/min-amt0-too-small");
+        require(amt1Min >= cfg.req1, "StableDepositor/min-amt1-too-small");
 
         DepositorLike.LiquidityParams memory p = DepositorLike.LiquidityParams({
             gem0       : gem0,

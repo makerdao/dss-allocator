@@ -32,7 +32,7 @@ contract StableSwapper {
         uint32  hop; // Cooldown period it has to wait between swap executions
         uint32  zzz; // Timestamp of the last swap execution
         uint96  lot; // The amount swapped by keepers from src to dst every hop
-        uint96  min; // The minimum output amount to insist on in the swap form src to dst
+        uint96  req; // The minimum required output amount to insist on in the swap form src to dst
     }
 
     uint256 internal constant WAD = 10 ** 18;
@@ -41,7 +41,7 @@ contract StableSwapper {
     event Deny(address indexed usr);
     event Kiss(address indexed usr);
     event Diss(address indexed usr);
-    event SetConfig(address indexed src, address indexed dst, uint128 num, uint32 hop, uint96 lot, uint96 min);
+    event SetConfig(address indexed src, address indexed dst, uint128 num, uint32 hop, uint96 lot, uint96 req);
 
     constructor(address swapper_) {
         swapper = SwapperLike(swapper_);
@@ -80,15 +80,15 @@ contract StableSwapper {
         emit Diss(usr);
     }
 
-    function setConfig(address src, address dst, uint128 num, uint32 hop, uint96 lot, uint96 min) external auth {
+    function setConfig(address src, address dst, uint128 num, uint32 hop, uint96 lot, uint96 req) external auth {
         configs[src][dst] = PairConfig({
             num: num,
             hop: hop,
             zzz: 0,
             lot: lot,
-            min: min
+            req: req
         });
-        emit SetConfig(src, dst, num, hop, lot, min);
+        emit SetConfig(src, dst, num, hop, lot, req);
     }
 
     // Note: the keeper's minOut value must be updated whenever configs[src][dst] is changed.
@@ -101,8 +101,8 @@ contract StableSwapper {
         configs[src][dst].num = cfg.num - 1;
         configs[src][dst].zzz = uint32(block.timestamp);
 
-        if (minOut == 0) minOut = cfg.min;
-        require(minOut >= cfg.min, "StableSwapper/min-too-small");
+        if (minOut == 0) minOut = cfg.req;
+        require(minOut >= cfg.req, "StableSwapper/min-too-small");
 
         out = swapper.swap(src, dst, cfg.lot, minOut, callee, data);
     }

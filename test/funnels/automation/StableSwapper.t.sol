@@ -12,7 +12,7 @@ import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
 contract StableSwapperTest is DssTest {
     event Kiss(address indexed usr);
     event Diss(address indexed usr);
-    event SetConfig(address indexed src, address indexed dst, uint128 num, uint32 hop, uint96 lot, uint96 min);
+    event SetConfig(address indexed src, address indexed dst, uint128 num, uint32 hop, uint96 lot, uint96 req);
     event Swap(address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
 
     AllocatorBuffer public buffer;
@@ -103,12 +103,12 @@ contract StableSwapperTest is DssTest {
         emit SetConfig(address(0x123), address(0x456), uint128(23), uint32(360 seconds), uint96(314), uint96(42));
         stableSwapper.setConfig(address(0x123), address(0x456), uint128(23), uint32(360 seconds), uint96(314), uint96(42));
 
-        (uint128 num, uint32 hop, uint32 zzz, uint96 lot, uint96 min) = stableSwapper.configs(address(0x123), address(0x456));
+        (uint128 num, uint32 hop, uint32 zzz, uint96 lot, uint96 req) = stableSwapper.configs(address(0x123), address(0x456));
         assertEq(num, 23);
         assertEq(hop, 360);
         assertEq(zzz, 0);
         assertEq(lot, 314);
-        assertEq(min, 42);
+        assertEq(req, 42);
     }
 
     function testSwapByKeeper() public {
@@ -185,8 +185,8 @@ contract StableSwapperTest is DssTest {
     }
 
     function testSwapWithMinTooSmall() public {
-        (,,,, uint96 min) = stableSwapper.configs(USDC, DAI);
+        (,,,, uint96 req) = stableSwapper.configs(USDC, DAI);
         vm.expectRevert("StableSwapper/min-too-small");
-        vm.prank(KEEPER); stableSwapper.swap(USDC, DAI, min - 1, address(uniV3Callee), USDC_DAI_PATH);
+        vm.prank(KEEPER); stableSwapper.swap(USDC, DAI, req - 1, address(uniV3Callee), USDC_DAI_PATH);
     }
 }

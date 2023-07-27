@@ -29,7 +29,7 @@ interface SwapRouterLike {
 contract StableDepositorTest is DssTest {
     event Kiss(address indexed usr);
     event Diss(address indexed usr);
-    event SetConfig(address indexed gem0, address indexed gem1, uint24 indexed fee, int24 tickLower, int24 tickUpper, uint32 num, uint32 hop, uint96 amt0, uint96 amt1, uint96 min0, uint96 min1);
+    event SetConfig(address indexed gem0, address indexed gem1, uint24 indexed fee, int24 tickLower, int24 tickUpper, uint32 num, uint32 hop, uint96 amt0, uint96 amt1, uint96 req0, uint96 req1);
     
     AllocatorBuffer public buffer;
     Depositor       public depositor;
@@ -128,16 +128,16 @@ contract StableDepositorTest is DssTest {
             uint32 zzz,
             uint96 amt0,
             uint96 amt1,
-            uint96 min0,
-            uint96 min1,
+            uint96 req0,
+            uint96 req1,
             uint32 hop
         ) = stableDepositor.configs(address(0x123), address(0x456), uint24(314), 5, 6);
         assertEq(num,  23);
         assertEq(zzz,  0);
         assertEq(amt0, uint96(7));
         assertEq(amt1, uint96(8));
-        assertEq(min0, uint96(9));
-        assertEq(min1, uint96(10));
+        assertEq(req0, uint96(9));
+        assertEq(req1, uint96(10));
         assertEq(hop,  3600);
     }
 
@@ -217,17 +217,17 @@ contract StableDepositorTest is DssTest {
     }
 
     function testDepositWithMin0TooSmall() public {
-        (,,,,, uint96 min0,) = stableDepositor.configs(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
+        (,,,,, uint96 req0,) = stableDepositor.configs(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
 
         vm.expectRevert("StableDepositor/min-amt0-too-small");
-        vm.prank(KEEPER); stableDepositor.deposit(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, min0 - 1, uint128(491 * 10**6));
+        vm.prank(KEEPER); stableDepositor.deposit(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, req0 - 1, uint128(491 * 10**6));
     }
 
     function testDepositWithMin1TooSmall() public {
-        (,,,,,, uint96 min1) = stableDepositor.configs(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
+        (,,,,,, uint96 req1) = stableDepositor.configs(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
 
         vm.expectRevert("StableDepositor/min-amt1-too-small");
-        vm.prank(KEEPER); stableDepositor.deposit(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, uint128(491 * WAD), min1 - 1);
+        vm.prank(KEEPER); stableDepositor.deposit(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, uint128(491 * WAD), req1 - 1);
     }
 
     function testCollectByKeeper() public {
