@@ -39,15 +39,15 @@ contract Swapper {
     address   public immutable buffer; // Contract from which the GEM to sell is pulled and to which the bought GEM is pushed
 
     struct PairLimit {
-        uint96  cap; // Maximum amount of src token that can be swapped each hop for a src->dst pair
+        uint96  cap; // Maximum amount of src token that can be swapped each era for a src->dst pair
         uint32  era; // Cooldown period it has to wait for renewing the due amount to cap for src to dst swap
-        uint96  due; // Pending amount of src token that can still be swapped until next hop
+        uint96  due; // Pending amount of src token that can still be swapped until next era
         uint32  end; // Timestamp of when the actual batch ends
     }
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
-    event SetLimits(address indexed src, address indexed dst, uint96 cap, uint32 hop);
+    event SetLimits(address indexed src, address indexed dst, uint96 cap, uint32 era);
     event Swap(address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
 
     constructor(address roles_, bytes32 ilk_, address buffer_) {
