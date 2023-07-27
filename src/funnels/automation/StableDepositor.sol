@@ -158,7 +158,7 @@ contract StableDepositor {
             fee        : fee,
             tickLower  : tickLower,
             tickUpper  : tickUpper,
-            liquidity  : 0,             // Use desired amounts
+            liquidity  : 0,         // Use desired amounts
             amt0Desired: cfg.amt0,
             amt1Desired: cfg.amt1,
             amt0Min    : amt0Min,
@@ -192,7 +192,7 @@ contract StableDepositor {
             fee        : fee,
             tickLower  : tickLower,
             tickUpper  : tickUpper,
-            liquidity  : 0,             // Use desired amounts
+            liquidity  : 0,         // Use desired amounts
             amt0Desired: cfg.amt0,
             amt1Desired: cfg.amt1,
             amt0Min    : amt0Min,

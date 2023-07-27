@@ -48,7 +48,7 @@ contract Swapper {
     event Rely(address indexed usr);
     event Deny(address indexed usr);
     event SetLimits(address indexed src, address indexed dst, uint96 cap, uint32 hop);
-    event Swap(address indexed sender, address indexed src, address indexed dst, uint256 due, uint256 out);
+    event Swap(address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
 
     constructor(address roles_, bytes32 ilk_, address buffer_) {
         roles = RolesLike(roles_);
