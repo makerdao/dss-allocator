@@ -66,7 +66,7 @@ contract StableDepositor {
     DepositorLike public immutable depositor; // Depositor for this StableDepositor
 
     struct PairConfig {
-        uint32 num;  // The remaining number of times that a (gem0, gem1) operation can be performed by keepers
+        int32  num;  // The remaining number of times that a (gem0, gem1) operation can be performed by keepers (> 0: deposit, < 0: withdraw)
         uint32 zzz;  // Timestamp of the last deposit/withdraw execution
         uint96 amt0; // Amount of gem0 to deposit/withdraw each (gem0, gem1) operation
         uint96 amt1; // Amount of gem1 to deposit/withdraw each (gem0, gem1) operation
@@ -79,7 +79,7 @@ contract StableDepositor {
     event Deny(address indexed usr);
     event Kiss(address indexed usr);
     event Diss(address indexed usr);
-    event SetConfig(address indexed gem0, address indexed gem1, uint24 indexed fee, int24 tickLower, int24 tickUpper, uint32 num, uint32 hop, uint96 amt0, uint96 amt1, uint96 req0, uint96 req1);
+    event SetConfig(address indexed gem0, address indexed gem1, uint24 indexed fee, int24 tickLower, int24 tickUpper, int32 num, uint32 hop, uint96 amt0, uint96 amt1, uint96 req0, uint96 req1);
 
     constructor(address _depositor) {
         depositor = DepositorLike(_depositor);
@@ -119,7 +119,7 @@ contract StableDepositor {
         emit Diss(usr);
     }
 
-    function setConfig(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tickUpper, uint32 num, uint32 hop, uint96 amt0, uint96 amt1, uint96 req0, uint96 req1) external auth {
+    function setConfig(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tickUpper, int32 num, uint32 hop, uint96 amt0, uint96 amt1, uint96 req0, uint96 req1) external auth {
         require(gem0 < gem1, "StableDepositor/wrong-gem-order");
         configs[gem0][gem1][fee][tickLower][tickUpper] = PairConfig({
             num:  num,
@@ -176,9 +176,9 @@ contract StableDepositor {
     {
         PairConfig memory cfg = configs[gem0][gem1][fee][tickLower][tickUpper];
 
-        require(cfg.num > 0, "StableDepositor/exceeds-num");
+        require(cfg.num < 0, "StableDepositor/exceeds-num");
         require(block.timestamp >= cfg.zzz + cfg.hop, "StableDepositor/too-soon");
-        configs[gem0][gem1][fee][tickLower][tickUpper].num = cfg.num - 1;
+        configs[gem0][gem1][fee][tickLower][tickUpper].num = cfg.num + 1;
         configs[gem0][gem1][fee][tickLower][tickUpper].zzz = uint32(block.timestamp);
 
         if (amt0Min == 0) amt0Min = cfg.req0;
