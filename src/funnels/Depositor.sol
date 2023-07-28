@@ -85,7 +85,7 @@ contract Depositor {
         uint32  era; // Cooldown period it has to wait for renewing the due amounts to each cap for a (gem0, gem1, fee) pool
         uint96 due0; // Pending amount of gem0 that can still be added or removed until next era for a (gem0, gem1, fee) pool
         uint96 due1; // Pending amount of gem1 that can still be added or removed until next era for a (gem0, gem1, fee) pool
-        uint32  end; // Timestamp of when the actual batch ends for a (gem0, gem1, fee) pool
+        uint32  end; // Timestamp of when the current batch ends for a (gem0, gem1, fee) pool
     }
 
     event Rely(address indexed usr);

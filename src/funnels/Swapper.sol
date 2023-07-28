@@ -42,7 +42,7 @@ contract Swapper {
         uint96  cap; // Maximum amount of src token that can be swapped each era for a src->dst pair
         uint32  era; // Cooldown period it has to wait for renewing the due amount to cap for src to dst swap
         uint96  due; // Pending amount of src token that can still be swapped until next era
-        uint32  end; // Timestamp of when the actual batch ends
+        uint32  end; // Timestamp of when the current batch ends
     }
 
     event Rely(address indexed usr);
