@@ -35,7 +35,7 @@ interface SwapRouterLike {
     }
 }
 
-contract UniV3SwapperCallee {
+contract SwapperCalleeUniV3 {
     address public immutable uniV3Router;
 
     constructor(address _uniV3Router) {
@@ -51,7 +51,7 @@ contract UniV3SwapperCallee {
             firstToken := div(mload(add(path, 0x20)), 0x1000000000000000000000000)
             lastToken := div(mload(sub(add(add(path, 0x20), mload(path)), 0x14)), 0x1000000000000000000000000)
         }
-        require(src == firstToken && dst == lastToken, "UniV3SwapperCallee/invalid-path");
+        require(src == firstToken && dst == lastToken, "SwapperCalleeUniV3/invalid-path");
 
         ApproveLike(src).approve(uniV3Router, amt); // TODO: cheaper to SLOAD allowance to check if we need to approve max?
         SwapRouterLike.ExactInputParams memory params = SwapRouterLike.ExactInputParams({

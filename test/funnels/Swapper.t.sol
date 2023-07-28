@@ -4,7 +4,7 @@ pragma solidity ^0.8.16;
 
 import "dss-test/DssTest.sol";
 import { Swapper } from "src/funnels/Swapper.sol";
-import { UniV3SwapperCallee } from "src/funnels/callees/UniV3SwapperCallee.sol";
+import { SwapperCalleeUniV3 } from "src/funnels/callees/SwapperCalleeUniV3.sol";
 import { AllocatorRoles } from "src/AllocatorRoles.sol";
 import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
 
@@ -28,7 +28,7 @@ contract SwapperTest is DssTest {
     AllocatorRoles public roles;
     AllocatorBuffer public buffer;
     Swapper public swapper;
-    UniV3SwapperCallee public uniV3Callee;
+    SwapperCalleeUniV3 public uniV3Callee;
 
     bytes32 constant ilk = "aaa";
     bytes constant USDC_DAI_PATH = abi.encodePacked(USDC, uint24(100), DAI);
@@ -49,7 +49,7 @@ contract SwapperTest is DssTest {
         buffer = new AllocatorBuffer();
         roles = new AllocatorRoles();
         swapper = new Swapper(address(roles), ilk, address(buffer));
-        uniV3Callee = new UniV3SwapperCallee(UNIV3_ROUTER);
+        uniV3Callee = new SwapperCalleeUniV3(UNIV3_ROUTER);
 
         roles.setIlkAdmin(ilk, address(this));
         roles.setRoleAction(ilk, SWAPPER_ROLE, address(swapper), swapper.swap.selector, true);

@@ -16,7 +16,7 @@
 
 pragma solidity ^0.8.16;
 
-interface DepositorLike {
+interface DepositorUniV3Like {
     struct LiquidityParams {
         address gem0;
         address gem1;
@@ -58,12 +58,12 @@ interface DepositorLike {
     );
 }
 
-contract StableDepositor {
+contract StableDepositorUniV3 {
     mapping (address => uint256) public wards;                           // Admins
     mapping (address => uint256) public buds;                            // Whitelisted keepers
     mapping (address => mapping (address => mapping (uint24 => mapping (int24 => mapping (int24 => PairConfig))))) public configs; // Configuration for keepers
 
-    DepositorLike public immutable depositor; // Depositor for this StableDepositor
+    DepositorUniV3Like public immutable depositor; // DepositorUniV3 for this StableDepositorUniV3
 
     struct PairConfig {
         int32  num;  // The remaining number of times that a (gem0, gem1) operation can be performed by keepers (> 0: deposit, < 0: withdraw)
@@ -82,20 +82,20 @@ contract StableDepositor {
     event SetConfig(address indexed gem0, address indexed gem1, uint24 indexed fee, int24 tickLower, int24 tickUpper, int32 num, uint32 hop, uint96 amt0, uint96 amt1, uint96 req0, uint96 req1);
 
     constructor(address _depositor) {
-        depositor = DepositorLike(_depositor);
+        depositor = DepositorUniV3Like(_depositor);
 
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
     }
 
     modifier auth {
-        require(wards[msg.sender] == 1, "StableDepositor/not-authorized");
+        require(wards[msg.sender] == 1, "StableDepositorUniV3/not-authorized");
         _;
     }
 
     // Permissionned to whitelisted keepers
     modifier toll {
-        require(buds[msg.sender] == 1, "StableDepositor/non-keeper");
+        require(buds[msg.sender] == 1, "StableDepositorUniV3/non-keeper");
         _;
     }
 
@@ -120,7 +120,7 @@ contract StableDepositor {
     }
 
     function setConfig(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tickUpper, int32 num, uint32 hop, uint96 amt0, uint96 amt1, uint96 req0, uint96 req1) external auth {
-        require(gem0 < gem1, "StableDepositor/wrong-gem-order");
+        require(gem0 < gem1, "StableDepositorUniV3/wrong-gem-order");
         configs[gem0][gem1][fee][tickLower][tickUpper] = PairConfig({
             num:  num,
             zzz:  0,
@@ -142,17 +142,17 @@ contract StableDepositor {
     {
         PairConfig memory cfg = configs[gem0][gem1][fee][tickLower][tickUpper];
 
-        require(cfg.num > 0, "StableDepositor/exceeds-num");
-        require(block.timestamp >= cfg.zzz + cfg.hop, "StableDepositor/too-soon");
+        require(cfg.num > 0, "StableDepositorUniV3/exceeds-num");
+        require(block.timestamp >= cfg.zzz + cfg.hop, "StableDepositorUniV3/too-soon");
         configs[gem0][gem1][fee][tickLower][tickUpper].num = cfg.num - 1;
         configs[gem0][gem1][fee][tickLower][tickUpper].zzz = uint32(block.timestamp);
 
         if (amt0Min == 0) amt0Min = cfg.req0;
         if (amt1Min == 0) amt1Min = cfg.req1;
-        require(amt0Min >= cfg.req0, "StableDepositor/min-amt0-too-small");
-        require(amt1Min >= cfg.req1, "StableDepositor/min-amt1-too-small");
+        require(amt0Min >= cfg.req0, "StableDepositorUniV3/min-amt0-too-small");
+        require(amt1Min >= cfg.req1, "StableDepositorUniV3/min-amt1-too-small");
 
-        DepositorLike.LiquidityParams memory p = DepositorLike.LiquidityParams({
+        DepositorUniV3Like.LiquidityParams memory p = DepositorUniV3Like.LiquidityParams({
             gem0       : gem0,
             gem1       : gem1,
             fee        : fee,
@@ -176,17 +176,17 @@ contract StableDepositor {
     {
         PairConfig memory cfg = configs[gem0][gem1][fee][tickLower][tickUpper];
 
-        require(cfg.num < 0, "StableDepositor/exceeds-num");
-        require(block.timestamp >= cfg.zzz + cfg.hop, "StableDepositor/too-soon");
+        require(cfg.num < 0, "StableDepositorUniV3/exceeds-num");
+        require(block.timestamp >= cfg.zzz + cfg.hop, "StableDepositorUniV3/too-soon");
         configs[gem0][gem1][fee][tickLower][tickUpper].num = cfg.num + 1;
         configs[gem0][gem1][fee][tickLower][tickUpper].zzz = uint32(block.timestamp);
 
         if (amt0Min == 0) amt0Min = cfg.req0;
         if (amt1Min == 0) amt1Min = cfg.req1;
-        require(amt0Min >= cfg.req0, "StableDepositor/min-amt0-too-small");
-        require(amt1Min >= cfg.req1, "StableDepositor/min-amt1-too-small");
+        require(amt0Min >= cfg.req0, "StableDepositorUniV3/min-amt0-too-small");
+        require(amt1Min >= cfg.req1, "StableDepositorUniV3/min-amt1-too-small");
 
-        DepositorLike.LiquidityParams memory p = DepositorLike.LiquidityParams({
+        DepositorUniV3Like.LiquidityParams memory p = DepositorUniV3Like.LiquidityParams({
             gem0       : gem0,
             gem1       : gem1,
             fee        : fee,
@@ -206,7 +206,7 @@ contract StableDepositor {
         external
         returns (uint256 fees0, uint256 fees1)
     {
-        DepositorLike.CollectParams memory collectParams = DepositorLike.CollectParams({
+        DepositorUniV3Like.CollectParams memory collectParams = DepositorUniV3Like.CollectParams({
             gem0     : gem0,
             gem1     : gem1,
             fee      : fee,
