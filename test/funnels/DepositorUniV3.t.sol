@@ -4,7 +4,7 @@ pragma solidity ^0.8.16;
 
 import "dss-test/DssTest.sol";
 import { DepositorUniV3 } from "src/funnels/DepositorUniV3.sol";
-import { UniV3SwapperCallee } from "src/funnels/callees/UniV3SwapperCallee.sol";
+import { SwapperCalleeUniV3 } from "src/funnels/callees/SwapperCalleeUniV3.sol";
 import { AllocatorRoles } from "src/AllocatorRoles.sol";
 import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
 

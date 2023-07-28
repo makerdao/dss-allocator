@@ -2,7 +2,7 @@
 pragma solidity ^0.8.16;
 
 import "dss-test/DssTest.sol";
-import { UniV3SwapperCallee } from "src/funnels/callees/UniV3SwapperCallee.sol";
+import { SwapperCalleeUniV3 } from "src/funnels/callees/SwapperCalleeUniV3.sol";
 
 interface GemLike {
     function balanceOf(address) external view returns (uint256);
@@ -10,9 +10,9 @@ interface GemLike {
     function decimals() external view returns (uint8);
 }
 
-contract UniV3SwapperCalleeTest is DssTest {
+contract SwapperCalleeUniV3Test is DssTest {
 
-    UniV3SwapperCallee public callee;
+    SwapperCalleeUniV3 public callee;
 
     address constant DAI          = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address constant USDC         = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
@@ -22,14 +22,14 @@ contract UniV3SwapperCalleeTest is DssTest {
     function setUp() public {
         vm.createSelectFork(vm.envString("ETH_RPC_URL"));
 
-        callee = new UniV3SwapperCallee(UNIV3_ROUTER);
+        callee = new SwapperCalleeUniV3(UNIV3_ROUTER);
 
         deal(DAI,  address(this), 1_000_000 * WAD,   true);
         deal(USDC, address(this), 1_000_000 * 10**6, true);
     }
 
     function testConstructor() public {
-        UniV3SwapperCallee c = new UniV3SwapperCallee(address(0xBEEF));
+        SwapperCalleeUniV3 c = new SwapperCalleeUniV3(address(0xBEEF));
         assertEq(address(c.uniV3Router()),  address(0xBEEF));
     }
 
@@ -61,7 +61,7 @@ contract UniV3SwapperCalleeTest is DssTest {
     function testSwapInvalidPath() public {
         bytes memory USDC_USDT_DAI_PATH = abi.encodePacked(USDC, uint24(100), USDT, uint24(100), DAI);
 
-        vm.expectRevert("UniV3SwapperCallee/invalid-path");
+        vm.expectRevert("SwapperCalleeUniV3/invalid-path");
         this.checkStableSwap(DAI, USDC, USDC_USDT_DAI_PATH);
     }
 }
