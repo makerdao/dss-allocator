@@ -71,8 +71,8 @@ interface UniV3PoolLike {
 }
 
 contract Depositor {
-    mapping (address => uint256) public wards;                         // Admins
-    mapping (address => mapping (address => PairLimit)) public limits; // Rate limit parameters per (gem0, gem1) pair
+    mapping (address => uint256) public wards;                                             // Admins
+    mapping (address => mapping (address => mapping (uint24 => PairLimit))) public limits; // Rate limit parameters per (gem0, gem1, fee) pool
 
     RolesLike public immutable roles;        // Contract managing access control for this Depositor
     bytes32   public immutable ilk;          // Collateral type
@@ -80,15 +80,17 @@ contract Depositor {
     address   public immutable buffer;       // Contract from/to which the two tokens that make up the liquidity position are pulled/pushed
 
     struct PairLimit {
-        uint64   hop; // Cooldown one has to wait between changes to the liquidity of a (gem0, gem1) pool
-        uint64   zzz; // Timestamp of the last liquidity change for a (gem0, gem1) pool
-        uint128 cap0; // Maximum amount of gem0 that can be added as liquidity each hop for a (gem0, gem1) pool
-        uint128 cap1; // Maximum amount of gem1 that can be added as liquidity each hop for a (gem0, gem1) pool
+        uint96 cap0; // Maximum amount of gem0 that can be added or removed as liquidity each era for a (gem0, gem1, fee) pool
+        uint96 cap1; // Maximum amount of gem1 that can be added or removed as liquidity each era for a (gem0, gem1, fee) pool
+        uint32  era; // Cooldown period it has to wait for renewing the due amounts to each cap for a (gem0, gem1, fee) pool
+        uint96 due0; // Pending amount of gem0 that can still be added or removed until next era for a (gem0, gem1, fee) pool
+        uint96 due1; // Pending amount of gem1 that can still be added or removed until next era for a (gem0, gem1, fee) pool
+        uint32  end; // Timestamp of when the current batch ends for a (gem0, gem1, fee) pool
     }
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
-    event SetLimits(address indexed gem0, address indexed gem1, uint64 hop, uint128 cap0, uint128 cap1);
+    event SetLimits(address indexed gem0, address indexed gem1, uint24 indexed fee, uint96 cap0, uint96 cap1, uint32 era);
     event Deposit(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1);
     event Withdraw(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1, uint256 fees0, uint256 fees1);
     event Collect(address indexed sender, address indexed gem0, address indexed gem1, uint256 fees0, uint256 fees1);
@@ -118,15 +120,17 @@ contract Depositor {
         emit Deny(usr);
     }
 
-    function setLimits(address gem0, address gem1, uint64 hop, uint128 cap0, uint128 cap1) external auth {
+    function setLimits(address gem0, address gem1, uint24 fee, uint96 cap0, uint96 cap1, uint32 era) external auth {
         require(gem0 < gem1, "Depositor/wrong-gem-order");
-        limits[gem0][gem1] = PairLimit({
-            hop:  hop,
-            zzz:  limits[gem0][gem1].zzz,
+        limits[gem0][gem1][fee] = PairLimit({
             cap0: cap0,
-            cap1: cap1
+            cap1: cap1,
+            era: era,
+            due0: 0,
+            due1: 0,
+            end: 0
         });
-        emit SetLimits(gem0, gem1, hop, cap0, cap1);
+        emit SetLimits(gem0, gem1, fee, cap0, cap1, era);
     }
 
     // https://github.com/Uniswap/v3-periphery/blob/464a8a49611272f7349c970e0fadb7ec1d3c1086/contracts/libraries/PoolAddress.sol#L33
@@ -216,9 +220,18 @@ contract Depositor {
     {
         require(p.gem0 < p.gem1, "Depositor/wrong-gem-order");
 
-        PairLimit memory limit = limits[p.gem0][p.gem1];
-        require(block.timestamp >= limit.zzz + limit.hop, "Depositor/too-soon");
-        limits[p.gem0][p.gem1].zzz = uint64(block.timestamp);
+        PairLimit memory limit;
+        limit.due0 = limits[p.gem0][p.gem1][p.fee].due0;
+        limit.due1 = limits[p.gem0][p.gem1][p.fee].due1;
+        limit.end  = limits[p.gem0][p.gem1][p.fee].end;
+
+        if (block.timestamp >= limit.end) {
+            // Reset batch
+            limit.due0 = limits[p.gem0][p.gem1][p.fee].cap0;
+            limit.due1 = limits[p.gem0][p.gem1][p.fee].cap1;
+            limit.era  = limits[p.gem0][p.gem1][p.fee].era;
+            limit.end  = uint32(block.timestamp) + limit.era;
+        }
 
         UniV3PoolLike pool = _getPool(p.gem0, p.gem1, p.fee);
         liquidity = (p.liquidity == 0)
@@ -233,7 +246,11 @@ contract Depositor {
             data     : abi.encode(MintCallbackData({gem0: p.gem0, gem1: p.gem1, fee: p.fee}))
         });
         require(amt0 >= p.amt0Min && amt1 >= p.amt1Min, "Depositor/exceeds-slippage");
-        require(amt0 <= limit.cap0 && amt1 <= limit.cap1, "Depositor/exceeds-cap");
+        require(amt0 <= limit.due0 && amt1 <= limit.due1, "Depositor/exceeds-due-amt");
+
+        limits[p.gem0][p.gem1][p.fee].due0 = limit.due0 - uint96(amt0);
+        limits[p.gem0][p.gem1][p.fee].due1 = limit.due1 - uint96(amt1);
+        limits[p.gem0][p.gem1][p.fee].end  = limit.end;
 
         emit Deposit(msg.sender, p.gem0, p.gem1, liquidity, amt0, amt1);
     }
@@ -245,9 +262,18 @@ contract Depositor {
     {
         require(p.gem0 < p.gem1, "Depositor/wrong-gem-order");
 
-        PairLimit memory limit = limits[p.gem0][p.gem1];
-        require(block.timestamp >= limit.zzz + limit.hop, "Depositor/too-soon");
-        limits[p.gem0][p.gem1].zzz = uint64(block.timestamp);
+        PairLimit memory limit;
+        limit.due0 = limits[p.gem0][p.gem1][p.fee].due0;
+        limit.due1 = limits[p.gem0][p.gem1][p.fee].due1;
+        limit.end  = limits[p.gem0][p.gem1][p.fee].end;
+
+        if (block.timestamp >= limit.end) {
+            // Reset batch
+            limit.due0 = limits[p.gem0][p.gem1][p.fee].cap0;
+            limit.due1 = limits[p.gem0][p.gem1][p.fee].cap1;
+            limit.era  = limits[p.gem0][p.gem1][p.fee].era;
+            limit.end  = uint32(block.timestamp) + limit.era;
+        }
 
         UniV3PoolLike pool = _getPool(p.gem0, p.gem1, p.fee);
         liquidity = (p.liquidity == 0)
@@ -256,7 +282,11 @@ contract Depositor {
 
         (amt0, amt1) = pool.burn({ tickLower: p.tickLower, tickUpper: p.tickUpper, amount: liquidity });
         require(amt0 >= p.amt0Min && amt1 >= p.amt1Min,  "Depositor/exceeds-slippage");
-        require(amt0 <= limit.cap0 && amt1 <= limit.cap1, "Depositor/exceeds-cap");
+        require(amt0 <= limit.due0 && amt1 <= limit.due1, "Depositor/exceeds-due-amt");
+
+        limits[p.gem0][p.gem1][p.fee].due0 = limit.due0 - uint96(amt0);
+        limits[p.gem0][p.gem1][p.fee].due1 = limit.due1 - uint96(amt1);
+        limits[p.gem0][p.gem1][p.fee].end  = limit.end;
 
         (uint256 collected0, uint256 collected1) = pool.collect({
             recipient       : buffer,

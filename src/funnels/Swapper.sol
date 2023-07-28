@@ -22,6 +22,7 @@ interface RolesLike {
 
 interface GemLike {
     function balanceOf(address) external view returns (uint256);
+    function transfer(address, uint256) external;
     function transferFrom(address, address, uint256) external;
 }
 
@@ -38,14 +39,15 @@ contract Swapper {
     address   public immutable buffer; // Contract from which the GEM to sell is pulled and to which the bought GEM is pushed
 
     struct PairLimit {
-        uint64  hop; // Cooldown one has to wait between each src to dst swap
-        uint64  zzz; // Timestamp of the last src to dst swap
-        uint128 cap; // Maximum amount of src token that can be swapped each hop for a src->dst pair
+        uint96  cap; // Maximum amount of src token that can be swapped each era for a src->dst pair
+        uint32  era; // Cooldown period it has to wait for renewing the due amount to cap for src to dst swap
+        uint96  due; // Pending amount of src token that can still be swapped until next era
+        uint32  end; // Timestamp of when the current batch ends
     }
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
-    event SetLimits(address indexed src, address indexed dst, uint64 hop, uint128 cap);
+    event SetLimits(address indexed src, address indexed dst, uint96 cap, uint32 era);
     event Swap(address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
 
     constructor(address roles_, bytes32 ilk_, address buffer_) {
@@ -71,29 +73,41 @@ contract Swapper {
         emit Deny(usr);
     }
 
-    function setLimits(address src, address dst, uint64 hop, uint128 cap) external auth {
+    function setLimits(address src, address dst, uint96 cap, uint32 era) external auth {
         limits[src][dst] = PairLimit({
-            hop:  hop,
-            zzz:  limits[src][dst].zzz,
-            cap: cap
+            cap: cap,
+            era: era,
+            due: 0,
+            end: 0
         });
-        emit SetLimits(src, dst, hop, cap);
+        emit SetLimits(src, dst, cap, era);
     }
 
     function swap(address src, address dst, uint256 amt, uint256 minOut, address callee, bytes calldata data) external auth returns (uint256 out) {
         PairLimit memory limit = limits[src][dst];
-        require(block.timestamp >= limit.zzz + limit.hop, "Swapper/too-soon");
-        limits[src][dst].zzz = uint64(block.timestamp);
 
-        require(amt <= limit.cap, "Swapper/exceeds-max-amt");
+        if (block.timestamp >= limit.end) {
+            // Reset batch
+            limit.due = limit.cap;
+            limit.end = uint32(block.timestamp) + limit.era;
+        }
 
-        uint256 prevDstBalance = GemLike(dst).balanceOf(buffer);
+        require(amt <= limit.due, "Swapper/exceeds-due-amt");
+
+        unchecked {
+            limits[src][dst].due = limit.due - uint96(amt);
+            limits[src][dst].end = limit.end;
+        }
+
         GemLike(src).transferFrom(buffer, callee, amt);
-        CalleeLike(callee).swap(src, dst, amt, minOut, buffer, data);
 
-        out = GemLike(dst).balanceOf(buffer) - prevDstBalance;
+        // Avoid swapping directly to buffer to prevent piggybacking another operation to satisfy the balance check
+        CalleeLike(callee).swap(src, dst, amt, minOut, address(this), data);
+
+        out = GemLike(dst).balanceOf(address(this));
         require(out >= minOut, "Swapper/too-few-dst-received");
 
+        GemLike(dst).transfer(buffer, out);
         emit Swap(msg.sender, src, dst, amt, out);
     }
 }
