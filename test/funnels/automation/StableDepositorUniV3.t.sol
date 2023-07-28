@@ -3,8 +3,8 @@
 pragma solidity ^0.8.16;
 
 import "dss-test/DssTest.sol";
-import { Depositor } from "src/funnels/Depositor.sol";
-import { StableDepositor } from "src/funnels/automation/StableDepositor.sol";
+import { DepositorUniV3 } from "src/funnels/DepositorUniV3.sol";
+import { StableDepositorUniV3 } from "src/funnels/automation/StableDepositorUniV3.sol";
 import { AllocatorRoles } from "src/AllocatorRoles.sol";
 import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
 
@@ -26,14 +26,14 @@ interface SwapRouterLike {
     }
 }
 
-contract StableDepositorTest is DssTest {
+contract StableDepositorUniV3Test is DssTest {
     event Kiss(address indexed usr);
     event Diss(address indexed usr);
     event SetConfig(address indexed gem0, address indexed gem1, uint24 indexed fee, int24 tickLower, int24 tickUpper, int32 num, uint32 hop, uint96 amt0, uint96 amt1, uint96 req0, uint96 req1);
     
-    AllocatorBuffer public buffer;
-    Depositor       public depositor;
-    StableDepositor public stableDepositor;
+    AllocatorBuffer      public buffer;
+    DepositorUniV3       public depositor;
+    StableDepositorUniV3 public stableDepositor;
 
     bytes32 constant ilk = "aaa";
     bytes constant DAI_USDC_PATH = abi.encodePacked(DAI, uint24(100), USDC);
@@ -55,8 +55,8 @@ contract StableDepositorTest is DssTest {
 
         buffer = new AllocatorBuffer();
         AllocatorRoles roles = new AllocatorRoles();
-        depositor = new Depositor(address(roles), ilk, UNIV3_FACTORY, address(buffer));
-        stableDepositor = new StableDepositor(address(depositor));
+        depositor = new DepositorUniV3(address(roles), ilk, UNIV3_FACTORY, address(buffer));
+        stableDepositor = new StableDepositorUniV3(address(depositor));
 
         roles.setIlkAdmin(ilk, address(this));
         roles.setRoleAction(ilk, DEPOSITOR_ROLE, address(depositor), depositor.deposit.selector, true);
@@ -81,13 +81,13 @@ contract StableDepositorTest is DssTest {
     }
 
     function testConstructor() public {
-        StableDepositor s = new StableDepositor(address(0xABC));
+        StableDepositorUniV3 s = new StableDepositorUniV3(address(0xABC));
         assertEq(address(s.depositor()),  address(0xABC));
         assertEq(s.wards(address(this)), 1);
     }
 
     function testAuth() public {
-        checkAuth(address(stableDepositor), "StableDepositor");
+        checkAuth(address(stableDepositor), "StableDepositorUniV3");
     }
 
     function testModifiers() public {
@@ -97,7 +97,7 @@ contract StableDepositorTest is DssTest {
         authedMethods[2] = stableDepositor.setConfig.selector;
 
         vm.startPrank(address(0xBEEF));
-        checkModifier(address(stableDepositor), "StableDepositor/not-authorized", authedMethods);
+        checkModifier(address(stableDepositor), "StableDepositorUniV3/not-authorized", authedMethods);
         vm.stopPrank();
     }
 
@@ -116,7 +116,7 @@ contract StableDepositorTest is DssTest {
     }
 
     function testSetConfig() public {
-        vm.expectRevert("StableDepositor/wrong-gem-order");
+        vm.expectRevert("StableDepositorUniV3/wrong-gem-order");
         stableDepositor.setConfig(address(0x456), address(0x123), uint24(314), 5, 6, 23, 3600, uint96(7), uint96(8), uint96(9), uint96(10));
 
         vm.expectEmit(true, true, true, true);
@@ -159,7 +159,7 @@ contract StableDepositorTest is DssTest {
         assertEq(zzz, initialTime);
 
         vm.warp(initialTime + 180);
-        vm.expectRevert("StableDepositor/too-soon");
+        vm.expectRevert("StableDepositorUniV3/too-soon");
         vm.prank(KEEPER); stableDepositor.deposit(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, uint128(491 * WAD), uint128(491 * 10**6));
 
         vm.warp(initialTime + 360);
@@ -179,7 +179,7 @@ contract StableDepositorTest is DssTest {
         assertEq(zzz, initialTime + 360);
 
         vm.warp(initialTime + 540);
-        vm.expectRevert("StableDepositor/too-soon");
+        vm.expectRevert("StableDepositorUniV3/too-soon");
         vm.prank(KEEPER); stableDepositor.withdraw(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, uint128(491 * WAD), uint128(491 * 10**6));
 
         vm.warp(initialTime + 720);
@@ -212,25 +212,25 @@ contract StableDepositorTest is DssTest {
 
     function testDepositWithdrawExceedingNum() public {
         stableDepositor.setConfig(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, -10, 360, uint96(500 * WAD), uint96(500 * 10**6), uint96(490 * WAD), uint96(490 * 10**6));
-        vm.expectRevert("StableDepositor/exceeds-num");
+        vm.expectRevert("StableDepositorUniV3/exceeds-num");
         vm.prank(KEEPER); stableDepositor.deposit(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, uint128(491 * 10**6), uint128(491 * WAD));
 
         stableDepositor.setConfig(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, 10, 360, uint96(500 * WAD), uint96(500 * 10**6), uint96(490 * WAD), uint96(490 * 10**6));
-        vm.expectRevert("StableDepositor/exceeds-num");
+        vm.expectRevert("StableDepositorUniV3/exceeds-num");
         vm.prank(KEEPER); stableDepositor.withdraw(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, uint128(491 * 10**6), uint128(491 * WAD));
     }
 
     function testDepositWithMin0TooSmall() public {
         (,,,,, uint96 req0,) = stableDepositor.configs(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
 
-        vm.expectRevert("StableDepositor/min-amt0-too-small");
+        vm.expectRevert("StableDepositorUniV3/min-amt0-too-small");
         vm.prank(KEEPER); stableDepositor.deposit(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, req0 - 1, uint128(491 * 10**6));
     }
 
     function testDepositWithMin1TooSmall() public {
         (,,,,,, uint96 req1) = stableDepositor.configs(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
 
-        vm.expectRevert("StableDepositor/min-amt1-too-small");
+        vm.expectRevert("StableDepositorUniV3/min-amt1-too-small");
         vm.prank(KEEPER); stableDepositor.deposit(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, uint128(491 * WAD), req1 - 1);
     }
 
@@ -262,13 +262,13 @@ contract StableDepositorTest is DssTest {
     function testOperationsNonKeeper() public {
         assertEq(stableDepositor.buds(address(this)), 0);
 
-        vm.expectRevert("StableDepositor/non-keeper");
+        vm.expectRevert("StableDepositorUniV3/non-keeper");
         stableDepositor.deposit(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, uint128(491 * WAD), uint128(491 * 10**6));
 
-        vm.expectRevert("StableDepositor/non-keeper");
+        vm.expectRevert("StableDepositorUniV3/non-keeper");
         stableDepositor.withdraw(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, uint128(491 * WAD), uint128(491 * 10**6));
 
-        vm.expectRevert("StableDepositor/non-keeper");
+        vm.expectRevert("StableDepositorUniV3/non-keeper");
         vm.prank(address(0x123)); stableDepositor.collect(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
     }
 }

@@ -3,7 +3,7 @@
 pragma solidity ^0.8.16;
 
 import "dss-test/DssTest.sol";
-import { Depositor } from "src/funnels/Depositor.sol";
+import { DepositorUniV3 } from "src/funnels/DepositorUniV3.sol";
 import { UniV3SwapperCallee } from "src/funnels/callees/UniV3SwapperCallee.sol";
 import { AllocatorRoles } from "src/AllocatorRoles.sol";
 import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
@@ -37,15 +37,15 @@ interface SwapRouterLike {
     }
 }
 
-contract DepositorTest is DssTest {
+contract DepositorUniV3Test is DssTest {
     event SetLimits(address indexed gem0, address indexed gem1, uint24 indexed fee, uint96 cap0, uint96 cap1, uint32 era);
     event Deposit(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1);
     event Withdraw(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1, uint256 fees0, uint256 fees1);
     event Collect(address indexed sender, address indexed gem0, address indexed gem1, uint256 fees0, uint256 fees1);
 
-    AllocatorRoles public roles;
+    AllocatorRoles  public roles;
     AllocatorBuffer public buffer;
-    Depositor public depositor;
+    DepositorUniV3  public depositor;
 
     bytes32 constant ilk = "aaa";
     bytes constant DAI_USDC_PATH = abi.encodePacked(DAI, uint24(100), USDC);
@@ -66,7 +66,7 @@ contract DepositorTest is DssTest {
         
         buffer = new AllocatorBuffer();
         roles = new AllocatorRoles();
-        depositor = new Depositor(address(roles), ilk, UNIV3_FACTORY, address(buffer));
+        depositor = new DepositorUniV3(address(roles), ilk, UNIV3_FACTORY, address(buffer));
 
         roles.setIlkAdmin(ilk, address(this));
         roles.setRoleAction(ilk, DEPOSITOR_ROLE, address(depositor), depositor.deposit.selector, true);
@@ -83,7 +83,7 @@ contract DepositorTest is DssTest {
     }
 
     function testConstructor() public {
-        Depositor d = new Depositor(address(0xBEEF), "SubDAO 1", address(0xAAA), address(0xCCC));
+        DepositorUniV3 d = new DepositorUniV3(address(0xBEEF), "SubDAO 1", address(0xAAA), address(0xCCC));
         assertEq(address(d.roles()),  address(0xBEEF));
         assertEq(d.ilk(), "SubDAO 1");
         assertEq(d.uniV3Factory(), address(0xAAA));
@@ -92,7 +92,7 @@ contract DepositorTest is DssTest {
     }
 
     function testAuth() public {
-        checkAuth(address(depositor), "Depositor");
+        checkAuth(address(depositor), "DepositorUniV3");
     }
 
     function testModifiers() public {
@@ -103,13 +103,13 @@ contract DepositorTest is DssTest {
         authedMethods[3] = depositor.collect.selector;
 
         vm.startPrank(address(0xBEEF));
-        checkModifier(address(depositor), "Depositor/not-authorized", authedMethods);
+        checkModifier(address(depositor), "DepositorUniV3/not-authorized", authedMethods);
         vm.stopPrank();
     }
 
     function testSetLimits() public {
         // deposit to make sure end and both due are set
-        Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
+        DepositorUniV3.LiquidityParams memory dp = DepositorUniV3.LiquidityParams({
             gem0: DAI,
             gem1: USDC,
             fee: uint24(100),
@@ -143,7 +143,7 @@ contract DepositorTest is DssTest {
     }
 
     function testRoles() public {
-        vm.expectRevert("Depositor/not-authorized");
+        vm.expectRevert("DepositorUniV3/not-authorized");
         vm.prank(address(0xBEEF)); depositor.setLimits(address(0), address(1), 0, 0, 0, 0);
         roles.setRoleAction(ilk, uint8(0xF1), address(depositor), depositor.setLimits.selector, true);
         roles.setUserRole(ilk, address(0xBEEF), uint8(0xF1), true);
@@ -176,7 +176,7 @@ contract DepositorTest is DssTest {
         uint256 prevDAI = GemLike(DAI).balanceOf(address(buffer));
         uint32 initialTime = uint32(block.timestamp);
 
-        Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
+        DepositorUniV3.LiquidityParams memory dp = DepositorUniV3.LiquidityParams({
             gem0: DAI,
             gem1: USDC,
             fee: uint24(100),
@@ -234,7 +234,7 @@ contract DepositorTest is DssTest {
         dp.amt0Min     = 7_840 * WAD;
         dp.amt1Min     = 7_840 * 10**6;
 
-        vm.expectRevert("Depositor/exceeds-due-amt");
+        vm.expectRevert("DepositorUniV3/exceeds-due-amt");
         vm.prank(FACILITATOR); depositor.deposit(dp);
 
         vm.warp(initialTime + 3600);
@@ -262,7 +262,7 @@ contract DepositorTest is DssTest {
         assertEq(tokensOwed1, 0);
 
         // deposit
-        Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
+        DepositorUniV3.LiquidityParams memory dp = DepositorUniV3.LiquidityParams({
             gem0: DAI,
             gem1: USDC,
             fee: uint24(100),
@@ -320,7 +320,7 @@ contract DepositorTest is DssTest {
     }
 
     function testCollect() public {
-        Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
+        DepositorUniV3.LiquidityParams memory dp = DepositorUniV3.LiquidityParams({
             gem0: DAI,
             gem1: USDC,
             fee: uint24(100),
@@ -348,7 +348,7 @@ contract DepositorTest is DssTest {
         });
         SwapRouterLike(UNIV3_ROUTER).exactInput(params);
 
-        Depositor.CollectParams memory cp = Depositor.CollectParams({
+        DepositorUniV3.CollectParams memory cp = DepositorUniV3.CollectParams({
             gem0: DAI,
             gem1: USDC,
             fee: uint24(100), 
@@ -376,7 +376,7 @@ contract DepositorTest is DssTest {
         uint256 initialDAI = GemLike(DAI).balanceOf(address(buffer));
         uint256 initialTime = uint32(block.timestamp);
 
-        Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
+        DepositorUniV3.LiquidityParams memory dp = DepositorUniV3.LiquidityParams({
             gem0: DAI,
             gem1: USDC,
             fee: uint24(100),
@@ -432,7 +432,7 @@ contract DepositorTest is DssTest {
 
         dp.liquidity = liq;
 
-        vm.expectRevert("Depositor/exceeds-due-amt");
+        vm.expectRevert("DepositorUniV3/exceeds-due-amt");
         vm.prank(FACILITATOR); depositor.withdraw(dp, false);
 
         vm.warp(initialTime + 3600);
@@ -445,7 +445,7 @@ contract DepositorTest is DssTest {
     }
 
     function testWithdrawWithFeeCollection() public {
-        Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
+        DepositorUniV3.LiquidityParams memory dp = DepositorUniV3.LiquidityParams({
             gem0: DAI,
             gem1: USDC,
             fee: uint24(100),
@@ -496,7 +496,7 @@ contract DepositorTest is DssTest {
     }
 
     function testWithdrawZeroWithFeeCollection() public {
-        Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
+        DepositorUniV3.LiquidityParams memory dp = DepositorUniV3.LiquidityParams({
             gem0: DAI,
             gem1: USDC,
             fee: uint24(100),
@@ -551,7 +551,7 @@ contract DepositorTest is DssTest {
     }
 
     function testWithdrawAmounts() public {
-        Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
+        DepositorUniV3.LiquidityParams memory dp = DepositorUniV3.LiquidityParams({
             gem0: DAI,
             gem1: USDC,
             fee: uint24(100),
@@ -594,7 +594,7 @@ contract DepositorTest is DssTest {
     }
 
     function testDepositWrongGemOrder() public {
-        Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
+        DepositorUniV3.LiquidityParams memory dp = DepositorUniV3.LiquidityParams({
             gem0: USDC,
             gem1: DAI,
             fee: uint24(100),
@@ -606,12 +606,12 @@ contract DepositorTest is DssTest {
             amt0Min: 0,
             amt1Min: 0
         });
-        vm.expectRevert("Depositor/wrong-gem-order");
+        vm.expectRevert("DepositorUniV3/wrong-gem-order");
         vm.prank(FACILITATOR); depositor.deposit(dp);
     }
 
     function testDepositExceedingAmt() public {
-        Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
+        DepositorUniV3.LiquidityParams memory dp = DepositorUniV3.LiquidityParams({
             gem0: DAI,
             gem1: USDC,
             fee: uint24(100),
@@ -625,12 +625,12 @@ contract DepositorTest is DssTest {
         });
         depositor.setLimits(DAI, USDC, 100, uint96(1 * WAD), type(uint96).max, 3600);
 
-        vm.expectRevert("Depositor/exceeds-due-amt");
+        vm.expectRevert("DepositorUniV3/exceeds-due-amt");
         vm.prank(FACILITATOR); depositor.deposit(dp);
 
         depositor.setLimits(DAI, USDC, 100, type(uint96).max, 1 * 10**6, 3600);
 
-        vm.expectRevert("Depositor/exceeds-due-amt");
+        vm.expectRevert("DepositorUniV3/exceeds-due-amt");
         vm.prank(FACILITATOR); depositor.deposit(dp);
 
         depositor.setLimits(DAI, USDC, 100, type(uint96).max, type(uint96).max, 3600);
@@ -639,7 +639,7 @@ contract DepositorTest is DssTest {
     }
 
     function testDepositExceedingSlippage() public {
-        Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
+        DepositorUniV3.LiquidityParams memory dp = DepositorUniV3.LiquidityParams({
             gem0: DAI,
             gem1: USDC,
             fee: uint24(100),
@@ -652,18 +652,18 @@ contract DepositorTest is DssTest {
             amt1Min: 0
         });
 
-        vm.expectRevert("Depositor/exceeds-slippage");
+        vm.expectRevert("DepositorUniV3/exceeds-slippage");
         vm.prank(FACILITATOR); depositor.deposit(dp);
 
         dp.amt0Min = 0;
         dp.amt1Min = 3 * 500 * 10**6;
 
-        vm.expectRevert("Depositor/exceeds-slippage");
+        vm.expectRevert("DepositorUniV3/exceeds-slippage");
         vm.prank(FACILITATOR); depositor.deposit(dp);
     }
 
     function testWithdrawWrongGemOrder() public {
-        Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
+        DepositorUniV3.LiquidityParams memory dp = DepositorUniV3.LiquidityParams({
             gem0: USDC,
             gem1: DAI,
             fee: uint24(100),
@@ -676,12 +676,12 @@ contract DepositorTest is DssTest {
             amt1Min: 0
         });
 
-        vm.expectRevert("Depositor/wrong-gem-order");
+        vm.expectRevert("DepositorUniV3/wrong-gem-order");
         vm.prank(FACILITATOR); depositor.withdraw(dp, false);
     }
 
     function testWithdrawNoPosition() public {
-        Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
+        DepositorUniV3.LiquidityParams memory dp = DepositorUniV3.LiquidityParams({
             gem0: DAI,
             gem1: USDC,
             fee: uint24(100),
@@ -700,7 +700,7 @@ contract DepositorTest is DssTest {
     }
 
     function testWithdrawExceedingAmt() public {
-        Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
+        DepositorUniV3.LiquidityParams memory dp = DepositorUniV3.LiquidityParams({
             gem0: DAI,
             gem1: USDC,
             fee: uint24(100),
@@ -718,12 +718,12 @@ contract DepositorTest is DssTest {
 
         depositor.setLimits(DAI, USDC, 100, type(uint96).max, 1 * 10**6, 3600);
         
-        vm.expectRevert("Depositor/exceeds-due-amt");
+        vm.expectRevert("DepositorUniV3/exceeds-due-amt");
         vm.prank(FACILITATOR); depositor.withdraw(dp, false);
 
         depositor.setLimits(DAI, USDC, 100, uint96(1 * WAD), type(uint96).max, 3600);
 
-        vm.expectRevert("Depositor/exceeds-due-amt");
+        vm.expectRevert("DepositorUniV3/exceeds-due-amt");
         vm.prank(FACILITATOR); depositor.withdraw(dp, false);
 
         depositor.setLimits(DAI, USDC, 100, type(uint96).max, type(uint96).max, 3600);
@@ -732,7 +732,7 @@ contract DepositorTest is DssTest {
     }
 
     function testWithdrawExceedingSlippage() public {
-        Depositor.LiquidityParams memory dp = Depositor.LiquidityParams({
+        DepositorUniV3.LiquidityParams memory dp = DepositorUniV3.LiquidityParams({
             gem0: DAI,
             gem1: USDC,
             fee: uint24(100),
@@ -749,18 +749,18 @@ contract DepositorTest is DssTest {
         vm.warp(block.timestamp + 3600);
         dp.amt0Min =  3 * 500 * WAD;
 
-        vm.expectRevert("Depositor/exceeds-slippage");
+        vm.expectRevert("DepositorUniV3/exceeds-slippage");
         vm.prank(FACILITATOR); depositor.withdraw(dp, false);
 
         dp.amt0Min = 0;
         dp.amt1Min = 3 * 500 * 10**6;
 
-        vm.expectRevert("Depositor/exceeds-slippage");
+        vm.expectRevert("DepositorUniV3/exceeds-slippage");
         vm.prank(FACILITATOR); depositor.withdraw(dp, false);
     }
 
     function testCollectWrongGemOrder() public {
-        Depositor.CollectParams memory cp = Depositor.CollectParams({
+        DepositorUniV3.CollectParams memory cp = DepositorUniV3.CollectParams({
             gem0: USDC,
             gem1: DAI,
             fee: uint24(100),
@@ -768,12 +768,12 @@ contract DepositorTest is DssTest {
             tickUpper: REF_TICK+100
         });
 
-        vm.expectRevert("Depositor/wrong-gem-order");
+        vm.expectRevert("DepositorUniV3/wrong-gem-order");
         vm.prank(FACILITATOR); depositor.collect(cp);
     }
 
     function testCollectNoPosition() public {
-        Depositor.CollectParams memory cp = Depositor.CollectParams({
+        DepositorUniV3.CollectParams memory cp = DepositorUniV3.CollectParams({
             gem0: DAI,
             gem1: USDC,
             fee: uint24(100),
@@ -796,7 +796,7 @@ contract DepositorTest is DssTest {
             depositor.uniswapV3MintCallback({
             amt0Owed: 1,
             amt1Owed: 2,
-            data: abi.encode(Depositor.MintCallbackData({gem0: DAI, gem1: USDC, fee: 100}))
+            data: abi.encode(DepositorUniV3.MintCallbackData({gem0: DAI, gem1: USDC, fee: 100}))
         });
 
         assertEq(GemLike(DAI).balanceOf(address(buffer)), initialDAI - 1);
@@ -806,11 +806,11 @@ contract DepositorTest is DssTest {
     }
 
     function testMintCallbackNotFromPool() public {
-        vm.expectRevert("Depositor/sender-not-a-pool");
+        vm.expectRevert("DepositorUniV3/sender-not-a-pool");
         depositor.uniswapV3MintCallback({
             amt0Owed: 1,
             amt1Owed: 2,
-            data: abi.encode(Depositor.MintCallbackData({gem0: DAI, gem1: USDC, fee: 100}))
+            data: abi.encode(DepositorUniV3.MintCallbackData({gem0: DAI, gem1: USDC, fee: 100}))
         });
     }
 }

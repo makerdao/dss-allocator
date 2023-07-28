@@ -34,7 +34,7 @@ contract Swapper {
     mapping (address => uint256) public wards;                         // Admins
     mapping (address => mapping (address => PairLimit)) public limits; // Rate limit parameters per src->dst pair
 
-    RolesLike public immutable roles;  // Contract managing access control for this Depositor
+    RolesLike public immutable roles;  // Contract managing access control for this Swapper
     bytes32   public immutable ilk;    // Collateral type
     address   public immutable buffer; // Contract from which the GEM to sell is pulled and to which the bought GEM is pushed
 

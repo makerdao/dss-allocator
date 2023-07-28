@@ -70,11 +70,11 @@ interface UniV3PoolLike {
     ) external returns (uint128 amount0, uint128 amount1);
 }
 
-contract Depositor {
+contract DepositorUniV3 {
     mapping (address => uint256) public wards;                                             // Admins
     mapping (address => mapping (address => mapping (uint24 => PairLimit))) public limits; // Rate limit parameters per (gem0, gem1, fee) pool
 
-    RolesLike public immutable roles;        // Contract managing access control for this Depositor
+    RolesLike public immutable roles;        // Contract managing access control for this DepositorUniV3
     bytes32   public immutable ilk;          // Collateral type
     address   public immutable uniV3Factory; // Uniswap V3 factory
     address   public immutable buffer;       // Contract from/to which the two tokens that make up the liquidity position are pulled/pushed
@@ -106,7 +106,7 @@ contract Depositor {
     }
 
     modifier auth() {
-        require(roles.canCall(ilk, msg.sender, address(this), msg.sig) || wards[msg.sender] == 1, "Depositor/not-authorized");
+        require(roles.canCall(ilk, msg.sender, address(this), msg.sig) || wards[msg.sender] == 1, "DepositorUniV3/not-authorized");
         _;
     }
 
@@ -121,7 +121,7 @@ contract Depositor {
     }
 
     function setLimits(address gem0, address gem1, uint24 fee, uint96 cap0, uint96 cap1, uint32 era) external auth {
-        require(gem0 < gem1, "Depositor/wrong-gem-order");
+        require(gem0 < gem1, "DepositorUniV3/wrong-gem-order");
         limits[gem0][gem1][fee] = PairLimit({
             cap0: cap0,
             cap1: cap1,
@@ -194,7 +194,7 @@ contract Depositor {
     ) external {
         MintCallbackData memory decoded = abi.decode(data, (MintCallbackData));
         address pool = address(_getPool(decoded.gem0, decoded.gem1, decoded.fee));
-        require(msg.sender == pool, "Depositor/sender-not-a-pool");
+        require(msg.sender == pool, "DepositorUniV3/sender-not-a-pool");
 
         if (amt0Owed > 0) GemLike(decoded.gem0).transferFrom(buffer, msg.sender, amt0Owed);
         if (amt0Owed > 0) GemLike(decoded.gem1).transferFrom(buffer, msg.sender, amt1Owed);
@@ -218,7 +218,7 @@ contract Depositor {
         auth
         returns (uint128 liquidity, uint256 amt0, uint256 amt1)
     {
-        require(p.gem0 < p.gem1, "Depositor/wrong-gem-order");
+        require(p.gem0 < p.gem1, "DepositorUniV3/wrong-gem-order");
 
         PairLimit memory limit;
         limit.due0 = limits[p.gem0][p.gem1][p.fee].due0;
@@ -245,8 +245,8 @@ contract Depositor {
             amount   : liquidity,
             data     : abi.encode(MintCallbackData({gem0: p.gem0, gem1: p.gem1, fee: p.fee}))
         });
-        require(amt0 >= p.amt0Min && amt1 >= p.amt1Min, "Depositor/exceeds-slippage");
-        require(amt0 <= limit.due0 && amt1 <= limit.due1, "Depositor/exceeds-due-amt");
+        require(amt0 >= p.amt0Min && amt1 >= p.amt1Min, "DepositorUniV3/exceeds-slippage");
+        require(amt0 <= limit.due0 && amt1 <= limit.due1, "DepositorUniV3/exceeds-due-amt");
 
         limits[p.gem0][p.gem1][p.fee].due0 = limit.due0 - uint96(amt0);
         limits[p.gem0][p.gem1][p.fee].due1 = limit.due1 - uint96(amt1);
@@ -260,7 +260,7 @@ contract Depositor {
         auth
         returns (uint128 liquidity, uint256 amt0, uint256 amt1, uint256 fees0, uint256 fees1)
     {
-        require(p.gem0 < p.gem1, "Depositor/wrong-gem-order");
+        require(p.gem0 < p.gem1, "DepositorUniV3/wrong-gem-order");
 
         PairLimit memory limit;
         limit.due0 = limits[p.gem0][p.gem1][p.fee].due0;
@@ -281,8 +281,8 @@ contract Depositor {
             : p.liquidity;
 
         (amt0, amt1) = pool.burn({ tickLower: p.tickLower, tickUpper: p.tickUpper, amount: liquidity });
-        require(amt0 >= p.amt0Min && amt1 >= p.amt1Min,  "Depositor/exceeds-slippage");
-        require(amt0 <= limit.due0 && amt1 <= limit.due1, "Depositor/exceeds-due-amt");
+        require(amt0 >= p.amt0Min && amt1 >= p.amt1Min,  "DepositorUniV3/exceeds-slippage");
+        require(amt0 <= limit.due0 && amt1 <= limit.due1, "DepositorUniV3/exceeds-due-amt");
 
         limits[p.gem0][p.gem1][p.fee].due0 = limit.due0 - uint96(amt0);
         limits[p.gem0][p.gem1][p.fee].due1 = limit.due1 - uint96(amt1);
@@ -313,7 +313,7 @@ contract Depositor {
         auth
         returns (uint256 fees0, uint256 fees1)
     {
-        require(p.gem0 < p.gem1, "Depositor/wrong-gem-order");
+        require(p.gem0 < p.gem1, "DepositorUniV3/wrong-gem-order");
 
         UniV3PoolLike pool = _getPool(p.gem0, p.gem1, p.fee);
         pool.burn({ tickLower: p.tickLower, tickUpper: p.tickUpper, amount: 0 }); // Update the position's owed fees
