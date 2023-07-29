@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
+
+# Usage: ./run_stable_depositor.sh $CHAINID $STABLE_DEPOSITOR_ADDR $FROM_BLOCK
+# Example goerli usage: ./run_stable_depositor.sh 5 0x61928e1813c8883D14a75f31F3daeE53929A45DE 9422770
+
 set -e
 
-[[ "$ETH_RPC_URL" && "$(cast chain)" == "goerli" && "$(cast chain-id)" == "5" ]] || { echo -e "Please set a Goerli ETH_RPC_URL"; exit 1; }
+CHAINID=$1
+STABLE_DEPOSITOR=$2
+FROM_BLOCK=${3:-"earliest"}
 
-STABLE_DEPOSITOR="0x61928e1813c8883D14a75f31F3daeE53929A45DE"
-FROM_BLOCK=9422770
+[[ "$ETH_RPC_URL" && "$(cast chain-id)" == "$CHAINID" ]] || { echo -e "Please set a ETH_RPC_URL pointing to chainId $CHAINID"; exit 1; }
+
 SET_CONFIG_LOG="SetConfig(address indexed gem0, address indexed gem1, uint24 indexed fee, int24 tickLower, int24 tickUpper, int32 num, uint32 hop, uint96 amt0, uint96 amt1, uint96 req0, uint96 req1)"
 DEPOSIT_SIG="deposit(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tickUpper, uint128 amt0Min, uint128 amt1Min)"
 WITHDRAW_SIG="withdraw(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tickUpper, uint128 amt0Min, uint128 amt1Min)"

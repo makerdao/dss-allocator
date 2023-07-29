@@ -1,11 +1,17 @@
 #!/usr/bin/env bash
+
+# Usage: ./run_stable_swapper.sh $CHAINID $STABLE_SWAPPER_ADDR $CALLEE_ADDR $FROM_BLOCK
+# Example goerli usage: ./run_stable_swapper.sh 5 0x4b4271cA5980a436972BEc4ad9870f773e2b3e11 0x8963f53392D35a6c9939804a924058aB981363e4 9416503
+
 set -e
 
-[[ "$ETH_RPC_URL" && "$(cast chain)" == "goerli" && "$(cast chain-id)" == "5" ]] || { echo -e "Please set a Goerli ETH_RPC_URL"; exit 1; }
+CHAINID=$1
+STABLE_SWAPPER=$2
+CALLEE=$3
+FROM_BLOCK=${4:-"earliest"}
 
-STABLE_SWAPPER="0x4b4271cA5980a436972BEc4ad9870f773e2b3e11"
-CALLEE="0x8963f53392D35a6c9939804a924058aB981363e4"
-FROM_BLOCK=9416503
+[[ "$ETH_RPC_URL" && "$(cast chain-id)" == "$CHAINID" ]] || { echo -e "Please set a ETH_RPC_URL pointing to chainId $CHAINID"; exit 1; }
+
 SET_CONFIG_LOG="SetConfig(address indexed src, address indexed dst, uint128 num, uint32 hop, uint96 lot, uint96 req)"
 SWAP_SIG="swap(address src, address dst, uint256 minOut, address callee, bytes calldata data)"
 
