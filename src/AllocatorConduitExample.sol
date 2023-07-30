@@ -98,9 +98,7 @@ contract AllocatorConduitExample is IAllocatorConduit {
 
     function deposit(bytes32 ilk, address asset, uint256 amount) external ilkAuth(ilk) {
         address buffer = registry.buffers(ilk);
-        address manager; // Implement destination logic
-        BufferLike(buffer).approve(asset, address(this), amount);
-        TokenLike(asset).transferFrom(buffer, manager, amount);
+        TokenLike(asset).transferFrom(buffer, address(this), amount);
         positions[ilk][asset] += amount;
         emit Deposit(ilk, asset, buffer, amount);
     }
@@ -110,8 +108,7 @@ contract AllocatorConduitExample is IAllocatorConduit {
         amount = balance < maxAmount ? balance : maxAmount;
         positions[ilk][asset] = balance - amount;
         address buffer = registry.buffers(ilk);
-        address manager; // Implement source logic
-        TokenLike(asset).transferFrom(manager, buffer, amount);
+        TokenLike(asset).transfer(buffer, amount);
         emit Withdraw(ilk, asset, buffer, amount);
     }
 }
