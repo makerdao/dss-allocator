@@ -40,13 +40,17 @@ echo $JSON | jq -c '.[]' | while read i; do
 
     if (( num > 0 )); then
         echo "Num=$num. Depositing into ($gem0, $gem1, $fee) pool..."
-        calldata=$(cast calldata "$DEPOSIT_SIG" $key 0 0)
-        # Note that we run `cast send` using the raw calldata to avoid issues with negative arguments
-        cast send $STABLE_DEPOSITOR $calldata || true
+        sig=$DEPOSIT_SIG
     elif (( num < 0 )); then
         echo "Num=$num. Withdrawing from ($gem0, $gem1, $fee) pool..."
-        calldata=$(cast calldata "$WITHDRAW_SIG" $key 0 0)
-        # Note that we run `cast send` using the raw calldata to avoid issues with negative arguments
-        cast send $STABLE_DEPOSITOR $calldata || true
+        sig=$WITHDRAW_SIG
+    fi
+
+    if (( num )); then
+        calldata=$(cast calldata "$sig" $key 0 0)
+        # Note that we run `cast estimate` and `cast send` using the raw calldata to avoid issues with negative arguments
+        gas=$(cast estimate $STABLE_DEPOSITOR $calldata || true)
+        [[ -z "$gas" ]] && { continue; }
+        cast send --gas-limit $gas $STABLE_DEPOSITOR $calldata
     fi
 done

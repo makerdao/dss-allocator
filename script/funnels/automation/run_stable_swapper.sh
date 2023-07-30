@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 
-# Usage: ./run_stable_swapper.sh $CHAINID $STABLE_SWAPPER_ADDR $CALLEE_ADDR $FROM_BLOCK
-# Example goerli usage: ./run_stable_swapper.sh 5 0x4b4271cA5980a436972BEc4ad9870f773e2b3e11 0x8963f53392D35a6c9939804a924058aB981363e4 9416503
+# Usage: ./run_stable_swapper.sh $CHAINID $STABLE_SWAPPER_ADDR $CALLEE_ADDR $POOL_FEE $FROM_BLOCK
+# Example goerli usage: ./run_stable_swapper.sh 5 0x4b4271cA5980a436972BEc4ad9870f773e2b3e11 0x8963f53392D35a6c9939804a924058aB981363e4 500 9416503
 
 set -e
 
 CHAINID=$1
 STABLE_SWAPPER=$2
 CALLEE=$3
-FROM_BLOCK=${4:-"earliest"}
+POOL_FEE=$4
+FROM_BLOCK=${5:-"earliest"}
 
 [[ "$ETH_RPC_URL" && "$(cast chain-id)" == "$CHAINID" ]] || { echo -e "Please set a ETH_RPC_URL pointing to chainId $CHAINID"; exit 1; }
 
@@ -34,7 +35,8 @@ echo $JSON | jq -c '.[]' | while read i; do
     if (( num > 0 )); then
         echo "Num=$num. Swapping from $src to $dst..."
         data="$(cast concat-hex $src $(printf "%06X" $(cast to-hex $POOL_FEE)) $dst)"
-        cast send $STABLE_SWAPPER "$SWAP_SIG" $src $dst 0 $CALLEE $data || true
+        gas=$(cast estimate $STABLE_SWAPPER "$SWAP_SIG" $src $dst 0 $CALLEE $data || true)
+        [[ -z "$gas" ]] && { continue; }
+        cast send --gas-limit $gas $STABLE_SWAPPER "$SWAP_SIG" $src $dst 0 $CALLEE $data
     fi
 done
-
