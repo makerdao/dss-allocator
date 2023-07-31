@@ -20,6 +20,10 @@ interface RolesLike {
     function canCall(bytes32, address, address, bytes4) external view returns (bool);
 }
 
+interface VatLike {
+    function live() external view returns (uint256);
+}
+
 interface GemLike {
     function balanceOf(address) external view returns (uint256);
     function transfer(address, uint256) external;
@@ -35,6 +39,7 @@ contract Swapper {
     mapping (address => mapping (address => PairLimit)) public limits; // Rate limit parameters per src->dst pair
 
     RolesLike public immutable roles;  // Contract managing access control for this Swapper
+    VatLike   public immutable vat;    // Address of MCD Vat
     bytes32   public immutable ilk;    // Collateral type
     address   public immutable buffer; // Contract from which the GEM to sell is pulled and to which the bought GEM is pushed
 
@@ -49,9 +54,11 @@ contract Swapper {
     event Deny(address indexed usr);
     event SetLimits(address indexed src, address indexed dst, uint96 cap, uint32 era);
     event Swap(address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
+    event Cage(address indexed src, address indexed dst);
 
-    constructor(address roles_, bytes32 ilk_, address buffer_) {
+    constructor(address roles_, address vat_, bytes32 ilk_, address buffer_) {
         roles = RolesLike(roles_);
+        vat = VatLike(vat_);
         ilk = ilk_;
         buffer = buffer_;
         wards[msg.sender] = 1;
@@ -74,6 +81,7 @@ contract Swapper {
     }
 
     function setLimits(address src, address dst, uint96 cap, uint32 era) external auth {
+        require(vat.live() == 0, "Swapper/system-not-live");
         limits[src][dst] = PairLimit({
             cap: cap,
             era: era,
@@ -109,5 +117,14 @@ contract Swapper {
 
         GemLike(dst).transfer(buffer, out);
         emit Swap(msg.sender, src, dst, amt, out);
+    }
+
+    function cage(address src, address dst) external {
+        require(vat.live() == 0, "Swapper/system-is-live");
+
+        limits[src][dst].cap = 0;
+        limits[src][dst].due = 0;
+
+        emit Cage(src, dst);
     }
 }

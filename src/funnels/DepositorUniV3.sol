@@ -23,6 +23,10 @@ interface RolesLike {
     function canCall(bytes32, address, address, bytes4) external view returns (bool);
 }
 
+interface VatLike {
+    function live() external view returns (uint256);
+}
+
 interface GemLike {
     function transferFrom(address, address, uint256) external;
 }
@@ -75,6 +79,7 @@ contract DepositorUniV3 {
     mapping (address => mapping (address => mapping (uint24 => PairLimit))) public limits; // Rate limit parameters per (gem0, gem1, fee) pool
 
     RolesLike public immutable roles;        // Contract managing access control for this DepositorUniV3
+    VatLike   public immutable vat;          // Address of MCD Vat
     bytes32   public immutable ilk;          // Collateral type
     address   public immutable uniV3Factory; // Uniswap V3 factory
     address   public immutable buffer;       // Contract from/to which the two tokens that make up the liquidity position are pulled/pushed
@@ -94,9 +99,11 @@ contract DepositorUniV3 {
     event Deposit(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1);
     event Withdraw(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1, uint256 fees0, uint256 fees1);
     event Collect(address indexed sender, address indexed gem0, address indexed gem1, uint256 fees0, uint256 fees1);
+    event Cage(address indexed gem0, address indexed gem1, uint24 indexed fee, int24 tickLower, int24 tickUpper, uint128 liquidity, uint256 amt0, uint256 amt1, uint256 fees0, uint256 fees1);
 
-    constructor(address roles_, bytes32 ilk_, address uniV3Factory_, address buffer_) {
+    constructor(address roles_, address vat_, bytes32 ilk_, address uniV3Factory_, address buffer_) {
         roles        = RolesLike(roles_);
+        vat = VatLike(vat_);
         ilk          = ilk_;
         uniV3Factory = uniV3Factory_;
         buffer       = buffer_;
@@ -122,6 +129,7 @@ contract DepositorUniV3 {
 
     function setLimits(address gem0, address gem1, uint24 fee, uint96 cap0, uint96 cap1, uint32 era) external auth {
         require(gem0 < gem1, "DepositorUniV3/wrong-gem-order");
+        require(vat.live() == 0, "DepositorUniV3/system-not-live");
         limits[gem0][gem1][fee] = PairLimit({
             cap0: cap0,
             cap1: cap1,
@@ -149,7 +157,7 @@ contract DepositorUniV3 {
         uint24  fee,
         int24   tickLower,
         int24   tickUpper
-    ) external view returns (
+    ) public view returns (
         uint128 liquidity,
         uint256 feeGrowthInside0LastX128,
         uint256 feeGrowthInside1LastX128,
@@ -255,9 +263,8 @@ contract DepositorUniV3 {
         emit Deposit(msg.sender, p.gem0, p.gem1, liquidity, amt0, amt1);
     }
 
-    function withdraw(LiquidityParams memory p, bool takeFees)
-        external
-        auth
+    function _withdraw(LiquidityParams memory p, bool takeFees)
+        internal
         returns (uint128 liquidity, uint256 amt0, uint256 amt1, uint256 fees0, uint256 fees1)
     {
         require(p.gem0 < p.gem1, "DepositorUniV3/wrong-gem-order");
@@ -300,6 +307,14 @@ contract DepositorUniV3 {
         emit Withdraw(msg.sender, p.gem0, p.gem1, liquidity, amt0, amt1, fees0, fees1);
     }
 
+    function withdraw(LiquidityParams memory p, bool takeFees)
+        external
+        auth
+        returns (uint128 liquidity, uint256 amt0, uint256 amt1, uint256 fees0, uint256 fees1)
+    {
+        (uint128 liquidity, uint256 amt0, uint256 amt1, uint256 fees0, uint256 fees1) = _withdraw(p, takeFees);
+    }
+
     struct CollectParams {
         address gem0;
         address gem1;
@@ -327,5 +342,41 @@ contract DepositorUniV3 {
         });
 
         emit Collect(msg.sender, p.gem0, p.gem1, fees0, fees1);
+    }
+
+    function cage(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tickUpper)
+        external
+        returns (uint128 liquidity, uint256 amt0, uint256 amt1, uint256 fees0, uint256 fees1)
+    {
+        require(vat.live() == 0, "DepositorUniV3/system-is-live");
+
+        limits[gem0][gem1][fee].cap0 = type(uint96).max;
+        limits[gem0][gem1][fee].cap1 = type(uint96).max;
+        limits[gem0][gem1][fee].due0 = type(uint96).max;
+        limits[gem0][gem1][fee].due1 = type(uint96).max;
+
+        (uint128 liquidity,,,,) = getPosition(gem0, gem1, fee, tickLower, tickUpper);
+
+        LiquidityParams memory p = LiquidityParams({
+            gem0:        gem0,
+            gem1:        gem1,
+            fee:         fee,
+            tickLower:   tickLower,
+            tickUpper:   tickUpper,
+            liquidity:   liquidity,
+            amt0Desired: 0,
+            amt1Desired: 0,
+            amt0Min:     0,
+            amt1Min:     0
+        });
+
+        (liquidity, amt0, amt1, fees0, fees1) = _withdraw(p, true);
+
+        limits[gem0][gem1][fee].cap0 = 0;
+        limits[gem0][gem1][fee].cap1 = 0;
+        limits[gem0][gem1][fee].due0 = 0;
+        limits[gem0][gem1][fee].due1 = 0;
+
+        emit Cage(gem0, gem1, fee, tickLower, tickUpper, liquidity, amt0, amt1, fees0, fees1);
     }
 }
