@@ -26,16 +26,12 @@ interface RegistryLike {
     function buffers(bytes32) external view returns (address);
 }
 
-interface BufferLike {
-    function approve(address, address, uint256) external;
-}
-
 interface TokenLike {
     function transfer(address, uint256) external;
     function transferFrom(address, address, uint256) external;
 }
 
-contract AllocatorConduitExample is IAllocatorConduit {
+contract AllocatorConduitMock is IAllocatorConduit {
     // --- storage variables ---
 
     mapping(address => uint256) public wards;
@@ -55,12 +51,12 @@ contract AllocatorConduitExample is IAllocatorConduit {
     // --- modifiers ---
 
     modifier auth() {
-        require(wards[msg.sender] == 1, "AllocatorBuffer/not-authorized");
+        require(wards[msg.sender] == 1, "AllocatorConduitMock/not-authorized");
         _;
     }
 
     modifier ilkAuth(bytes32 ilk) {
-        require(roles.canCall(ilk, msg.sender, address(this), msg.sig), "AllocatorConduitExample/ilk-not-authorized");
+        require(roles.canCall(ilk, msg.sender, address(this), msg.sig), "AllocatorConduitMock/ilk-not-authorized");
         _;
     }
 
@@ -98,9 +94,7 @@ contract AllocatorConduitExample is IAllocatorConduit {
 
     function deposit(bytes32 ilk, address asset, uint256 amount) external ilkAuth(ilk) {
         address buffer = registry.buffers(ilk);
-        address manager; // Implement destination logic
-        BufferLike(buffer).approve(asset, address(this), amount);
-        TokenLike(asset).transferFrom(buffer, manager, amount);
+        TokenLike(asset).transferFrom(buffer, address(this), amount);
         positions[ilk][asset] += amount;
         emit Deposit(ilk, asset, buffer, amount);
     }
@@ -110,8 +104,7 @@ contract AllocatorConduitExample is IAllocatorConduit {
         amount = balance < maxAmount ? balance : maxAmount;
         positions[ilk][asset] = balance - amount;
         address buffer = registry.buffers(ilk);
-        address manager; // Implement source logic
-        TokenLike(asset).transferFrom(manager, buffer, amount);
+        TokenLike(asset).transfer(buffer, amount);
         emit Withdraw(ilk, asset, buffer, amount);
     }
 }
