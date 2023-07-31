@@ -16,17 +16,16 @@ FROM_BLOCK=${5:-"earliest"}
 SET_CONFIG_LOG="SetConfig(address indexed src, address indexed dst, uint128 num, uint32 hop, uint96 lot, uint96 req)"
 SWAP_SIG="swap(address src, address dst, uint256 minOut, address callee, bytes calldata data)"
 
-declare -A config_keys
-
 JSON=$(cast logs --from-block $FROM_BLOCK --to-block latest --address $STABLE_SWAPPER "$SET_CONFIG_LOG" --json)
 echo $JSON | jq -c '.[]' | while read i; do
     src=$(cast abi-decode --input "x(address)" $(echo $i | jq -r ".topics[1]"))
     dst=$(cast abi-decode --input "x(address)" $(echo $i | jq -r ".topics[2]"))
-    key="$src $dst"
-    if [ -n "${config_keys[$key]}" ]; then
-        continue
+
+    var="handled_${src}_${dst}"
+    if [ -z "${!var}" ]; then
+        declare handled_${src}_${dst}=1
     else
-        config_keys[$key]=1
+        continue
     fi
 
     cfg=$(cast call $STABLE_SWAPPER "configs(address,address)(uint128 num, uint32 hop, uint96 lot, uint96)" $src $dst)

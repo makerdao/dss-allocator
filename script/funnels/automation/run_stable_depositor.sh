@@ -15,8 +15,6 @@ SET_CONFIG_LOG="SetConfig(address indexed gem0, address indexed gem1, uint24 ind
 DEPOSIT_SIG="deposit(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tickUpper, uint128 amt0Min, uint128 amt1Min)"
 WITHDRAW_SIG="withdraw(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tickUpper, uint128 amt0Min, uint128 amt1Min)"
 
-declare -A config_keys
-
 JSON=$(cast logs --from-block $FROM_BLOCK --to-block latest --address $STABLE_DEPOSITOR "$SET_CONFIG_LOG" --json)
 echo $JSON | jq -c '.[]' | while read i; do
     gem0=$(cast abi-decode --input "x(address)" $(echo $i | jq -r ".topics[1]"))
@@ -25,11 +23,13 @@ echo $JSON | jq -c '.[]' | while read i; do
     data=$(cast abi-decode --input "x(int24,int24)" $(echo $i | jq -r ".data"))
     tickLower=$(echo $data | cut -d" " -f1)
     tickUpper=$(echo $data | cut -d" " -f2)
+
     key="$gem0 $gem1 $fee $tickLower $tickUpper"
-    if [ -n "${config_keys[$key]}" ]; then
-        continue
+    var="handled_${key//[- ]/_}"
+    if [ -z "${!var}" ]; then
+        declare handled_${key//[- ]/_}=1
     else
-        config_keys[$key]=1
+        continue
     fi
 
     cfg_calldata=$(cast calldata "configs(address,address,uint24,int24,int24)" $key)
