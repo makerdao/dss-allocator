@@ -56,8 +56,7 @@ contract ConduitMover {
         _;
     }
 
-    // permissionned to whitelisted keepers
-    modifier toll { 
+    modifier toll {
         require(buds[msg.sender] == 1, "ConduitMover/non-keeper");
         _;
     }
