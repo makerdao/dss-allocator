@@ -24,15 +24,15 @@ echo $JSON | jq -c '.[]' | while read i; do
     tickLower=$(echo $data | cut -d" " -f1)
     tickUpper=$(echo $data | cut -d" " -f2)
 
-    key="$gem0 $gem1 $fee $tickLower $tickUpper"
-    var="handled_${key//[- ]/_}"
+    params="$gem0 $gem1 $fee $tickLower $tickUpper"
+    var="handled_${params//[- ]/_}"
     if [ -z "${!var}" ]; then
-        declare handled_${key//[- ]/_}=1
+        declare handled_${params//[- ]/_}=1
     else
         continue
     fi
 
-    cfg_calldata=$(cast calldata "configs(address,address,uint24,int24,int24)" $key)
+    cfg_calldata=$(cast calldata "configs(address,address,uint24,int24,int24)" $params)
     # Note that we run `cast call` using the raw calldata to avoid issues with negative arguments
     cfg=$(cast call $STABLE_DEPOSITOR $cfg_calldata)
     decoded_cfg=$(cast abi-decode "configs(address,address,uint24,int24,int24)(int32,uint32,uint96,uint96,uint96,uint96,uint32)" $cfg)
@@ -47,7 +47,7 @@ echo $JSON | jq -c '.[]' | while read i; do
     fi
 
     if (( num )); then
-        calldata=$(cast calldata "$sig" $key 0 0)
+        calldata=$(cast calldata "$sig" $params 0 0)
         # Note that we run `cast estimate` and `cast send` using the raw calldata to avoid issues with negative arguments
         gas=$(cast estimate $STABLE_DEPOSITOR $calldata || true)
         [[ -z "$gas" ]] && { continue; }

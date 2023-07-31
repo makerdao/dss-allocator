@@ -28,7 +28,7 @@ echo $JSON | jq -c '.[]' | while read i; do
         continue
     fi
 
-    cfg=$(cast call $STABLE_SWAPPER "configs(address,address)(uint128 num, uint32 hop, uint96 lot, uint96)" $src $dst)
+    cfg=$(cast call $STABLE_SWAPPER "configs(address,address)(uint128,uint32,uint32,uint96,uint96)" $src $dst)
     num=$(echo $cfg | cut -d" " -f1)
 
     if (( num > 0 )); then
