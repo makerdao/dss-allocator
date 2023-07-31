@@ -26,16 +26,12 @@ interface RegistryLike {
     function buffers(bytes32) external view returns (address);
 }
 
-interface BufferLike {
-    function approve(address, address, uint256) external;
-}
-
 interface TokenLike {
     function transfer(address, uint256) external;
     function transferFrom(address, address, uint256) external;
 }
 
-contract AllocatorConduitExample is IAllocatorConduit {
+contract AllocatorConduitMock is IAllocatorConduit {
     // --- storage variables ---
 
     mapping(address => uint256) public wards;
@@ -55,12 +51,12 @@ contract AllocatorConduitExample is IAllocatorConduit {
     // --- modifiers ---
 
     modifier auth() {
-        require(wards[msg.sender] == 1, "AllocatorBuffer/not-authorized");
+        require(wards[msg.sender] == 1, "AllocatorConduitMock/not-authorized");
         _;
     }
 
     modifier ilkAuth(bytes32 ilk) {
-        require(roles.canCall(ilk, msg.sender, address(this), msg.sig), "AllocatorConduitExample/ilk-not-authorized");
+        require(roles.canCall(ilk, msg.sender, address(this), msg.sig), "AllocatorConduitMock/ilk-not-authorized");
         _;
     }
 

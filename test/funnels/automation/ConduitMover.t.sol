@@ -7,7 +7,7 @@ import { ConduitMover } from "src/funnels/automation/ConduitMover.sol";
 import { AllocatorRegistry } from "src/AllocatorRegistry.sol";
 import { AllocatorRoles } from "src/AllocatorRoles.sol";
 import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
-import { AllocatorConduitExample } from "src/AllocatorConduitExample.sol";
+import { AllocatorConduitMock } from "test/mocks/AllocatorConduitMock.sol";
 
 interface GemLike {
     function balanceOf(address) external view returns (uint256);
@@ -38,15 +38,15 @@ contract ConduitMoverTest is DssTest {
         AllocatorRegistry registry = new AllocatorRegistry();
         registry.file(ILK, "buffer", buffer);
 
-        conduit1 = address(new AllocatorConduitExample(address(roles), address(registry)));
-        conduit2 = address(new AllocatorConduitExample(address(roles), address(registry)));
+        conduit1 = address(new AllocatorConduitMock(address(roles), address(registry)));
+        conduit2 = address(new AllocatorConduitMock(address(roles), address(registry)));
         mover    = new ConduitMover(ILK, buffer);
 
         // Allow mover to to perform ILK operations on the conduits
         roles.setIlkAdmin(ILK, address(this));
-        roles.setRoleAction(ILK, MOVER_ROLE, conduit1, AllocatorConduitExample.deposit.selector, true);
-        roles.setRoleAction(ILK, MOVER_ROLE, conduit1, AllocatorConduitExample.withdraw.selector, true);
-        roles.setRoleAction(ILK, MOVER_ROLE, conduit2, AllocatorConduitExample.deposit.selector, true);
+        roles.setRoleAction(ILK, MOVER_ROLE, conduit1, AllocatorConduitMock.deposit.selector, true);
+        roles.setRoleAction(ILK, MOVER_ROLE, conduit1, AllocatorConduitMock.withdraw.selector, true);
+        roles.setRoleAction(ILK, MOVER_ROLE, conduit2, AllocatorConduitMock.deposit.selector, true);
         roles.setUserRole(ILK, address(mover), MOVER_ROLE, true);
 
         // Allow conduits to transfer out funds out of the buffer
@@ -55,7 +55,7 @@ contract ConduitMoverTest is DssTest {
 
         // Give conduit1 some funds
         deal(USDC, buffer, 3_000 * 10**6, true);
-        vm.prank(address(mover)); AllocatorConduitExample(conduit1).deposit(ILK, USDC, 3_000 * 10**6);
+        vm.prank(address(mover)); AllocatorConduitMock(conduit1).deposit(ILK, USDC, 3_000 * 10**6);
 
         // Set up keeper to move from conduit1 to conduit2
         mover.rely(FACILITATOR);
