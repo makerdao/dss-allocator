@@ -42,7 +42,7 @@ contract ConduitMoverTest is DssTest {
         conduit2 = address(new AllocatorConduitMock(address(roles), address(registry)));
         mover    = new ConduitMover(ILK, buffer);
 
-        // Allow mover to to perform ILK operations on the conduits
+        // Allow mover to perform ILK operations on the conduits
         roles.setIlkAdmin(ILK, address(this));
         roles.setRoleAction(ILK, MOVER_ROLE, conduit1, AllocatorConduitMock.deposit.selector, true);
         roles.setRoleAction(ILK, MOVER_ROLE, conduit1, AllocatorConduitMock.withdraw.selector, true);
