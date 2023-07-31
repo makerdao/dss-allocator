@@ -53,7 +53,7 @@ contract SwapperCalleeUniV3 {
         }
         require(src == firstToken && dst == lastToken, "SwapperCalleeUniV3/invalid-path");
 
-        ApproveLike(src).approve(uniV3Router, amt); // TODO: cheaper to SLOAD allowance to check if we need to approve max?
+        ApproveLike(src).approve(uniV3Router, amt);
         SwapRouterLike.ExactInputParams memory params = SwapRouterLike.ExactInputParams({
             path:             path,
             recipient:        to,
