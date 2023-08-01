@@ -3,6 +3,7 @@
 pragma solidity ^0.8.16;
 
 contract VatMock {
+    uint256 public live = 1;
     uint256 public Art;
     uint256 public rate = 10**27;
     uint256 public line = 20_000_000 * 10**45;
@@ -46,5 +47,9 @@ contract VatMock {
 
     function fold(uint256 rate_) external {
         rate = rate + rate_;
+    }
+
+    function cage() external {
+        live = 0;
     }
 }

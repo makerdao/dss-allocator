@@ -33,8 +33,8 @@ interface GemLike {
 }
 
 interface VatLike {
-    function gem(bytes32, address) external view returns (uint256);
     function live() external view returns (uint256);
+    function urns(bytes32, address) external view returns (uint256, uint256);
 }
 
 contract AllocatorRedeemer {
@@ -42,6 +42,7 @@ contract AllocatorRedeemer {
 
     mapping (address => uint256) public bag;
     mapping (address => mapping (address => uint256)) public out;
+    mapping (address => uint256) public totOut;
 
     // --- immutables ---
 
@@ -83,16 +84,19 @@ contract AllocatorRedeemer {
         require(wad > 0, "AllocatorRedeemer/wad-zero");
 
         gem.transferFrom(msg.sender, address(this), wad);
-        bag[msg.sender] = wad;
+        bag[msg.sender] += wad;
         emit Pack(msg.sender, wad);
     }
 
     function cash(address asset, uint256 wad) external {
         require(wad > 0, "AllocatorRedeemer/wad-zero");
-        uint256 total = 10**6 * WAD - vat.gem(ilk, vault);
-        uint256 out_ = out[asset][msg.sender] = out[asset][msg.sender] + wad;
+        (uint256 ink,) = vat.urns(ilk, vault);
+        uint256 totShares = gem.totalSupply() - ink;
+        uint256 totOut_   = totOut[asset];
+        totOut[asset]    += wad;
+        uint256 out_      = out[asset][msg.sender] += wad;
         require(out_ <= bag[msg.sender], "AllocatorRedeemer/insufficient-bag-balance");
-        GemLike(asset).transfer(msg.sender, wad * GemLike(asset).totalSupply() / total);
+        GemLike(asset).transfer(msg.sender, wad * GemLike(asset).balanceOf(address(this)) / (totShares - totOut_));
         emit Cash(asset, msg.sender, wad);
     }
 }

@@ -7,6 +7,7 @@ import { DepositorUniV3 } from "src/funnels/DepositorUniV3.sol";
 import { StableDepositorUniV3 } from "src/funnels/automation/StableDepositorUniV3.sol";
 import { AllocatorRoles } from "src/AllocatorRoles.sol";
 import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
+import { VatMock } from "test/mocks/VatMock.sol";
 
 interface GemLike {
     function balanceOf(address) external view returns (uint256);
@@ -31,6 +32,7 @@ contract StableDepositorUniV3Test is DssTest {
     event Diss(address indexed usr);
     event SetConfig(address indexed gem0, address indexed gem1, uint24 indexed fee, int24 tickLower, int24 tickUpper, int32 num, uint32 hop, uint96 amt0, uint96 amt1, uint96 req0, uint96 req1);
     
+    VatMock              public vat;
     AllocatorBuffer      public buffer;
     DepositorUniV3       public depositor;
     StableDepositorUniV3 public stableDepositor;
@@ -53,9 +55,10 @@ contract StableDepositorUniV3Test is DssTest {
     function setUp() public {
         vm.createSelectFork(vm.envString("ETH_RPC_URL"));
 
-        buffer = new AllocatorBuffer();
         AllocatorRoles roles = new AllocatorRoles();
-        depositor = new DepositorUniV3(address(roles), ilk, UNIV3_FACTORY, address(buffer));
+        vat = new VatMock();
+        buffer = new AllocatorBuffer();
+        depositor = new DepositorUniV3(address(roles), address(vat), ilk, UNIV3_FACTORY, address(buffer));
         stableDepositor = new StableDepositorUniV3(address(depositor));
 
         roles.setIlkAdmin(ilk, address(this));

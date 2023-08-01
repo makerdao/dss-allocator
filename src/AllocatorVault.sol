@@ -203,6 +203,4 @@ contract AllocatorVault {
     function wipe(uint256 wad) external {
         wipe(buffer, wad);
     }
-
-    // TODO: evaluate if quit function is necessary and how it should be
 }

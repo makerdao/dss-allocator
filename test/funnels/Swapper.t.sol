@@ -7,6 +7,7 @@ import { Swapper } from "src/funnels/Swapper.sol";
 import { SwapperCalleeUniV3 } from "src/funnels/callees/SwapperCalleeUniV3.sol";
 import { AllocatorRoles } from "src/AllocatorRoles.sol";
 import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
+import { VatMock } from "test/mocks/VatMock.sol";
 
 interface GemLike {
     function balanceOf(address) external view returns (uint256);
@@ -25,9 +26,10 @@ contract SwapperTest is DssTest {
     event SetLimits(address indexed src, address indexed dst, uint96 cap, uint32 era);
     event Swap(address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
 
-    AllocatorRoles public roles;
-    AllocatorBuffer public buffer;
-    Swapper public swapper;
+    AllocatorRoles     public roles;
+    VatMock            public vat;
+    AllocatorBuffer    public buffer;
+    Swapper            public swapper;
     SwapperCalleeUniV3 public uniV3Callee;
 
     bytes32 constant ilk = "aaa";
@@ -46,9 +48,10 @@ contract SwapperTest is DssTest {
     function setUp() public {
         vm.createSelectFork(vm.envString("ETH_RPC_URL"));
 
-        buffer = new AllocatorBuffer();
         roles = new AllocatorRoles();
-        swapper = new Swapper(address(roles), ilk, address(buffer));
+        vat = new VatMock();
+        buffer = new AllocatorBuffer();
+        swapper = new Swapper(address(roles), address(vat), ilk, address(buffer));
         uniV3Callee = new SwapperCalleeUniV3(UNIV3_ROUTER);
 
         roles.setIlkAdmin(ilk, address(this));
@@ -65,8 +68,9 @@ contract SwapperTest is DssTest {
     }
 
     function testConstructor() public {
-        Swapper s = new Swapper(address(0xBEEF), "SubDAO 1", address(0xAAA));
+        Swapper s = new Swapper(address(0xBEEF), address(0xBBB), "SubDAO 1", address(0xAAA));
         assertEq(address(s.roles()),  address(0xBEEF));
+        assertEq(address(s.vat()), address(0xBBB));
         assertEq(s.ilk(), "SubDAO 1");
         assertEq(s.buffer(), address(0xAAA));
         assertEq(s.wards(address(this)), 1);

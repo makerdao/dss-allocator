@@ -8,6 +8,7 @@ import { StableSwapper } from "src/funnels/automation/StableSwapper.sol";
 import { SwapperCalleeUniV3 } from "src/funnels/callees/SwapperCalleeUniV3.sol";
 import { AllocatorRoles } from "src/AllocatorRoles.sol";
 import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
+import { VatMock } from "test/mocks/VatMock.sol";
 
 contract StableSwapperTest is DssTest {
     event Kiss(address indexed usr);
@@ -15,9 +16,10 @@ contract StableSwapperTest is DssTest {
     event SetConfig(address indexed src, address indexed dst, uint128 num, uint32 hop, uint96 lot, uint96 req);
     event Swap(address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
 
-    AllocatorBuffer public buffer;
-    Swapper public swapper;
-    StableSwapper public stableSwapper;
+    VatMock            public vat;
+    AllocatorBuffer    public buffer;
+    Swapper            public swapper;
+    StableSwapper      public stableSwapper;
     SwapperCalleeUniV3 public uniV3Callee;
 
     bytes32 constant ilk = "aaa";
@@ -36,9 +38,10 @@ contract StableSwapperTest is DssTest {
     function setUp() public {
         vm.createSelectFork(vm.envString("ETH_RPC_URL"));
 
-        buffer = new AllocatorBuffer();
         AllocatorRoles roles = new AllocatorRoles();
-        swapper = new Swapper(address(roles), ilk, address(buffer));
+        vat = new VatMock();
+        buffer = new AllocatorBuffer();
+        swapper = new Swapper(address(roles), address(vat), ilk, address(buffer));
         uniV3Callee = new SwapperCalleeUniV3(UNIV3_ROUTER);
         stableSwapper = new StableSwapper(address(swapper));
 

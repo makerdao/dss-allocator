@@ -103,7 +103,7 @@ contract DepositorUniV3 {
 
     constructor(address roles_, address vat_, bytes32 ilk_, address uniV3Factory_, address buffer_) {
         roles        = RolesLike(roles_);
-        vat = VatLike(vat_);
+        vat          = VatLike(vat_);
         ilk          = ilk_;
         uniV3Factory = uniV3Factory_;
         buffer       = buffer_;
@@ -129,7 +129,7 @@ contract DepositorUniV3 {
 
     function setLimits(address gem0, address gem1, uint24 fee, uint96 cap0, uint96 cap1, uint32 era) external auth {
         require(gem0 < gem1, "DepositorUniV3/wrong-gem-order");
-        require(vat.live() == 0, "DepositorUniV3/system-not-live");
+        require(vat.live() == 1, "DepositorUniV3/system-not-live");
         limits[gem0][gem1][fee] = PairLimit({
             cap0: cap0,
             cap1: cap1,
@@ -312,7 +312,7 @@ contract DepositorUniV3 {
         auth
         returns (uint128 liquidity, uint256 amt0, uint256 amt1, uint256 fees0, uint256 fees1)
     {
-        (uint128 liquidity, uint256 amt0, uint256 amt1, uint256 fees0, uint256 fees1) = _withdraw(p, takeFees);
+        (liquidity, amt0, amt1, fees0, fees1) = _withdraw(p, takeFees);
     }
 
     struct CollectParams {
@@ -355,7 +355,7 @@ contract DepositorUniV3 {
         limits[gem0][gem1][fee].due0 = type(uint96).max;
         limits[gem0][gem1][fee].due1 = type(uint96).max;
 
-        (uint128 liquidity,,,,) = getPosition(gem0, gem1, fee, tickLower, tickUpper);
+        (liquidity,,,,) = getPosition(gem0, gem1, fee, tickLower, tickUpper);
 
         LiquidityParams memory p = LiquidityParams({
             gem0:        gem0,

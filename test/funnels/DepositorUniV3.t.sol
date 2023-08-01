@@ -7,6 +7,7 @@ import { DepositorUniV3 } from "src/funnels/DepositorUniV3.sol";
 import { SwapperCalleeUniV3 } from "src/funnels/callees/SwapperCalleeUniV3.sol";
 import { AllocatorRoles } from "src/AllocatorRoles.sol";
 import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
+import { VatMock } from "test/mocks/VatMock.sol";
 
 interface GemLike {
     function approve(address, uint256) external;
@@ -44,6 +45,7 @@ contract DepositorUniV3Test is DssTest {
     event Collect(address indexed sender, address indexed gem0, address indexed gem1, uint256 fees0, uint256 fees1);
 
     AllocatorRoles  public roles;
+    VatMock         public vat;
     AllocatorBuffer public buffer;
     DepositorUniV3  public depositor;
 
@@ -64,9 +66,10 @@ contract DepositorUniV3Test is DssTest {
     function setUp() public {
         vm.createSelectFork(vm.envString("ETH_RPC_URL"));
         
-        buffer = new AllocatorBuffer();
         roles = new AllocatorRoles();
-        depositor = new DepositorUniV3(address(roles), ilk, UNIV3_FACTORY, address(buffer));
+        vat = new VatMock();
+        buffer = new AllocatorBuffer();
+        depositor = new DepositorUniV3(address(roles), address(vat), ilk, UNIV3_FACTORY, address(buffer));
 
         roles.setIlkAdmin(ilk, address(this));
         roles.setRoleAction(ilk, DEPOSITOR_ROLE, address(depositor), depositor.deposit.selector, true);
@@ -83,8 +86,9 @@ contract DepositorUniV3Test is DssTest {
     }
 
     function testConstructor() public {
-        DepositorUniV3 d = new DepositorUniV3(address(0xBEEF), "SubDAO 1", address(0xAAA), address(0xCCC));
+        DepositorUniV3 d = new DepositorUniV3(address(0xBEEF), address(0xBBB), "SubDAO 1", address(0xAAA), address(0xCCC));
         assertEq(address(d.roles()),  address(0xBEEF));
+        assertEq(address(d.vat()), address(0xBBB));
         assertEq(d.ilk(), "SubDAO 1");
         assertEq(d.uniV3Factory(), address(0xAAA));
         assertEq(d.buffer(), address(0xCCC));
