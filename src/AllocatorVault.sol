@@ -33,21 +33,21 @@ interface JugLike {
     function drip(bytes32) external returns (uint256);
 }
 
-interface TokenLike {
+interface GemLike {
     function totalSupply() external view returns (uint256);
     function approve(address, uint256) external;
     function transferFrom(address, address, uint256) external;
 }
 
 interface GemJoinLike {
-    function gem() external view returns (TokenLike);
+    function gem() external view returns (GemLike);
     function ilk() external view returns (bytes32);
     function vat() external view returns (address);
     function join(address, uint256) external;
 }
 
 interface NstJoinLike {
-    function nst() external view returns (TokenLike);
+    function nst() external view returns (GemLike);
     function vat() external view returns (address);
     function exit(address, uint256) external;
     function join(address, uint256) external;
@@ -73,7 +73,7 @@ contract AllocatorVault {
     bytes32     immutable public ilk;
     GemJoinLike immutable public gemJoin;
     NstJoinLike immutable public nstJoin;
-    TokenLike   immutable public nst;
+    GemLike     immutable public nst;
 
     // --- events ---
 
@@ -147,7 +147,7 @@ contract AllocatorVault {
     // --- administration ---
 
     function init() external auth {
-        TokenLike gem = gemJoin.gem();
+        GemLike gem = gemJoin.gem();
         uint256 supply = gem.totalSupply();
         require(supply == 10**6 * WAD, "AllocatorVault/supply-not-one-million-wad");
 

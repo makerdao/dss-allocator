@@ -26,7 +26,7 @@ interface RegistryLike {
     function buffers(bytes32) external view returns (address);
 }
 
-interface TokenLike {
+interface GemLike {
     function transfer(address, uint256) external;
     function transferFrom(address, address, uint256) external;
 }
@@ -94,7 +94,7 @@ contract AllocatorConduitMock is IAllocatorConduit {
 
     function deposit(bytes32 ilk, address asset, uint256 amount) external ilkAuth(ilk) {
         address buffer = registry.buffers(ilk);
-        TokenLike(asset).transferFrom(buffer, address(this), amount);
+        GemLike(asset).transferFrom(buffer, address(this), amount);
         positions[ilk][asset] += amount;
         emit Deposit(ilk, asset, buffer, amount);
     }
@@ -104,7 +104,7 @@ contract AllocatorConduitMock is IAllocatorConduit {
         amount = balance < maxAmount ? balance : maxAmount;
         positions[ilk][asset] = balance - amount;
         address buffer = registry.buffers(ilk);
-        TokenLike(asset).transfer(buffer, amount);
+        GemLike(asset).transfer(buffer, amount);
         emit Withdraw(ilk, asset, buffer, amount);
     }
 }

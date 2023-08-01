@@ -16,7 +16,7 @@
 
 pragma solidity ^0.8.16;
 
-interface TokenLike {
+interface GemLike {
     function balanceOf(address) external view returns (uint256);
     function approve(address, uint256) external;
     function transfer(address, uint256) external;
@@ -63,7 +63,7 @@ contract AllocatorBuffer {
     // --- functions ---
 
     function approve(address asset, address spender, uint256 amount) external auth {
-        TokenLike(asset).approve(spender, amount);
+        GemLike(asset).approve(spender, amount);
         emit Approve(asset, spender, amount);
     }
 }
