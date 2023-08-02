@@ -94,9 +94,10 @@ contract AllocatorRedeemer {
     }
 
     // WARNING `cash` should be called after:
-    // - the vault urn has been skimmed in the `End` module (otherwise the `totShares` will be wrongly accounted)
+    // - the vault urn has been skimmed in the `End` module (otherwise the `totShares` will be wrongly accounted).
     // - the buffer already received the total amount for that asset. In case more value is still expected, cashing before
     //   will mean resigning to that portion of the share. Pending stakeholders will accrue it.
+    // - all receving funds in the buffer are previously pulled to this contract.
     function cash(address asset, uint256 wad) external {
         require(wad > 0, "AllocatorRedeemer/wad-zero");
         (uint256 ink,) = vat.urns(ilk, vault);
