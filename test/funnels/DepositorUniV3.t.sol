@@ -43,6 +43,7 @@ contract DepositorUniV3Test is DssTest {
     event Deposit(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1);
     event Withdraw(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1, uint256 fees0, uint256 fees1);
     event Collect(address indexed sender, address indexed gem0, address indexed gem1, uint256 fees0, uint256 fees1);
+    event Cage(address indexed gem0, address indexed gem1, uint24 indexed fee, int24 tickLower, int24 tickUpper, uint128 liquidity, uint256 amt0, uint256 amt1, uint256 fees0, uint256 fees1);
 
     AllocatorRoles  public roles;
     VatMock         public vat;
@@ -857,6 +858,11 @@ contract DepositorUniV3Test is DssTest {
         vm.expectRevert("DepositorUniV3/vat-not-live");
         depositor.setLimits(DAI, USDC, 100, uint96(10_000 * WAD), uint96(10_000 * 10**6), 3600 seconds);
 
+        uint256 snapshot = vm.snapshot();
+        (uint128 liquidity, uint256 amt0, uint256 amt1, uint256 fees0, uint256 fees1) = depositor.cage(DAI, USDC, 100, REF_TICK-100, REF_TICK+100);
+        vm.revertTo(snapshot);
+        vm.expectEmit(true, true, true, true);
+        emit Cage(DAI, USDC, 100, REF_TICK-100, REF_TICK+100, liquidity, amt0, amt1, fees0, fees1);
         depositor.cage(DAI, USDC, 100, REF_TICK-100, REF_TICK+100);
         assertEq(_getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100), 0);
         assertGt(_getLiquidity(DAI, USDC, 100, REF_TICK-200, REF_TICK+200), 0);

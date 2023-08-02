@@ -25,6 +25,7 @@ contract CalleeMock is DssTest {
 contract SwapperTest is DssTest {
     event SetLimits(address indexed src, address indexed dst, uint96 cap, uint32 era);
     event Swap(address indexed sender, address indexed src, address indexed dst, uint256 amt, uint256 out);
+    event Cage(address indexed src, address indexed dst);
 
     AllocatorRoles     public roles;
     VatMock            public vat;
@@ -215,6 +216,8 @@ contract SwapperTest is DssTest {
         vm.expectRevert("Swapper/vat-not-live");
         swapper.setLimits(DAI, USDC, uint96(10_000 * WAD), 3600 seconds);
 
+        vm.expectEmit(true, true, true, true);
+        emit Cage(DAI, USDC);
         swapper.cage(DAI, USDC);
         (cap,, due,) = swapper.limits(DAI, USDC);
         assertEq(cap, 0);
