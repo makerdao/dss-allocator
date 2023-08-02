@@ -177,7 +177,6 @@ contract AllocatorRedeemerTest is DssTest {
         vm.prank(user4); redeemer.cash(address(usdc), 100_000 * 10**18);
         assertEq(usdc.balanceOf(user4), 17_500_000 * 10**6);
         assertEq(usdc.balanceOf(address(redeemer)), 0);
-        assertEq(usdc.balanceOf(address(redeemer)), 0);
         assertEq(redeemer.out(address(usdc), user4), 100_000 * 10**18);
         assertEq(redeemer.totOut(address(usdc)), 400_000 * 10**18);
     }
