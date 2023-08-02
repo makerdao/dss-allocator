@@ -32,6 +32,10 @@ interface GemLike {
     function transferFrom(address, address, uint256) external;
 }
 
+interface BufferLike {
+    function approve(address, address, uint256) external;
+}
+
 interface VatLike {
     function live() external view returns (uint256);
     function urns(bytes32, address) external view returns (uint256, uint256);
@@ -76,8 +80,9 @@ contract AllocatorRedeemer {
 
     function pull(address asset) external {
         require(vat.live() == 0, "AllocatorRedeemer/system-live");
-        // TODO: define if using buffer.approve or making sure to give a prev approval
-        GemLike(asset).transferFrom(buffer, address(this), GemLike(asset).balanceOf(buffer));
+        uint256 amt = GemLike(asset).balanceOf(buffer);
+        BufferLike(buffer).approve(asset, address(this), amt);
+        GemLike(asset).transferFrom(buffer, address(this), amt);
     }
 
     function pack(uint256 wad) external {

@@ -129,7 +129,7 @@ contract DepositorUniV3 {
 
     function setLimits(address gem0, address gem1, uint24 fee, uint96 cap0, uint96 cap1, uint32 era) external auth {
         require(gem0 < gem1, "DepositorUniV3/wrong-gem-order");
-        require(vat.live() == 1, "DepositorUniV3/system-not-live");
+        require(vat.live() == 1, "DepositorUniV3/vat-not-live");
         limits[gem0][gem1][fee] = PairLimit({
             cap0: cap0,
             cap1: cap1,
@@ -348,7 +348,7 @@ contract DepositorUniV3 {
         external
         returns (uint128 liquidity, uint256 amt0, uint256 amt1, uint256 fees0, uint256 fees1)
     {
-        require(vat.live() == 0, "DepositorUniV3/system-is-live");
+        require(vat.live() == 0, "DepositorUniV3/vat-live");
 
         limits[gem0][gem1][fee].cap0 = type(uint96).max;
         limits[gem0][gem1][fee].cap1 = type(uint96).max;

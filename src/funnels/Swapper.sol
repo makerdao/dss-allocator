@@ -81,7 +81,7 @@ contract Swapper {
     }
 
     function setLimits(address src, address dst, uint96 cap, uint32 era) external auth {
-        require(vat.live() == 1, "Swapper/system-not-live");
+        require(vat.live() == 1, "Swapper/vat-not-live");
         limits[src][dst] = PairLimit({
             cap: cap,
             era: era,
@@ -120,7 +120,7 @@ contract Swapper {
     }
 
     function cage(address src, address dst) external {
-        require(vat.live() == 0, "Swapper/system-is-live");
+        require(vat.live() == 0, "Swapper/vat-live");
 
         limits[src][dst].cap = 0;
         limits[src][dst].due = 0;
