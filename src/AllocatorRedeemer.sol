@@ -88,7 +88,6 @@ contract AllocatorRedeemer {
 
     function pack(uint256 wad) external {
         require(wad > 0, "AllocatorRedeemer/wad-zero");
-
         gem.transferFrom(msg.sender, address(this), wad);
         bag[msg.sender] += wad;
         emit Pack(msg.sender, wad);
