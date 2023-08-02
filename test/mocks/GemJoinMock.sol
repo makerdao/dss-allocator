@@ -20,4 +20,9 @@ contract GemJoinMock {
         vat.slip(ilk, usr, int256(wad));
         gem.transferFrom(msg.sender, address(this), wad);
     }
+
+    function exit(address usr, uint256 wad) external {
+        vat.slip(ilk, msg.sender, -int256(wad));
+        gem.transfer(usr, wad);
+    }
 }

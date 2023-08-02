@@ -45,6 +45,15 @@ contract VatMock {
         gem[ilk][usr] = wad >= 0 ? gem[ilk][usr] + uint256(wad) : gem[ilk][usr] - uint256(-wad);
     }
 
+    function grab(bytes32 i, address u, address v, address, int256 dink, int256 dart) external {
+        Urn storage urn = urns[i][u];
+
+        urn.ink = uint256(int256(urn.ink) + dink);
+        urn.art = uint256(int256(urn.art) + dart);
+
+        gem[i][v] = uint256(int256(gem[i][v]) - dink);
+    }
+
     function fold(uint256 rate_) external {
         rate = rate + rate_;
     }
