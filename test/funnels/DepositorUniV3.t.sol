@@ -817,4 +817,61 @@ contract DepositorUniV3Test is DssTest {
             data: abi.encode(DepositorUniV3.MintCallbackData({gem0: DAI, gem1: USDC, fee: 100}))
         });
     }
+
+    function testCage() public {
+        assertEq(_getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100), 0);
+        DepositorUniV3.LiquidityParams memory dp = DepositorUniV3.LiquidityParams({
+            gem0: DAI,
+            gem1: USDC,
+            fee: uint24(100),
+            tickLower: REF_TICK-100,
+            tickUpper: REF_TICK+100,
+            liquidity: 0,
+            amt0Desired: 500 * WAD,
+            amt1Desired: 500 * 10**6,
+            amt0Min: 490 * WAD,
+            amt1Min: 490 * 10**6
+        });
+        vm.prank(FACILITATOR); depositor.deposit(dp);
+        assertGt(_getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100), 0);
+        dp.tickLower = REF_TICK-200;
+        dp.tickUpper = REF_TICK+200;
+        vm.prank(FACILITATOR); depositor.deposit(dp);
+        assertGt(_getLiquidity(DAI, USDC, 100, REF_TICK-200, REF_TICK+200), 0);
+        (uint96 cap0, uint96 cap1,, uint96 due0, uint96 due1,) = depositor.limits(DAI, USDC, 100);
+        assertGt(cap0, 0);
+        assertGt(cap1, 0);
+        assertGt(due0, 0);
+        assertGt(due1, 0);
+
+        uint256 daiBalance  = GemLike(DAI).balanceOf(address(buffer));
+        uint256 usdcBalance = GemLike(USDC).balanceOf(address(buffer));
+
+        vm.expectRevert("DepositorUniV3/vat-live");
+        depositor.cage(DAI, USDC, 100, REF_TICK-100, REF_TICK+100);
+
+        assertEq(vat.live(), 1);
+        vat.cage();
+        assertEq(vat.live(), 0);
+
+        vm.expectRevert("DepositorUniV3/vat-not-live");
+        depositor.setLimits(DAI, USDC, 100, uint96(10_000 * WAD), uint96(10_000 * 10**6), 3600 seconds);
+
+        depositor.cage(DAI, USDC, 100, REF_TICK-100, REF_TICK+100);
+        assertEq(_getLiquidity(DAI, USDC, 100, REF_TICK-100, REF_TICK+100), 0);
+        assertGt(_getLiquidity(DAI, USDC, 100, REF_TICK-200, REF_TICK+200), 0);
+        assertGt(GemLike(DAI).balanceOf(address(buffer)), daiBalance);
+        assertGt(GemLike(USDC).balanceOf(address(buffer)), usdcBalance);
+        daiBalance  = GemLike(DAI).balanceOf(address(buffer));
+        usdcBalance = GemLike(USDC).balanceOf(address(buffer));
+        depositor.cage(DAI, USDC, 100, REF_TICK-200, REF_TICK+200);
+        assertEq(_getLiquidity(DAI, USDC, 100, REF_TICK-200, REF_TICK+200), 0);
+        assertGt(GemLike(DAI).balanceOf(address(buffer)), daiBalance);
+        assertGt(GemLike(USDC).balanceOf(address(buffer)), usdcBalance);
+        (cap0, cap1,, due0, due1,) = depositor.limits(DAI, USDC, 100);
+        assertEq(cap0, 0);
+        assertEq(cap1, 0);
+        assertEq(due0, 0);
+        assertEq(due1, 0);
+    }
 }

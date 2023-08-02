@@ -198,4 +198,26 @@ contract SwapperTest is DssTest {
         vm.expectRevert("Swapper/too-few-dst-received");
         vm.prank(FACILITATOR); swapper.swap(USDC, DAI, 100 * 10**6, 200 * WAD, address(callee), USDC_DAI_PATH);
     }
+
+    function testCage() public {
+        vm.prank(FACILITATOR); swapper.swap(DAI, USDC, 100 * WAD, 99 * 10**6, address(uniV3Callee), DAI_USDC_PATH);
+        (uint96 cap,, uint96 due,) = swapper.limits(DAI, USDC);
+        assertGt(cap, 0);
+        assertGt(due, 0);
+
+        vm.expectRevert("Swapper/vat-live");
+        swapper.cage(DAI, USDC);
+
+        assertEq(vat.live(), 1);
+        vat.cage();
+        assertEq(vat.live(), 0);
+
+        vm.expectRevert("Swapper/vat-not-live");
+        swapper.setLimits(DAI, USDC, uint96(10_000 * WAD), 3600 seconds);
+
+        swapper.cage(DAI, USDC);
+        (cap,, due,) = swapper.limits(DAI, USDC);
+        assertEq(cap, 0);
+        assertEq(due, 0);
+    }
 }
