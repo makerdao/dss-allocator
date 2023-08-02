@@ -62,6 +62,7 @@ contract AllocatorRedeemer {
 
     // --- events ---
 
+    event Pull(address indexed asset, uint256 amt);
     event Pack(address indexed sender, uint256 wad);
     event Cash(address indexed asset, address indexed sender, uint256 wad);
 
@@ -83,6 +84,7 @@ contract AllocatorRedeemer {
         uint256 amt = GemLike(asset).balanceOf(buffer);
         BufferLike(buffer).approve(asset, address(this), amt);
         GemLike(asset).transferFrom(buffer, address(this), amt);
+        emit Pull(asset, amt);
     }
 
     function pack(uint256 wad) external {
