@@ -66,7 +66,6 @@ contract AllocatorRedeemer {
     event Pack(address indexed sender, uint256 wad);
     event Cash(address indexed asset, address indexed sender, uint256 wad);
 
-
     // --- constructor ---
 
     constructor(address vat_, address vault_, address buffer_) {
