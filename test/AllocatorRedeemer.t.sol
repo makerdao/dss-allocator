@@ -110,6 +110,8 @@ contract AllocatorRedeemerTest is DssTest {
 
         vm.expectRevert("AllocatorRedeemer/wad-zero");
         vm.prank(user1); redeemer.pack(0);
+        vm.expectEmit(true, true, true, true);
+        emit Pack(user1, 80_000 * 10**18);
         vm.prank(user1); redeemer.pack(80_000 * 10**18);
         assertEq(redeemer.bag(user1), 80_000 * 10**18);
         vm.prank(user1); redeemer.pack(10_000 * 10**18);
@@ -122,11 +124,14 @@ contract AllocatorRedeemerTest is DssTest {
         vm.prank(user3); redeemer.pack(100_000 * 10**18);
         vm.prank(user4); redeemer.pack(100_000 * 10**18);
 
-
+        vm.expectEmit(true, true, true, true);
+        emit Cash(address(nst), user1, 0, 0);
         vm.prank(user1); redeemer.cash(address(nst), 0);
         assertEq(nst.balanceOf(user1), 0);
         assertEq(redeemer.cashed(address(nst), user1), 0);
         assertEq(redeemer.out(address(nst), user1), 0);
+        vm.expectEmit(true, true, true, true);
+        emit Cash(address(nst), user1, 50_000 * 10**18, 1_250_000 * 10**18);
         vm.prank(user1); redeemer.cash(address(nst), 50_000 * 10**18);
         assertEq(nst.balanceOf(user1), 1_250_000 * 10**18);
         assertEq(redeemer.cashed(address(nst), user1), 1_250_000 * 10**18);
