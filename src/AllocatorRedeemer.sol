@@ -94,11 +94,11 @@ contract AllocatorRedeemer {
     function cash(address asset, uint256 wad) external {
         (uint256 ink,) = vat.urns(ilk, vault);
         uint256 totShares = gem.totalSupply() - ink;
-        uint256 out_      = out[asset][msg.sender] += wad;
+        uint256 out_ = out[asset][msg.sender] += wad;
         require(out_ <= bag[msg.sender], "AllocatorRedeemer/insufficient-bag-balance");
-        uint256 maxCashed = pulled[asset] * out_ / totShares;
-        uint256 sent = maxCashed - cashed[asset][msg.sender];
-        cashed[asset][msg.sender] = maxCashed;
+        uint256 cashed_ = pulled[asset] * out_ / totShares;
+        uint256 sent = cashed_ - cashed[asset][msg.sender];
+        cashed[asset][msg.sender] = cashed_;
         GemLike(asset).transfer(msg.sender, sent);
         emit Cash(asset, msg.sender, wad, sent);
     }
