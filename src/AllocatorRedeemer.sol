@@ -56,10 +56,6 @@ contract AllocatorRedeemer {
     bytes32 immutable public ilk;
     GemLike immutable public gem;
 
-    // --- constants ---
-
-    uint256 constant WAD = 10**18;
-
     // --- events ---
 
     event Pull(address indexed asset, uint256 amt);
