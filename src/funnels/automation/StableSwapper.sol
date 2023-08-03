@@ -98,7 +98,7 @@ contract StableSwapper {
 
         require(cfg.num > 0, "StableSwapper/exceeds-num");
         require(block.timestamp >= cfg.zzz + cfg.hop, "StableSwapper/too-soon");
-        configs[src][dst].num = cfg.num - 1;
+        unchecked { configs[src][dst].num = cfg.num - 1; }
         configs[src][dst].zzz = uint32(block.timestamp);
 
         if (minOut == 0) minOut = cfg.req;
