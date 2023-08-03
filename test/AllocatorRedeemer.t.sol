@@ -35,7 +35,7 @@ contract AllocatorRedeemerTest is DssTest {
 
     event Pull(address indexed asset, uint256 amt);
     event Pack(address indexed sender, uint256 wad);
-    event Cash(address indexed asset, address indexed sender, uint256 wad);
+    event Cash(address indexed asset, address indexed sender, uint256 wad, uint256 sent);
 
     function setUp() public {
         ilk      = "TEST-ILK";
@@ -84,6 +84,7 @@ contract AllocatorRedeemerTest is DssTest {
         redeemer.pull(address(nst));
         assertEq(nst.balanceOf(address(buffer)), 0);
         assertEq(nst.balanceOf(address(redeemer)), 10_000_000 * 10**18);
+        assertEq(redeemer.pulled(address(nst)), 10_000_000 * 10**18);
 
         assertEq(usdc.balanceOf(address(buffer)), 10_000_000 * 10**6);
         assertEq(usdc.balanceOf(address(redeemer)), 0);
@@ -92,6 +93,7 @@ contract AllocatorRedeemerTest is DssTest {
         redeemer.pull(address(usdc));
         assertEq(usdc.balanceOf(address(buffer)), 0);
         assertEq(usdc.balanceOf(address(redeemer)), 10_000_000 * 10**6);
+        assertEq(redeemer.pulled(address(usdc)), 10_000_000 * 10**6);
 
         // Simulate skim (only 40% of the totalSupply of the token)
         vat.grab(ilk, address(vault), address(this), address(0), -400_000 * 10**18, -int256(art));
@@ -120,64 +122,104 @@ contract AllocatorRedeemerTest is DssTest {
         vm.prank(user3); redeemer.pack(100_000 * 10**18);
         vm.prank(user4); redeemer.pack(100_000 * 10**18);
 
-        vm.expectRevert("AllocatorRedeemer/wad-zero");
+
         vm.prank(user1); redeemer.cash(address(nst), 0);
+        assertEq(nst.balanceOf(user1), 0);
+        assertEq(redeemer.cashed(address(nst), user1), 0);
+        assertEq(redeemer.out(address(nst), user1), 0);
         vm.prank(user1); redeemer.cash(address(nst), 50_000 * 10**18);
         assertEq(nst.balanceOf(user1), 1_250_000 * 10**18);
+        assertEq(redeemer.cashed(address(nst), user1), 1_250_000 * 10**18);
         assertEq(redeemer.out(address(nst), user1), 50_000 * 10**18);
-        assertEq(redeemer.totOut(address(nst)), 50_000 * 10**18);
         vm.prank(user1); redeemer.cash(address(nst), 50_000 * 10**18);
         assertEq(nst.balanceOf(user1), 2_500_000 * 10**18);
         assertEq(nst.balanceOf(address(redeemer)), 7_500_000 * 10**18);
+        assertEq(redeemer.cashed(address(nst), user1), 2_500_000 * 10**18);
         assertEq(redeemer.out(address(nst), user1), 100_000 * 10**18);
-        assertEq(redeemer.totOut(address(nst)), 100_000 * 10**18);
         vm.prank(user1); redeemer.cash(address(usdc), 100_000 * 10**18);
         assertEq(usdc.balanceOf(user1), 2_500_000 * 10**6);
         assertEq(usdc.balanceOf(address(redeemer)), 7_500_000 * 10**6);
+        assertEq(redeemer.cashed(address(usdc), user1), 2_500_000 * 10**6);
         assertEq(redeemer.out(address(usdc), user1), 100_000 * 10**18);
-        assertEq(redeemer.totOut(address(usdc)), 100_000 * 10**18);
         vm.expectRevert("AllocatorRedeemer/insufficient-bag-balance");
         vm.prank(user1); redeemer.cash(address(usdc), 1);
 
         vm.prank(user2); redeemer.cash(address(nst), 100_000 * 10**18);
         assertEq(nst.balanceOf(user2), 2_500_000 * 10**18);
         assertEq(nst.balanceOf(address(redeemer)), 5_000_000 * 10**18);
+        assertEq(redeemer.cashed(address(nst), user2), 2_500_000 * 10**18);
         assertEq(redeemer.out(address(nst), user2), 100_000 * 10**18);
-        assertEq(redeemer.totOut(address(nst)), 200_000 * 10**18);
         vm.prank(user2); redeemer.cash(address(usdc), 100_000 * 10**18);
         assertEq(usdc.balanceOf(user2), 2_500_000 * 10**6);
         assertEq(usdc.balanceOf(address(redeemer)), 5_000_000 * 10**6);
+        assertEq(redeemer.cashed(address(usdc), user2), 2_500_000 * 10**6);
         assertEq(redeemer.out(address(usdc), user2), 100_000 * 10**18);
-        assertEq(redeemer.totOut(address(usdc)), 200_000 * 10**18);
 
         usdc.mint(address(buffer), 10_000_000 * 10**6); // More USDC comes to the buffer
         redeemer.pull(address(usdc));
+        assertEq(redeemer.pulled(address(usdc)), 20_000_000 * 10**6);
         assertEq(usdc.balanceOf(address(redeemer)), 15_000_000 * 10**6);
 
         vm.prank(user3); redeemer.cash(address(nst), 100_000 * 10**18);
         assertEq(nst.balanceOf(user3), 2_500_000 * 10**18);
         assertEq(nst.balanceOf(address(redeemer)), 2_500_000 * 10**18);
+        assertEq(redeemer.cashed(address(nst), user3), 2_500_000 * 10**18);
         assertEq(redeemer.out(address(nst), user3), 100_000 * 10**18);
-        assertEq(redeemer.totOut(address(nst)), 300_000 * 10**18);
         vm.prank(user3); redeemer.cash(address(usdc), 100_000 * 10**18);
-        assertEq(usdc.balanceOf(user3), 7_500_000 * 10**6);
-        assertEq(usdc.balanceOf(address(redeemer)), 7_500_000 * 10**6);
+        assertEq(usdc.balanceOf(user3), 5_000_000 * 10**6);
+        assertEq(usdc.balanceOf(address(redeemer)), 10_000_000 * 10**6);
         assertEq(redeemer.out(address(usdc), user3), 100_000 * 10**18);
-        assertEq(redeemer.totOut(address(usdc)), 300_000 * 10**18);
+
+        // users 1 and 2 can redeem the additional USDC
+        vm.prank(user1); redeemer.cash(address(usdc), 0);
+        assertEq(usdc.balanceOf(user1), 5_000_000 * 10**6);
+        assertEq(usdc.balanceOf(address(redeemer)), 7_500_000 * 10**6);
+        assertEq(redeemer.cashed(address(usdc), user1), 5_000_000 * 10**6);
+        assertEq(redeemer.out(address(usdc), user1), 100_000 * 10**18);
+        vm.expectRevert("AllocatorRedeemer/insufficient-bag-balance");
+        vm.prank(user1); redeemer.cash(address(usdc), 1);
+        vm.prank(user1); redeemer.cash(address(usdc), 0); // no-op
+        assertEq(usdc.balanceOf(user1), 5_000_000 * 10**6);
+        assertEq(usdc.balanceOf(address(redeemer)), 7_500_000 * 10**6);
+        assertEq(redeemer.cashed(address(usdc), user1), 5_000_000 * 10**6);
+        assertEq(redeemer.out(address(usdc), user1), 100_000 * 10**18);
+        vm.prank(user2); redeemer.cash(address(usdc), 0);
+        assertEq(usdc.balanceOf(user2), 5_000_000 * 10**6);
+        assertEq(usdc.balanceOf(address(redeemer)), 5_000_000 * 10**6);
+        assertEq(redeemer.cashed(address(usdc), user2), 5_000_000 * 10**6);
+        assertEq(redeemer.out(address(usdc), user2), 100_000 * 10**18);
 
         usdc.mint(address(buffer), 10_000_000 * 10**6); // More USDC comes to the buffer
         redeemer.pull(address(usdc));
-        assertEq(usdc.balanceOf(address(redeemer)), 17_500_000 * 10**6);
+        assertEq(redeemer.pulled(address(usdc)), 30_000_000 * 10**6);
+        assertEq(usdc.balanceOf(address(redeemer)), 15_000_000 * 10**6);
 
         vm.prank(user4); redeemer.cash(address(nst), 100_000 * 10**18);
         assertEq(nst.balanceOf(user4), 2_500_000 * 10**18);
         assertEq(nst.balanceOf(address(redeemer)), 0);
+        assertEq(redeemer.cashed(address(nst), user2), 2_500_000 * 10**18);
         assertEq(redeemer.out(address(nst), user4), 100_000 * 10**18);
-        assertEq(redeemer.totOut(address(nst)), 400_000 * 10**18);
         vm.prank(user4); redeemer.cash(address(usdc), 100_000 * 10**18);
-        assertEq(usdc.balanceOf(user4), 17_500_000 * 10**6);
-        assertEq(usdc.balanceOf(address(redeemer)), 0);
+        assertEq(usdc.balanceOf(user4), 7_500_000 * 10**6);
+        assertEq(usdc.balanceOf(address(redeemer)), 7_500_000 * 10**6);
+        assertEq(redeemer.cashed(address(usdc), user4), 7_500_000 * 10**6);
         assertEq(redeemer.out(address(usdc), user4), 100_000 * 10**18);
-        assertEq(redeemer.totOut(address(usdc)), 400_000 * 10**18);
+
+        // users 1, 2 and 3 can redeem the additional USDC
+        vm.prank(user1); redeemer.cash(address(usdc), 0);
+        assertEq(usdc.balanceOf(user1), 7_500_000 * 10**6);
+        assertEq(usdc.balanceOf(address(redeemer)), 5_000_000 * 10**6);
+        assertEq(redeemer.cashed(address(usdc), user1), 7_500_000 * 10**6);
+        assertEq(redeemer.out(address(usdc), user1), 100_000 * 10**18);
+        vm.prank(user2); redeemer.cash(address(usdc), 0);
+        assertEq(usdc.balanceOf(user2), 7_500_000 * 10**6);
+        assertEq(usdc.balanceOf(address(redeemer)), 2_500_000 * 10**6);
+        assertEq(redeemer.cashed(address(usdc), user2), 7_500_000 * 10**6);
+        assertEq(redeemer.out(address(usdc), user2), 100_000 * 10**18);
+        vm.prank(user3); redeemer.cash(address(usdc), 0);
+        assertEq(usdc.balanceOf(user3), 7_500_000 * 10**6);
+        assertEq(usdc.balanceOf(address(redeemer)), 0);
+        assertEq(redeemer.cashed(address(usdc), user2), 7_500_000 * 10**6);
+        assertEq(redeemer.out(address(usdc), user2), 100_000 * 10**18);
     }
 }

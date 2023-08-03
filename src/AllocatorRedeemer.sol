@@ -46,7 +46,8 @@ contract AllocatorRedeemer {
 
     mapping (address => uint256) public bag;
     mapping (address => mapping (address => uint256)) public out;
-    mapping (address => uint256) public totOut;
+    mapping (address => mapping (address => uint256)) public cashed;
+    mapping (address => uint256) public pulled;
 
     // --- immutables ---
 
@@ -60,7 +61,7 @@ contract AllocatorRedeemer {
 
     event Pull(address indexed asset, uint256 amt);
     event Pack(address indexed sender, uint256 wad);
-    event Cash(address indexed asset, address indexed sender, uint256 wad);
+    event Cash(address indexed asset, address indexed sender, uint256 wad, uint256 sent);
 
     // --- constructor ---
 
@@ -79,6 +80,7 @@ contract AllocatorRedeemer {
         uint256 amt = GemLike(asset).balanceOf(buffer);
         BufferLike(buffer).approve(asset, address(this), amt);
         GemLike(asset).transferFrom(buffer, address(this), amt);
+        pulled[asset] += amt;
         emit Pull(asset, amt);
     }
 
@@ -89,19 +91,15 @@ contract AllocatorRedeemer {
         emit Pack(msg.sender, wad);
     }
 
-    // WARNING `cash` should be called after:
-    // - the buffer already received the total amount for that asset. In case more value is still expected, cashing before
-    //   will mean resigning to that portion of the share. Pending stakeholders will accrue it.
-    // - all receving funds in the buffer are previously pulled to this contract.
     function cash(address asset, uint256 wad) external {
-        require(wad > 0, "AllocatorRedeemer/wad-zero");
         (uint256 ink,) = vat.urns(ilk, vault);
         uint256 totShares = gem.totalSupply() - ink;
-        uint256 totOut_   = totOut[asset];
-        totOut[asset]    += wad;
         uint256 out_      = out[asset][msg.sender] += wad;
         require(out_ <= bag[msg.sender], "AllocatorRedeemer/insufficient-bag-balance");
-        GemLike(asset).transfer(msg.sender, wad * GemLike(asset).balanceOf(address(this)) / (totShares - totOut_));
-        emit Cash(asset, msg.sender, wad);
+        uint256 maxCashed = pulled[asset] * out_ / totShares;
+        uint256 sent = maxCashed - cashed[asset][msg.sender];
+        cashed[asset][msg.sender] = maxCashed;
+        GemLike(asset).transfer(msg.sender, sent);
+        emit Cash(asset, msg.sender, wad, sent);
     }
 }
