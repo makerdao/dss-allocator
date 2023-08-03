@@ -79,7 +79,7 @@ contract AllocatorRedeemer {
     // --- functions ---
 
     function pull(address asset) external {
-        require(vat.live() == 0, "AllocatorRedeemer/system-live");
+        require(vat.live() == 0, "AllocatorRedeemer/vat-live");
         uint256 amt = GemLike(asset).balanceOf(buffer);
         BufferLike(buffer).approve(asset, address(this), amt);
         GemLike(asset).transferFrom(buffer, address(this), amt);

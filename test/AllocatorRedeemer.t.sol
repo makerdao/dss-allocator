@@ -70,7 +70,7 @@ contract AllocatorRedeemerTest is DssTest {
         assertEq(nst.balanceOf(address(buffer)),  10_000_000 * 10**18);
         assertEq(usdc.balanceOf(address(buffer)), 10_000_000 * 10**6);
 
-        vm.expectRevert("AllocatorRedeemer/system-live");
+        vm.expectRevert("AllocatorRedeemer/vat-live");
         redeemer.pull(address(usdc));
 
         assertEq(vat.live(), 1);
