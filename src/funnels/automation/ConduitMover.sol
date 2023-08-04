@@ -16,15 +16,22 @@
 
 pragma solidity ^0.8.16;
 
+import "./utils/EnumerableSet.sol";
+
 interface ConduitLike {
     function deposit(bytes32, address, uint256) external;
     function withdraw(bytes32, address, uint256) external;
 }
 
 contract ConduitMover {
+    using EnumerableSet for EnumerableSet.Bytes32Set;
+
     mapping (address => uint256) public wards;                                                // Admins
     mapping (address => uint256) public buds;                                                 // Whitelisted keepers
     mapping (address => mapping (address => mapping (address => MoveConfig))) public configs; // Configuration for keepers
+    mapping (bytes32 => Transfer) public transfers;
+
+    EnumerableSet.Bytes32Set private transferHashes;
 
     bytes32 public immutable ilk;    // Collateral type
     address public immutable buffer; // The address of the buffer contract
@@ -34,6 +41,12 @@ contract ConduitMover {
         uint32   hop; // Cooldown period it has to wait between `from` to `to` gem moves
         uint32   zzz; // Timestamp of the last `from` to `to` gem move
         uint128  lot; // The amount to move every hop for a `from` to `to` gem move
+    }
+
+    struct Transfer {
+        address from;
+        address to;
+        address gem;
     }
 
     event Rely(address indexed usr);
@@ -88,7 +101,21 @@ contract ConduitMover {
             zzz: 0,
             lot: lot
         });
+        bytes32 key = keccak256(abi.encode(from, to, gem));
+        if (num != 0) { // TODO: check hop < type(uint32).max ?
+            if (transferHashes.add(key)) transfers[key] = Transfer(from, to, gem);
+        } else {
+            transferHashes.remove(key);
+        }
         emit SetConfig(from, to, gem, num, hop, lot);
+    }
+
+    function numTransfers() external view returns (uint256) {
+        return transferHashes.length();
+    }
+
+    function transferAt(uint256 index) external view returns (Transfer memory) {
+        return transfers[transferHashes.at(index)];
     }
 
     function move(address from, address to, address gem) toll external {
@@ -98,6 +125,8 @@ contract ConduitMover {
         require(block.timestamp >= cfg.zzz + cfg.hop, "ConduitMover/too-soon");
         configs[from][to][gem].num = cfg.num - 1;
         configs[from][to][gem].zzz = uint32(block.timestamp);
+
+        if (cfg.num == 1) transferHashes.remove(keccak256(abi.encode(from, to, gem))); // TODO: maybe no cleanup?
 
         ConduitLike(from).withdraw(ilk, gem, cfg.lot);
         ConduitLike(to).deposit(ilk, gem, cfg.lot);

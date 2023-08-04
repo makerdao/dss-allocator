@@ -16,15 +16,22 @@
 
 pragma solidity ^0.8.16;
 
+import "./utils/EnumerableSet.sol";
+
 interface SwapperLike {
     function swap(address, address, uint256, uint256, address, bytes calldata) external returns (uint256);
 }
 
 contract StableSwapper {
+    using EnumerableSet for EnumerableSet.Bytes32Set;
+
     mapping (address => uint256) public wards;                           // Admins
     mapping (address => uint256) public buds;                            // Whitelisted keepers
     mapping (address => mapping (address => PairConfig)) public configs; // Configuration for keepers
+    mapping (bytes32 => Pair) public pairs;
 
+    EnumerableSet.Bytes32Set private pairHashes;
+    
     SwapperLike public immutable swapper;                                // Swapper for this StableSwapper
 
     struct PairConfig {
@@ -34,6 +41,13 @@ contract StableSwapper {
         uint96  lot; // The amount swapped by keepers from src to dst every hop
         uint96  req; // The minimum required output amount to insist on in the swap form src to dst
     }
+
+    struct Pair {
+        address src;
+        address dst;
+    }
+
+    uint256 internal constant WAD = 10 ** 18;
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
@@ -86,7 +100,21 @@ contract StableSwapper {
             lot: lot,
             req: req
         });
+        bytes32 key = keccak256(abi.encode(src, dst));
+        if (num > 0) { // TODO: check hop < type(uint32).max ?
+            if (pairHashes.add(key)) pairs[key] = Pair(src, dst);
+        } else {
+            pairHashes.remove(key);
+        }
         emit SetConfig(src, dst, num, hop, lot, req);
+    }
+
+    function numPairs() external view returns (uint256) {
+        return pairHashes.length();
+    }
+
+    function pairAt(uint256 index) external view returns (Pair memory) {
+        return pairs[pairHashes.at(index)];
     }
 
     // Note: the keeper's minOut value must be updated whenever configs[src][dst] is changed.
@@ -101,6 +129,8 @@ contract StableSwapper {
 
         if (minOut == 0) minOut = cfg.req;
         require(minOut >= cfg.req, "StableSwapper/min-too-small");
+
+        if (cfg.num == 1) pairHashes.remove(keccak256(abi.encode(src, dst))); // TODO: maybe no cleanup?
 
         out = swapper.swap(src, dst, cfg.lot, minOut, callee, data);
     }

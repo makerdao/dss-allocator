@@ -16,6 +16,8 @@
 
 pragma solidity ^0.8.16;
 
+import "./utils/EnumerableSet.sol";
+
 interface DepositorUniV3Like {
     struct LiquidityParams {
         address gem0;
@@ -59,9 +61,14 @@ interface DepositorUniV3Like {
 }
 
 contract StableDepositorUniV3 {
+    using EnumerableSet for EnumerableSet.Bytes32Set;
+
     mapping (address => uint256) public wards;                           // Admins
     mapping (address => uint256) public buds;                            // Whitelisted keepers
     mapping (address => mapping (address => mapping (uint24 => mapping (int24 => mapping (int24 => PairConfig))))) public configs; // Configuration for keepers
+    mapping (bytes32 => Pool) public pools;
+
+    EnumerableSet.Bytes32Set private poolHashes;
 
     DepositorUniV3Like public immutable depositor; // DepositorUniV3 for this StableDepositorUniV3
 
@@ -73,6 +80,12 @@ contract StableDepositorUniV3 {
         uint96 req0; // The minimum required deposit/withdraw amount of gem0 to insist on in each (gem0, gem1) operation
         uint96 req1; // The minimum required deposit/withdraw amount of gem1 to insist on in each (gem0, gem1) operation
         uint32 hop;  // Cooldown period it has to wait between deposit/withdraw executions
+    }
+
+    struct Pool {
+        address gem0;
+        address gem1;
+        uint24 fee;
     }
 
     event Rely(address indexed usr);
@@ -130,7 +143,21 @@ contract StableDepositorUniV3 {
             req1: req1,
             hop:  hop
         });
+        bytes32 key = keccak256(abi.encode(gem0, gem1, fee));
+        if (num != 0) { // TODO: check hop < type(uint32).max ?
+            if (poolHashes.add(key)) pools[key] = Pool(gem0, gem1, fee);
+        } else {
+            poolHashes.remove(key);
+        }
         emit SetConfig(gem0, gem1, fee, tickLower, tickUpper, num, hop, amt0, amt1, req0, req1);
+    }
+
+    function numPools() external view returns (uint256) {
+        return poolHashes.length();
+    }
+
+    function poolAt(uint256 index) external view returns (Pool memory) {
+        return pools[poolHashes.at(index)];
     }
 
     // Note: the keeper's minAmts value must be updated whenever configs[gem0][gem1][fee][tickLower][tickUpper] is changed.
@@ -151,6 +178,8 @@ contract StableDepositorUniV3 {
         if (amt1Min == 0) amt1Min = cfg.req1;
         require(amt0Min >= cfg.req0, "StableDepositorUniV3/min-amt0-too-small");
         require(amt1Min >= cfg.req1, "StableDepositorUniV3/min-amt1-too-small");
+
+        if (cfg.num == 1) poolHashes.remove(keccak256(abi.encode(gem0, gem1, fee))); // TODO: maybe no cleanup?
 
         DepositorUniV3Like.LiquidityParams memory p = DepositorUniV3Like.LiquidityParams({
             gem0       : gem0,
@@ -185,6 +214,8 @@ contract StableDepositorUniV3 {
         if (amt1Min == 0) amt1Min = cfg.req1;
         require(amt0Min >= cfg.req0, "StableDepositorUniV3/min-amt0-too-small");
         require(amt1Min >= cfg.req1, "StableDepositorUniV3/min-amt1-too-small");
+
+        if (cfg.num == -1) poolHashes.remove(keccak256(abi.encode(gem0, gem1, fee))); // TODO: maybe no cleanup?
 
         DepositorUniV3Like.LiquidityParams memory p = DepositorUniV3Like.LiquidityParams({
             gem0       : gem0,
