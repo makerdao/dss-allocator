@@ -189,4 +189,66 @@ contract StableSwapperTest is DssTest {
         vm.expectRevert("StableSwapper/min-too-small");
         vm.prank(KEEPER); stableSwapper.swap(USDC, DAI, req - 1, address(uniV3Callee), USDC_DAI_PATH);
     }
+
+
+    function testEnumeratePairs() public {
+        assertEq(stableSwapper.numPairs(), 2);
+        assertEq(stableSwapper.pairAt(0).src, DAI);
+        assertEq(stableSwapper.pairAt(0).dst, USDC);
+        assertEq(stableSwapper.pairAt(1).src, USDC);
+        assertEq(stableSwapper.pairAt(1).dst, DAI);
+
+        vm.prank(FACILITATOR); stableSwapper.setConfig(DAI, USDC, 10, 720 seconds, uint96(1_000 * WAD), uint96(990 * 10**6)); // just changing hop
+
+        assertEq(stableSwapper.numPairs(), 2);
+        assertEq(stableSwapper.pairAt(0).src, DAI);
+        assertEq(stableSwapper.pairAt(0).dst, USDC);
+        assertEq(stableSwapper.pairAt(1).src, USDC);
+        assertEq(stableSwapper.pairAt(1).dst, DAI);
+
+        vm.prank(FACILITATOR); stableSwapper.setConfig(DAI, USDC, 0, 0, 0, 0);
+
+        assertEq(stableSwapper.numPairs(), 1);
+        assertEq(stableSwapper.pairAt(0).src, USDC);
+        assertEq(stableSwapper.pairAt(0).dst, DAI);
+        vm.expectRevert();
+        stableSwapper.pairAt(1);
+
+        vm.prank(FACILITATOR); stableSwapper.setConfig(USDC, DAI, 0, 0, 0, 0);
+
+        assertEq(stableSwapper.numPairs(), 0);
+        vm.expectRevert();
+        stableSwapper.pairAt(0);
+
+        vm.prank(FACILITATOR); stableSwapper.setConfig(DAI, USDC, 1, 0, uint96(1_000 * WAD), uint96(990 * 10**6));
+        vm.prank(FACILITATOR); stableSwapper.setConfig(USDC, DAI, 2, 0, uint96(1_000 * 10**6), uint96(990 * WAD));
+
+        assertEq(stableSwapper.numPairs(), 2);
+        assertEq(stableSwapper.pairAt(0).src, DAI);
+        assertEq(stableSwapper.pairAt(0).dst, USDC);
+        assertEq(stableSwapper.pairAt(1).src, USDC);
+        assertEq(stableSwapper.pairAt(1).dst, DAI);
+
+        vm.prank(KEEPER); stableSwapper.swap(USDC, DAI, 0, address(uniV3Callee), USDC_DAI_PATH); // reduce num from 2 to 1
+
+        assertEq(stableSwapper.numPairs(), 2);
+        assertEq(stableSwapper.pairAt(0).src, DAI);
+        assertEq(stableSwapper.pairAt(0).dst, USDC);
+        assertEq(stableSwapper.pairAt(1).src, USDC);
+        assertEq(stableSwapper.pairAt(1).dst, DAI);
+
+        vm.prank(KEEPER); stableSwapper.swap(USDC, DAI, 0, address(uniV3Callee), USDC_DAI_PATH); // reduce num from 1 to 0
+
+        assertEq(stableSwapper.numPairs(), 1);
+        assertEq(stableSwapper.pairAt(0).src, DAI);
+        assertEq(stableSwapper.pairAt(0).dst, USDC);
+        vm.expectRevert();
+        stableSwapper.pairAt(1);
+
+        vm.prank(KEEPER); stableSwapper.swap(DAI, USDC, 0, address(uniV3Callee), DAI_USDC_PATH); // reduce num from 1 to 0
+
+        assertEq(stableSwapper.numPairs(), 0);
+        vm.expectRevert();
+        stableSwapper.pairAt(0);
+    }
 }

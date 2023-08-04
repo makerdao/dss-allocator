@@ -47,6 +47,7 @@ contract ConduitMoverTest is DssTest {
         roles.setRoleAction(ILK, MOVER_ROLE, conduit1, AllocatorConduitMock.deposit.selector, true);
         roles.setRoleAction(ILK, MOVER_ROLE, conduit1, AllocatorConduitMock.withdraw.selector, true);
         roles.setRoleAction(ILK, MOVER_ROLE, conduit2, AllocatorConduitMock.deposit.selector, true);
+        roles.setRoleAction(ILK, MOVER_ROLE, conduit2, AllocatorConduitMock.withdraw.selector, true);
         roles.setUserRole(ILK, address(mover), MOVER_ROLE, true);
 
         // Allow conduits to transfer out funds out of the buffer
@@ -164,5 +165,71 @@ contract ConduitMoverTest is DssTest {
     function testMoveExceedingNum() public {
         vm.expectRevert("ConduitMover/exceeds-num");
         vm.prank(KEEPER); mover.move(conduit1, conduit2, address(0x123));
+    }
+
+    function testEnumeratePairs() public {
+        (uint64 num,,,) = mover.configs(conduit1, conduit2, USDC);
+        assertEq(num, 10);
+
+        assertEq(mover.numMoves(), 1);
+        assertEq(mover.moveAt(0).from, conduit1);
+        assertEq(mover.moveAt(0).to, conduit2);
+        assertEq(mover.moveAt(0).gem, USDC);
+
+        vm.prank(FACILITATOR); mover.setConfig(conduit2, conduit1, USDC, 10, 1 hours, uint128(1_000 * 10**6));
+
+        assertEq(mover.numMoves(), 2);
+        assertEq(mover.moveAt(0).from, conduit1);
+        assertEq(mover.moveAt(0).to, conduit2);
+        assertEq(mover.moveAt(0).gem, USDC);
+        assertEq(mover.moveAt(1).from, conduit2);
+        assertEq(mover.moveAt(1).to, conduit1);
+        assertEq(mover.moveAt(1).gem, USDC);
+
+        vm.prank(FACILITATOR); mover.setConfig(conduit2, conduit1, USDC, 10, 2 hours, uint128(1_000 * 10**6)); // just changing hop
+
+        assertEq(mover.numMoves(), 2);
+        assertEq(mover.moveAt(0).from, conduit1);
+        assertEq(mover.moveAt(1).from, conduit2);
+
+        vm.prank(FACILITATOR); mover.setConfig(conduit1, conduit2, USDC, 0, 0, 0);
+
+        assertEq(mover.numMoves(), 1);
+        assertEq(mover.moveAt(0).from, conduit2);
+        vm.expectRevert();
+        mover.moveAt(1);
+
+        vm.prank(FACILITATOR); mover.setConfig(conduit2, conduit1, USDC, 0, 0, 0);
+
+        assertEq(mover.numMoves(), 0);
+        vm.expectRevert();
+        mover.moveAt(0);
+
+        vm.prank(FACILITATOR); mover.setConfig(conduit1, conduit2, USDC, 2, 0, uint128(1_000 * 10**6));
+        vm.prank(FACILITATOR); mover.setConfig(conduit2, conduit1, USDC, 1, 0, uint128(1_000 * 10**6));
+
+        assertEq(mover.numMoves(), 2);
+        assertEq(mover.moveAt(0).from, conduit1);
+        assertEq(mover.moveAt(1).from, conduit2);
+
+        vm.prank(KEEPER); mover.move(conduit1, conduit2, USDC); // reduce num from 2 to 1
+
+        assertEq(mover.numMoves(), 2);
+        assertEq(mover.moveAt(0).from, conduit1);
+        assertEq(mover.moveAt(1).from, conduit2);
+
+
+        vm.prank(KEEPER); mover.move(conduit1, conduit2, USDC); // reduce num from 1 to 0
+
+        assertEq(mover.numMoves(), 1);
+        assertEq(mover.moveAt(0).from, conduit2);
+        vm.expectRevert();
+        mover.moveAt(1);
+
+        vm.prank(KEEPER); mover.move(conduit2, conduit1, USDC); // reduce num from 1 to 0
+
+        assertEq(mover.numMoves(), 0);
+        vm.expectRevert();
+        mover.moveAt(0);
     }
 }

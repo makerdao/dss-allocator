@@ -271,4 +271,81 @@ contract StableDepositorUniV3Test is DssTest {
         vm.expectRevert("StableDepositorUniV3/non-keeper");
         vm.prank(address(0x123)); stableDepositor.collect(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
     }
+
+    function testEnumeratePairs() public {
+        (int32 num,,,,,,) = stableDepositor.configs(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
+        assertEq(num, 10);
+
+        assertEq(stableDepositor.numRanges(), 1);
+        assertEq(stableDepositor.rangeAt(0).gem0, DAI);
+        assertEq(stableDepositor.rangeAt(0).gem1, USDC);
+        assertEq(stableDepositor.rangeAt(0).fee, uint24(100));
+        assertEq(stableDepositor.rangeAt(0).tickLower, REF_TICK-100);
+        assertEq(stableDepositor.rangeAt(0).tickUpper, REF_TICK+100);
+
+        vm.prank(FACILITATOR); stableDepositor.setConfig(DAI, USDC, uint24(500), REF_TICK-100, REF_TICK+100, 10, 360, uint96(500 * WAD), uint96(500 * 10**6), uint96(490 * WAD), uint96(490 * 10**6));
+
+        assertEq(stableDepositor.numRanges(), 2);
+        assertEq(stableDepositor.rangeAt(0).gem0, DAI);
+        assertEq(stableDepositor.rangeAt(0).gem1, USDC);
+        assertEq(stableDepositor.rangeAt(0).fee, uint24(100));
+        assertEq(stableDepositor.rangeAt(0).tickLower, REF_TICK-100);
+        assertEq(stableDepositor.rangeAt(0).tickUpper, REF_TICK+100);
+        assertEq(stableDepositor.rangeAt(1).gem0, DAI);
+        assertEq(stableDepositor.rangeAt(1).gem1, USDC);
+        assertEq(stableDepositor.rangeAt(1).fee, uint24(500));
+        assertEq(stableDepositor.rangeAt(1).tickLower, REF_TICK-100);
+        assertEq(stableDepositor.rangeAt(1).tickUpper, REF_TICK+100);
+
+        vm.prank(FACILITATOR); stableDepositor.setConfig(DAI, USDC, uint24(500), REF_TICK-100, REF_TICK+100, 10, 720, uint96(500 * WAD), uint96(500 * 10**6), uint96(490 * WAD), uint96(490 * 10**6)); // just changing hop
+
+        assertEq(stableDepositor.numRanges(), 2);
+        assertEq(stableDepositor.rangeAt(0).fee, uint24(100));
+        assertEq(stableDepositor.rangeAt(1).fee, uint24(500));
+
+        vm.prank(FACILITATOR); stableDepositor.setConfig(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, 0, 0, 0, 0, 0, 0);
+
+        assertEq(stableDepositor.numRanges(), 1);
+        assertEq(stableDepositor.rangeAt(0).fee, uint24(500));
+        vm.expectRevert();
+        stableDepositor.rangeAt(1);
+
+        vm.prank(FACILITATOR); stableDepositor.setConfig(DAI, USDC, uint24(500), REF_TICK-100, REF_TICK+100, 0, 0, 0, 0, 0, 0);
+
+        assertEq(stableDepositor.numRanges(), 0);
+        vm.expectRevert();
+        stableDepositor.rangeAt(0);
+
+        vm.prank(FACILITATOR); stableDepositor.setConfig(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, 2, 0, uint96(500 * WAD), uint96(500 * 10**6), uint96(490 * WAD), uint96(490 * 10**6));
+
+        assertEq(stableDepositor.numRanges(), 1);
+        assertEq(stableDepositor.rangeAt(0).fee, uint24(100));
+
+        vm.prank(KEEPER); stableDepositor.deposit(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, 0, 0); // reduce num from 2 to 1
+
+        assertEq(stableDepositor.numRanges(), 1);
+        assertEq(stableDepositor.rangeAt(0).fee, uint24(100));
+
+        vm.prank(KEEPER); stableDepositor.deposit(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, 0, 0); // reduce num from 1 to 0
+
+        assertEq(stableDepositor.numRanges(), 0);
+        vm.expectRevert();
+        stableDepositor.rangeAt(0);
+
+        vm.prank(FACILITATOR); stableDepositor.setConfig(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, -2, 0, uint96(500 * WAD), uint96(500 * 10**6), uint96(490 * WAD), uint96(490 * 10**6));
+
+        assertEq(stableDepositor.numRanges(), 1);
+        assertEq(stableDepositor.rangeAt(0).fee, uint24(100));
+
+        vm.prank(KEEPER); stableDepositor.withdraw(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, 0, 0); // increase num from -2 to -1
+
+        assertEq(stableDepositor.numRanges(), 1);
+        assertEq(stableDepositor.rangeAt(0).fee, uint24(100));
+
+        vm.prank(KEEPER); stableDepositor.withdraw(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, 0, 0); // increase num from -1 to 0
+
+        assertEq(stableDepositor.numRanges(), 0);
+        vm.expectRevert();
+        stableDepositor.rangeAt(0);
+    }
 }

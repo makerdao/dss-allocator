@@ -29,9 +29,9 @@ contract ConduitMover {
     mapping (address => uint256) public wards;                                                // Admins
     mapping (address => uint256) public buds;                                                 // Whitelisted keepers
     mapping (address => mapping (address => mapping (address => MoveConfig))) public configs; // Configuration for keepers
-    mapping (bytes32 => Transfer) public transfers;
+    mapping (bytes32 => Move_) public moves;
 
-    EnumerableSet.Bytes32Set private transferHashes;
+    EnumerableSet.Bytes32Set private moveHashes;
 
     bytes32 public immutable ilk;    // Collateral type
     address public immutable buffer; // The address of the buffer contract
@@ -43,7 +43,7 @@ contract ConduitMover {
         uint128  lot; // The amount to move every hop for a `from` to `to` gem move
     }
 
-    struct Transfer {
+    struct Move_ {
         address from;
         address to;
         address gem;
@@ -102,20 +102,20 @@ contract ConduitMover {
             lot: lot
         });
         bytes32 key = keccak256(abi.encode(from, to, gem));
-        if (num != 0) { // TODO: check hop < type(uint32).max ?
-            if (transferHashes.add(key)) transfers[key] = Transfer(from, to, gem);
+        if (num > 0) { // TODO: check hop < type(uint32).max ?
+            if (moveHashes.add(key)) moves[key] = Move_(from, to, gem);
         } else {
-            transferHashes.remove(key);
+            moveHashes.remove(key);
         }
         emit SetConfig(from, to, gem, num, hop, lot);
     }
 
-    function numTransfers() external view returns (uint256) {
-        return transferHashes.length();
+    function numMoves() external view returns (uint256) {
+        return moveHashes.length();
     }
 
-    function transferAt(uint256 index) external view returns (Transfer memory) {
-        return transfers[transferHashes.at(index)];
+    function moveAt(uint256 index) external view returns (Move_ memory) {
+        return moves[moveHashes.at(index)];
     }
 
     function move(address from, address to, address gem) toll external {
@@ -126,7 +126,7 @@ contract ConduitMover {
         configs[from][to][gem].num = cfg.num - 1;
         configs[from][to][gem].zzz = uint32(block.timestamp);
 
-        if (cfg.num == 1) transferHashes.remove(keccak256(abi.encode(from, to, gem))); // TODO: maybe no cleanup?
+        if (cfg.num == 1) moveHashes.remove(keccak256(abi.encode(from, to, gem))); // TODO: maybe no cleanup?
 
         ConduitLike(from).withdraw(ilk, gem, cfg.lot);
         ConduitLike(to).deposit(ilk, gem, cfg.lot);

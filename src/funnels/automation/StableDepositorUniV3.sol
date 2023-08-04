@@ -65,14 +65,14 @@ contract StableDepositorUniV3 {
 
     mapping (address => uint256) public wards;                           // Admins
     mapping (address => uint256) public buds;                            // Whitelisted keepers
-    mapping (address => mapping (address => mapping (uint24 => mapping (int24 => mapping (int24 => PairConfig))))) public configs; // Configuration for keepers
-    mapping (bytes32 => Pool) public pools;
+    mapping (address => mapping (address => mapping (uint24 => mapping (int24 => mapping (int24 => RangeConfig))))) public configs; // Configuration for keepers
+    mapping (bytes32 => Range) public ranges;
 
-    EnumerableSet.Bytes32Set private poolHashes;
+    EnumerableSet.Bytes32Set private rangeHashes;
 
     DepositorUniV3Like public immutable depositor; // DepositorUniV3 for this StableDepositorUniV3
 
-    struct PairConfig {
+    struct RangeConfig {
         int32  num;  // The remaining number of times that a (gem0, gem1) operation can be performed by keepers (> 0: deposit, < 0: withdraw)
         uint32 zzz;  // Timestamp of the last deposit/withdraw execution
         uint96 amt0; // Amount of gem0 to deposit/withdraw each (gem0, gem1) operation
@@ -82,10 +82,12 @@ contract StableDepositorUniV3 {
         uint32 hop;  // Cooldown period it has to wait between deposit/withdraw executions
     }
 
-    struct Pool {
+    struct Range {
         address gem0;
         address gem1;
         uint24 fee;
+        int24 tickLower;
+        int24 tickUpper;
     }
 
     event Rely(address indexed usr);
@@ -134,7 +136,7 @@ contract StableDepositorUniV3 {
 
     function setConfig(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tickUpper, int32 num, uint32 hop, uint96 amt0, uint96 amt1, uint96 req0, uint96 req1) external auth {
         require(gem0 < gem1, "StableDepositorUniV3/wrong-gem-order");
-        configs[gem0][gem1][fee][tickLower][tickUpper] = PairConfig({
+        configs[gem0][gem1][fee][tickLower][tickUpper] = RangeConfig({
             num:  num,
             zzz:  0,
             amt0: amt0,
@@ -143,21 +145,21 @@ contract StableDepositorUniV3 {
             req1: req1,
             hop:  hop
         });
-        bytes32 key = keccak256(abi.encode(gem0, gem1, fee));
+        bytes32 key = keccak256(abi.encode(gem0, gem1, fee, tickLower, tickUpper));
         if (num != 0) { // TODO: check hop < type(uint32).max ?
-            if (poolHashes.add(key)) pools[key] = Pool(gem0, gem1, fee);
+            if (rangeHashes.add(key)) ranges[key] = Range(gem0, gem1, fee, tickLower, tickUpper);
         } else {
-            poolHashes.remove(key);
+            rangeHashes.remove(key);
         }
         emit SetConfig(gem0, gem1, fee, tickLower, tickUpper, num, hop, amt0, amt1, req0, req1);
     }
 
-    function numPools() external view returns (uint256) {
-        return poolHashes.length();
+    function numRanges() external view returns (uint256) {
+        return rangeHashes.length();
     }
 
-    function poolAt(uint256 index) external view returns (Pool memory) {
-        return pools[poolHashes.at(index)];
+    function rangeAt(uint256 index) external view returns (Range memory) {
+        return ranges[rangeHashes.at(index)];
     }
 
     // Note: the keeper's minAmts value must be updated whenever configs[gem0][gem1][fee][tickLower][tickUpper] is changed.
@@ -167,7 +169,7 @@ contract StableDepositorUniV3 {
         external
         returns (uint128 liquidity, uint256 amt0, uint256 amt1)
     {
-        PairConfig memory cfg = configs[gem0][gem1][fee][tickLower][tickUpper];
+        RangeConfig memory cfg = configs[gem0][gem1][fee][tickLower][tickUpper];
 
         require(cfg.num > 0, "StableDepositorUniV3/exceeds-num");
         require(block.timestamp >= cfg.zzz + cfg.hop, "StableDepositorUniV3/too-soon");
@@ -179,7 +181,7 @@ contract StableDepositorUniV3 {
         require(amt0Min >= cfg.req0, "StableDepositorUniV3/min-amt0-too-small");
         require(amt1Min >= cfg.req1, "StableDepositorUniV3/min-amt1-too-small");
 
-        if (cfg.num == 1) poolHashes.remove(keccak256(abi.encode(gem0, gem1, fee))); // TODO: maybe no cleanup?
+        if (cfg.num == 1) rangeHashes.remove(keccak256(abi.encode(gem0, gem1, fee, tickLower, tickUpper))); // TODO: maybe no cleanup?
 
         DepositorUniV3Like.LiquidityParams memory p = DepositorUniV3Like.LiquidityParams({
             gem0       : gem0,
@@ -203,7 +205,7 @@ contract StableDepositorUniV3 {
         external
         returns (uint128 liquidity, uint256 amt0, uint256 amt1, uint256 fees0, uint256 fees1)
     {
-        PairConfig memory cfg = configs[gem0][gem1][fee][tickLower][tickUpper];
+        RangeConfig memory cfg = configs[gem0][gem1][fee][tickLower][tickUpper];
 
         require(cfg.num < 0, "StableDepositorUniV3/exceeds-num");
         require(block.timestamp >= cfg.zzz + cfg.hop, "StableDepositorUniV3/too-soon");
@@ -215,7 +217,7 @@ contract StableDepositorUniV3 {
         require(amt0Min >= cfg.req0, "StableDepositorUniV3/min-amt0-too-small");
         require(amt1Min >= cfg.req1, "StableDepositorUniV3/min-amt1-too-small");
 
-        if (cfg.num == -1) poolHashes.remove(keccak256(abi.encode(gem0, gem1, fee))); // TODO: maybe no cleanup?
+        if (cfg.num == -1) rangeHashes.remove(keccak256(abi.encode(gem0, gem1, fee, tickLower, tickUpper))); // TODO: maybe no cleanup?
 
         DepositorUniV3Like.LiquidityParams memory p = DepositorUniV3Like.LiquidityParams({
             gem0       : gem0,
