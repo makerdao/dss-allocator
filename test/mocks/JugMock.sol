@@ -7,8 +7,8 @@ import { VatMock } from "test/mocks/VatMock.sol";
 contract JugMock {
     VatMock vat;
 
-    uint256 duty = 1001 * 10**27 / 1000;
-    uint256 rho = block.timestamp;
+    uint256 public duty = 1001 * 10**27 / 1000;
+    uint256 public rho = block.timestamp;
 
     constructor(VatMock vat_) {
         vat = vat_;
