@@ -20,7 +20,7 @@ interface SwapperLike {
     function swap(address, address, uint256, uint256, address, bytes calldata) external returns (uint256);
 }
 
-contract StableSwapper {
+abstract contract StableSwapperBase {
     mapping (address => uint256) public wards;                           // Admins
     mapping (address => uint256) public buds;                            // Whitelisted keepers
     mapping (address => mapping (address => PairConfig)) public configs; // Configuration for keepers
@@ -57,7 +57,7 @@ contract StableSwapper {
     }
 
     // permissionned to whitelisted keepers
-    modifier toll { 
+    modifier toll {
         require(permissionless || buds[msg.sender] == 1, "StableSwapper/non-keeper");
         _;
     }
@@ -95,7 +95,7 @@ contract StableSwapper {
 
     // Note: the keeper's minOut value must be updated whenever configs[src][dst] is changed.
     // Failing to do so may result in this call reverting or in taking on more slippage than intended (up to a limit controlled by configs[src][dst].min).
-    function swap(address src, address dst, uint256 minOut, address callee, bytes calldata data) toll external returns (uint256 out) {
+    function _swap(address src, address dst, uint256 minOut, address callee, bytes memory data) toll internal returns (uint256 out) {
         PairConfig memory cfg = configs[src][dst];
 
         require(cfg.num > 0, "StableSwapper/exceeds-num");
@@ -107,5 +107,38 @@ contract StableSwapper {
         require(minOut >= cfg.req, "StableSwapper/min-too-small");
 
         out = swapper.swap(src, dst, cfg.lot, minOut, callee, data);
+    }
+}
+
+contract StableSwapper is StableSwapperBase {
+    constructor(address swapper_, bool permissionless_) StableSwapperBase(swapper_, permissionless_) {}
+
+    function swap(address src, address dst, uint256 minOut, address callee, bytes memory data) external returns (uint256 out) {
+        return _swap(src, dst, minOut, callee, data);
+    }
+}
+
+contract StableSwapperDefinedCallee is StableSwapperBase {
+    constructor(address swapper_, bool permissionless_) StableSwapperBase(swapper_, permissionless_) {}
+
+    mapping (address => mapping (address => CallleeConfig)) public calleeConfigs; // Callee Configuration for keepers
+
+    struct CallleeConfig {
+        address callee;
+        bytes   data;
+    }
+
+    event SetCalleeConfig(address indexed src, address indexed dst, address indexed callee, bytes data);
+
+    function setCalleeConfig(address src, address dst, address callee, bytes calldata data) external auth {
+        calleeConfigs[src][dst] = CallleeConfig({
+            callee: callee,
+            data: data
+        });
+        emit SetCalleeConfig(src, dst, callee, data);
+    }
+
+    function swap(address src, address dst, uint256 minOut) external returns (uint256 out) {
+        return _swap(src, dst, minOut, calleeConfigs[src][dst].callee, calleeConfigs[src][dst].data);
     }
 }
