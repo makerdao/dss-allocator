@@ -35,8 +35,6 @@ contract StableSwapper {
         uint96  req; // The minimum required output amount to insist on in the swap form src to dst
     }
 
-    uint256 internal constant WAD = 10 ** 18;
-
     event Rely(address indexed usr);
     event Deny(address indexed usr);
     event Kiss(address indexed usr);
