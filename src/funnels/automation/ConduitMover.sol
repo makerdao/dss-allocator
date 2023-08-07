@@ -28,9 +28,9 @@ contract ConduitMover {
 
     mapping (address => uint256) public wards;                                                // Admins
     mapping (address => uint256) public buds;                                                 // Whitelisted keepers
-    mapping (address => mapping (address => mapping (address => MoveConfig))) public configs; // Configuration for keepers
-    mapping (bytes32 => Move_) public moves;
+    mapping (bytes32 => MoveConfig) public configs; // Configuration for keepers
 
+    mapping (bytes32 => Move_) public moves;
     EnumerableSet.Bytes32Set private moveHashes;
 
     bytes32 public immutable ilk;    // Collateral type
@@ -94,14 +94,23 @@ contract ConduitMover {
         emit Diss(usr);
     }
 
+    function getMoveHash(address from, address to, address gem) public pure returns (bytes32) {
+        return keccak256(abi.encode(from, to, gem));
+    }
+
+    function getConfig(address from, address to, address gem) external view returns (uint64 num, uint32 hop, uint32 zzz, uint128 lot) {
+        MoveConfig memory cfg = configs[getMoveHash(from, to, gem)];
+        return (cfg.num, cfg.hop, cfg.zzz, cfg.lot);
+    }
+
     function setConfig(address from, address to, address gem, uint64 num, uint32 hop, uint128 lot) external auth {
-        configs[from][to][gem] = MoveConfig({
+        bytes32 key = getMoveHash(from, to, gem);
+        configs[key] = MoveConfig({
             num: num,
             hop: hop,
             zzz: 0,
             lot: lot
         });
-        bytes32 key = keccak256(abi.encode(from, to, gem));
         if (num > 0) { // TODO: check hop < type(uint32).max ?
             if (moveHashes.add(key)) moves[key] = Move_(from, to, gem);
         } else {
@@ -119,14 +128,15 @@ contract ConduitMover {
     }
 
     function move(address from, address to, address gem) toll external {
-        MoveConfig memory cfg = configs[from][to][gem];
+        bytes32 key = getMoveHash(from, to, gem);
+        MoveConfig memory cfg = configs[key];
 
         require(cfg.num > 0, "ConduitMover/exceeds-num");
         require(block.timestamp >= cfg.zzz + cfg.hop, "ConduitMover/too-soon");
-        configs[from][to][gem].num = cfg.num - 1;
-        configs[from][to][gem].zzz = uint32(block.timestamp);
+        configs[key].num = cfg.num - 1;
+        configs[key].zzz = uint32(block.timestamp);
 
-        if (cfg.num == 1) moveHashes.remove(keccak256(abi.encode(from, to, gem))); // TODO: maybe no cleanup?
+        if (cfg.num == 1) moveHashes.remove(key); // TODO: maybe no cleanup?
 
         ConduitLike(from).withdraw(ilk, gem, cfg.lot);
         ConduitLike(to).deposit(ilk, gem, cfg.lot);

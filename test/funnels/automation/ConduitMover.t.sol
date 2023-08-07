@@ -66,7 +66,7 @@ contract ConduitMoverTest is DssTest {
         vm.stopPrank();
 
         // Confirm initial parameters and amounts
-        (uint64 num, uint32 hop, uint32 zzz, uint128 lot) = mover.configs(conduit1, conduit2, USDC);
+        (uint64 num, uint32 hop, uint32 zzz, uint128 lot) = mover.getConfig(conduit1, conduit2, USDC);
         assertEq(num, 10);
         assertEq(hop, 1 hours);
         assertEq(zzz, 0);
@@ -118,7 +118,7 @@ contract ConduitMoverTest is DssTest {
         emit SetConfig(address(0x123), address(0x456), address(0x789), uint64(23), uint32(360 seconds), uint96(314));
         mover.setConfig(address(0x123), address(0x456), address(0x789), uint64(23), uint32(360 seconds), uint96(314));
 
-        (uint64 num, uint32 hop, uint32 zzz, uint128 lot) = mover.configs(address(0x123), address(0x456), address(0x789));
+        (uint64 num, uint32 hop, uint32 zzz, uint128 lot) = mover.getConfig(address(0x123), address(0x456), address(0x789));
         assertEq(num, 23);
         assertEq(hop, 360);
         assertEq(zzz, 0);
@@ -133,7 +133,7 @@ contract ConduitMoverTest is DssTest {
         assertEq(GemLike(USDC).balanceOf(conduit1), 2_000 * 10**6);
         assertEq(GemLike(USDC).balanceOf(conduit2), 1_000 * 10**6);
         assertEq(GemLike(USDC).balanceOf(buffer), 0);
-        (uint64 num, uint32 hop, uint32 zzz, uint128 lot) = mover.configs(conduit1, conduit2, USDC);
+        (uint64 num, uint32 hop, uint32 zzz, uint128 lot) = mover.getConfig(conduit1, conduit2, USDC);
         assertEq(num, 9);
         assertEq(hop, 1 hours);
         assertEq(zzz, block.timestamp);
@@ -149,7 +149,7 @@ contract ConduitMoverTest is DssTest {
         assertEq(GemLike(USDC).balanceOf(conduit1), 1_000 * 10**6);
         assertEq(GemLike(USDC).balanceOf(conduit2), 2_000 * 10**6);
         assertEq(GemLike(USDC).balanceOf(buffer), 0);
-        (num, hop, zzz, lot) = mover.configs(conduit1, conduit2, USDC);
+        (num, hop, zzz, lot) = mover.getConfig(conduit1, conduit2, USDC);
         assertEq(num, 8);
         assertEq(hop, 1 hours);
         assertEq(zzz, block.timestamp);
@@ -168,7 +168,7 @@ contract ConduitMoverTest is DssTest {
     }
 
     function testEnumeratePairs() public {
-        (uint64 num,,,) = mover.configs(conduit1, conduit2, USDC);
+        (uint64 num,,,) = mover.getConfig(conduit1, conduit2, USDC);
         assertEq(num, 10);
 
         assertEq(mover.numMoves(), 1);

@@ -131,7 +131,7 @@ contract StableDepositorUniV3Test is DssTest {
             uint96 req0,
             uint96 req1,
             uint32 hop
-        ) = stableDepositor.configs(address(0x123), address(0x456), uint24(314), 5, 6);
+        ) = stableDepositor.getConfig(address(0x123), address(0x456), uint24(314), 5, 6);
         assertEq(num,  23);
         assertEq(zzz,  0);
         assertEq(amt0, uint96(7));
@@ -144,7 +144,7 @@ contract StableDepositorUniV3Test is DssTest {
     function testDepositWithdrawByKeeper() public {
         uint256 prevDai = GemLike(DAI).balanceOf(address(buffer));
         uint256 prevUsdc = GemLike(USDC).balanceOf(address(buffer));
-        (int32 initNum,,,,,,) = stableDepositor.configs(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
+        (int32 initNum,,,,,,) = stableDepositor.getConfig(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
         assertEq(initNum, 10);
         uint32 initialTime = uint32(block.timestamp);
 
@@ -152,7 +152,7 @@ contract StableDepositorUniV3Test is DssTest {
 
         uint256 afterDepositDai  = GemLike(DAI).balanceOf(address(buffer));
         uint256 afterDepositUsdc = GemLike(USDC).balanceOf(address(buffer));
-        (int32 num, uint32 zzz,,,,,) = stableDepositor.configs(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
+        (int32 num, uint32 zzz,,,,,) = stableDepositor.getConfig(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
         assertLt(afterDepositDai, prevDai);
         assertLt(afterDepositUsdc, prevUsdc);
         assertEq(num, initNum - 1);
@@ -164,17 +164,17 @@ contract StableDepositorUniV3Test is DssTest {
 
         vm.warp(initialTime + 360);
         vm.prank(KEEPER); stableDepositor.deposit(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, uint128(491 * WAD), uint128(491 * 10**6));
-        (num, zzz,,,,,) = stableDepositor.configs(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
+        (num, zzz,,,,,) = stableDepositor.getConfig(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
 
         assertEq(num, initNum - 2);
         assertEq(zzz, initialTime + 360);
 
         stableDepositor.setConfig(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, -10, 360, uint96(500 * WAD), uint96(500 * 10**6), uint96(490 * WAD), uint96(490 * 10**6));
-        (initNum,,,,,,) = stableDepositor.configs(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
+        (initNum,,,,,,) = stableDepositor.getConfig(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
         assertEq(initNum, -10);
 
         vm.prank(KEEPER); stableDepositor.withdraw(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, uint128(491 * WAD), uint128(491 * 10**6));
-        (num, zzz,,,,,) = stableDepositor.configs(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
+        (num, zzz,,,,,) = stableDepositor.getConfig(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
         assertEq(num, initNum + 1);
         assertEq(zzz, initialTime + 360);
 
@@ -184,7 +184,7 @@ contract StableDepositorUniV3Test is DssTest {
 
         vm.warp(initialTime + 720);
         vm.prank(KEEPER); stableDepositor.withdraw(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, uint128(491 * WAD), uint128(491 * 10**6));
-        (num, zzz,,,,,) = stableDepositor.configs(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
+        (num, zzz,,,,,) = stableDepositor.getConfig(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
 
         assertGt(GemLike(DAI).balanceOf(address(buffer)), afterDepositDai);
         assertGt(GemLike(USDC).balanceOf(address(buffer)), afterDepositUsdc);
@@ -221,14 +221,14 @@ contract StableDepositorUniV3Test is DssTest {
     }
 
     function testDepositWithMin0TooSmall() public {
-        (,,,,, uint96 req0,) = stableDepositor.configs(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
+        (,,,,, uint96 req0,) = stableDepositor.getConfig(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
 
         vm.expectRevert("StableDepositorUniV3/min-amt0-too-small");
         vm.prank(KEEPER); stableDepositor.deposit(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, req0 - 1, uint128(491 * 10**6));
     }
 
     function testDepositWithMin1TooSmall() public {
-        (,,,,,, uint96 req1) = stableDepositor.configs(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
+        (,,,,,, uint96 req1) = stableDepositor.getConfig(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
 
         vm.expectRevert("StableDepositorUniV3/min-amt1-too-small");
         vm.prank(KEEPER); stableDepositor.deposit(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, uint128(491 * WAD), req1 - 1);
@@ -273,7 +273,7 @@ contract StableDepositorUniV3Test is DssTest {
     }
 
     function testEnumeratePairs() public {
-        (int32 num,,,,,,) = stableDepositor.configs(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
+        (int32 num,,,,,,) = stableDepositor.getConfig(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
         assertEq(num, 10);
 
         assertEq(stableDepositor.numRanges(), 1);

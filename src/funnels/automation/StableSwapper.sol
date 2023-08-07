@@ -25,11 +25,11 @@ interface SwapperLike {
 contract StableSwapper {
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
-    mapping (address => uint256) public wards;                           // Admins
-    mapping (address => uint256) public buds;                            // Whitelisted keepers
-    mapping (address => mapping (address => PairConfig)) public configs; // Configuration for keepers
-    mapping (bytes32 => Pair) public pairs;
+    mapping (address => uint256) public wards;       // Admins
+    mapping (address => uint256) public buds;        // Whitelisted keepers
+    mapping (bytes32 => PairConfig) public configs; // Configuration for keepers
 
+    mapping (bytes32 => Pair) public pairs;
     EnumerableSet.Bytes32Set private pairHashes;
     
     SwapperLike public immutable swapper;                                // Swapper for this StableSwapper
@@ -92,15 +92,24 @@ contract StableSwapper {
         emit Diss(usr);
     }
 
+    function getPairHash(address src, address dst) public pure returns (bytes32) {
+        return keccak256(abi.encode(src, dst));
+    }
+
+    function getConfig(address src, address dst) external view returns (uint128 num, uint32 hop, uint32 zzz, uint96 lot, uint96 req) {
+        PairConfig memory cfg = configs[getPairHash(src, dst)];
+        return (cfg.num, cfg.hop, cfg.zzz, cfg.lot, cfg.req);
+    }
+
     function setConfig(address src, address dst, uint128 num, uint32 hop, uint96 lot, uint96 req) external auth {
-        configs[src][dst] = PairConfig({
+        bytes32 key = getPairHash(src, dst);
+        configs[key] = PairConfig({
             num: num,
             hop: hop,
             zzz: 0,
             lot: lot,
             req: req
         });
-        bytes32 key = keccak256(abi.encode(src, dst));
         if (num > 0) { // TODO: check hop < type(uint32).max ?
             if (pairHashes.add(key)) pairs[key] = Pair(src, dst);
         } else {
@@ -120,12 +129,13 @@ contract StableSwapper {
     // Note: the keeper's minOut value must be updated whenever configs[src][dst] is changed.
     // Failing to do so may result in this call reverting or in taking on more slippage than intended (up to a limit controlled by configs[src][dst].min).
     function swap(address src, address dst, uint256 minOut, address callee, bytes calldata data) toll external returns (uint256 out) {
-        PairConfig memory cfg = configs[src][dst];
+        bytes32 key = getPairHash(src, dst);
+        PairConfig memory cfg = configs[key];
 
         require(cfg.num > 0, "StableSwapper/exceeds-num");
         require(block.timestamp >= cfg.zzz + cfg.hop, "StableSwapper/too-soon");
-        unchecked { configs[src][dst].num = cfg.num - 1; }
-        configs[src][dst].zzz = uint32(block.timestamp);
+        unchecked { configs[key].num = cfg.num - 1; }
+        configs[key].zzz = uint32(block.timestamp);
 
         if (minOut == 0) minOut = cfg.req;
         require(minOut >= cfg.req, "StableSwapper/min-too-small");
