@@ -28,6 +28,7 @@ contract ConduitMover {
 
     bytes32 public immutable ilk;    // Collateral type
     address public immutable buffer; // The address of the buffer contract
+    bool    public immutable permissionless;
 
     struct MoveConfig {
         uint64   num; // The remaining number of times that a `from` to `to` gem move can be performed by keepers
@@ -43,9 +44,10 @@ contract ConduitMover {
     event SetConfig(address indexed from, address indexed to, address indexed gem, uint64 num, uint32 hop, uint128 lot);
     event Move(address indexed from, address indexed to, address indexed gem, uint128 lot);
 
-    constructor(bytes32 ilk_, address buffer_) {
+    constructor(bytes32 ilk_, address buffer_, bool _permissionless) {
         buffer = buffer_;
         ilk    = ilk_;
+        permissionless = _permissionless;
 
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
@@ -57,7 +59,7 @@ contract ConduitMover {
     }
 
     modifier toll {
-        require(buds[msg.sender] == 1, "ConduitMover/non-keeper");
+        require(permissionless || buds[msg.sender] == 1, "ConduitMover/non-keeper");
         _;
     }
 

@@ -56,7 +56,7 @@ contract StableDepositorUniV3Test is DssTest {
         buffer = new AllocatorBuffer();
         AllocatorRoles roles = new AllocatorRoles();
         depositor = new DepositorUniV3(address(roles), ilk, UNIV3_FACTORY, address(buffer));
-        stableDepositor = new StableDepositorUniV3(address(depositor));
+        stableDepositor = new StableDepositorUniV3(address(depositor), false);
 
         roles.setIlkAdmin(ilk, address(this));
         roles.setRoleAction(ilk, DEPOSITOR_ROLE, address(depositor), depositor.deposit.selector, true);
@@ -81,7 +81,7 @@ contract StableDepositorUniV3Test is DssTest {
     }
 
     function testConstructor() public {
-        StableDepositorUniV3 s = new StableDepositorUniV3(address(0xABC));
+        StableDepositorUniV3 s = new StableDepositorUniV3(address(0xABC), false);
         assertEq(address(s.depositor()),  address(0xABC));
         assertEq(s.wards(address(this)), 1);
     }

@@ -40,7 +40,7 @@ contract StableSwapperTest is DssTest {
         AllocatorRoles roles = new AllocatorRoles();
         swapper = new Swapper(address(roles), ilk, address(buffer));
         uniV3Callee = new SwapperCalleeUniV3(UNIV3_ROUTER);
-        stableSwapper = new StableSwapper(address(swapper));
+        stableSwapper = new StableSwapper(address(swapper), false);
 
         roles.setIlkAdmin(ilk, address(this));
         roles.setRoleAction(ilk, SWAPPER_ROLE, address(swapper), swapper.swap.selector, true);
@@ -64,7 +64,7 @@ contract StableSwapperTest is DssTest {
     }
 
     function testConstructor() public {
-        StableSwapper s = new StableSwapper(address(0xABC));
+        StableSwapper s = new StableSwapper(address(0xABC), false);
         assertEq(address(s.swapper()),  address(0xABC));
         assertEq(s.wards(address(this)), 1);
     }

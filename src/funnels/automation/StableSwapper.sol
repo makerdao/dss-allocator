@@ -26,6 +26,7 @@ contract StableSwapper {
     mapping (address => mapping (address => PairConfig)) public configs; // Configuration for keepers
 
     SwapperLike public immutable swapper;                                // Swapper for this StableSwapper
+    bool        public immutable permissionless;
 
     struct PairConfig {
         uint128 num; // The remaining number of times that a src to dst swap can be performed by keepers
@@ -43,8 +44,9 @@ contract StableSwapper {
     event Diss(address indexed usr);
     event SetConfig(address indexed src, address indexed dst, uint128 num, uint32 hop, uint96 lot, uint96 req);
 
-    constructor(address swapper_) {
+    constructor(address swapper_, bool permissionless_) {
         swapper = SwapperLike(swapper_);
+        permissionless = permissionless_;
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
     }
@@ -56,7 +58,7 @@ contract StableSwapper {
 
     // permissionned to whitelisted keepers
     modifier toll { 
-        require(buds[msg.sender] == 1, "StableSwapper/non-keeper");
+        require(permissionless || buds[msg.sender] == 1, "StableSwapper/non-keeper");
         _;
     }
 

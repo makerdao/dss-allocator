@@ -40,7 +40,7 @@ contract ConduitMoverTest is DssTest {
 
         conduit1 = address(new AllocatorConduitMock(address(roles), address(registry)));
         conduit2 = address(new AllocatorConduitMock(address(roles), address(registry)));
-        mover    = new ConduitMover(ILK, buffer);
+        mover    = new ConduitMover(ILK, buffer, false);
 
         // Allow mover to perform ILK operations on the conduits
         roles.setIlkAdmin(ILK, address(this));
@@ -76,7 +76,7 @@ contract ConduitMoverTest is DssTest {
     }
 
     function testConstructor() public {
-        ConduitMover m = new ConduitMover("xyz", address(0xABC));
+        ConduitMover m = new ConduitMover("xyz", address(0xABC), false);
         assertEq(m.ilk(), "xyz");
         assertEq(m.buffer(), address(0xABC));
         assertEq(m.wards(address(this)), 1);

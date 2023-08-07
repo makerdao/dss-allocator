@@ -64,6 +64,7 @@ contract StableDepositorUniV3 {
     mapping (address => mapping (address => mapping (uint24 => mapping (int24 => mapping (int24 => PairConfig))))) public configs; // Configuration for keepers
 
     DepositorUniV3Like public immutable depositor; // DepositorUniV3 for this StableDepositorUniV3
+    bool               public immutable permissionless;
 
     struct PairConfig {
         int32  num;  // The remaining number of times that a (gem0, gem1) operation can be performed by keepers (> 0: deposit, < 0: withdraw)
@@ -81,8 +82,9 @@ contract StableDepositorUniV3 {
     event Diss(address indexed usr);
     event SetConfig(address indexed gem0, address indexed gem1, uint24 indexed fee, int24 tickLower, int24 tickUpper, int32 num, uint32 hop, uint96 amt0, uint96 amt1, uint96 req0, uint96 req1);
 
-    constructor(address _depositor) {
+    constructor(address _depositor, bool _permissionless) {
         depositor = DepositorUniV3Like(_depositor);
+        permissionless = _permissionless;
 
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
@@ -95,7 +97,7 @@ contract StableDepositorUniV3 {
 
     // Permissionned to whitelisted keepers
     modifier toll {
-        require(buds[msg.sender] == 1, "StableDepositorUniV3/non-keeper");
+        require(permissionless || buds[msg.sender] == 1, "StableDepositorUniV3/non-keeper");
         _;
     }
 
