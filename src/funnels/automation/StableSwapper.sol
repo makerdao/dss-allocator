@@ -93,7 +93,7 @@ contract StableSwapper {
     }
 
     function getPairHash(address src, address dst) public pure returns (bytes32) {
-        return keccak256(abi.encode(src, dst));
+        return keccak256(abi.encodePacked(src, dst));
     }
 
     function getConfig(address src, address dst) external view returns (uint128 num, uint32 hop, uint32 zzz, uint96 lot, uint96 req) {
@@ -140,7 +140,7 @@ contract StableSwapper {
         if (minOut == 0) minOut = cfg.req;
         require(minOut >= cfg.req, "StableSwapper/min-too-small");
 
-        if (cfg.num == 1) pairHashes.remove(keccak256(abi.encode(src, dst))); // TODO: maybe no cleanup?
+        if (cfg.num == 1) pairHashes.remove(key); // TODO: maybe no cleanup?
 
         out = swapper.swap(src, dst, cfg.lot, minOut, callee, data);
     }

@@ -95,7 +95,7 @@ contract ConduitMover {
     }
 
     function getMoveHash(address from, address to, address gem) public pure returns (bytes32) {
-        return keccak256(abi.encode(from, to, gem));
+        return keccak256(abi.encodePacked(from, to, gem));
     }
 
     function getConfig(address from, address to, address gem) external view returns (uint64 num, uint32 hop, uint32 zzz, uint128 lot) {

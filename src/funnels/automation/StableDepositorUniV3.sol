@@ -135,7 +135,7 @@ contract StableDepositorUniV3 {
     }
 
     function getRangeHash(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tickUpper) public pure returns (bytes32) {
-        return keccak256(abi.encode(gem0, gem1, fee, tickLower, tickUpper));
+        return keccak256(abi.encodePacked(gem0, gem1, fee, tickLower, tickUpper));
     }
 
     function getConfig(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tickUpper) external view returns (int32 num, uint32 zzz, uint96 amt0, uint96 amt1, uint96 req0, uint96 req1, uint32 hop) {
