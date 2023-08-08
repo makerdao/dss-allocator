@@ -155,6 +155,38 @@ contract ConduitMoverTest is DssTest {
         assertEq(lot, 1_000 * 10**6);
     }
 
+    function testMoveByKeeperToAndFromBuffer() public {
+        // Set up keeper to move USDC between conduit1 and buffer
+        vm.prank(FACILITATOR); mover.setConfig(conduit1, buffer, USDC, 10, 1 hours, uint128(1_000 * 10**6));
+        vm.prank(FACILITATOR); mover.setConfig(buffer, conduit1, USDC, 10, 1 hours, uint128(1_000 * 10**6));
+        assertEq(GemLike(USDC).balanceOf(conduit1), 3_000 * 10**6);
+        assertEq(GemLike(USDC).balanceOf(buffer), 0);
+
+        vm.expectEmit(true, true, true, true);
+        emit Move(conduit1, buffer, USDC, 1_000 * 10**6);
+        vm.prank(KEEPER); mover.move(conduit1, buffer, USDC);
+
+        assertEq(GemLike(USDC).balanceOf(conduit1), 2_000 * 10**6);
+        assertEq(GemLike(USDC).balanceOf(buffer), 1_000 * 10**6);
+        (uint64 num, uint32 hop, uint32 zzz, uint128 lot) = mover.configs(conduit1, buffer, USDC);
+        assertEq(num, 9);
+        assertEq(hop, 1 hours);
+        assertEq(zzz, block.timestamp);
+        assertEq(lot, 1_000 * 10**6);
+
+        vm.expectEmit(true, true, true, true);
+        emit Move(buffer, conduit1, USDC, 1_000 * 10**6);
+        vm.prank(KEEPER); mover.move(buffer, conduit1, USDC);
+
+        assertEq(GemLike(USDC).balanceOf(conduit1), 3_000 * 10**6);
+        assertEq(GemLike(USDC).balanceOf(buffer), 0);
+        (num, hop, zzz, lot) = mover.configs(buffer, conduit1, USDC);
+        assertEq(num, 9);
+        assertEq(hop, 1 hours);
+        assertEq(zzz, block.timestamp);
+        assertEq(lot, 1_000 * 10**6);
+    }
+
     function testMoveNonKeeper() public {
         assertEq(mover.buds(address(this)), 0);
         vm.expectRevert("ConduitMover/non-keeper");
