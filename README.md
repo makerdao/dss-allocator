@@ -18,8 +18,8 @@ The system is comprised of several layers:
     - Their main role is to mint NST (New Stable Token) and hold it (possibly with other tokens) in the AllocationBuffer.
 - Deployment Funnels (*blue above*):
     - Contracts that pull funds from the AllocatorBuffer.
-    - The funds can either be swapped or deployed into AMM pools or specific conduits.
-    - A typical setting for a funnel includes a base rate limited contract (such as Swapper) and an automation contract on top of it (such as StableSwapper).
+    - The funds can be swapped and/or deployed into AMM pools or specific conduits.
+    - A typical setting for a funnel includes a base rate-limited contract (such as Swapper) and an automation contract on top of it (such as StableSwapper).
 - Conduits (*orange above*):
     - Yield investment singletons that support deposits and withdrawals.
 
@@ -52,7 +52,7 @@ Each AllocatorDAO has a unique Ilk (collateral type) with one VAT vault set up f
 
 - Each ilk supports a 1 trillion NST debt ceiling.
 - Each Ilk has a special collateral token that is minted and locked in the system.
-- The collateral amount of each vault is 1 million NST.
+- The collateral amount of each vault is 1 million WAD (i.e. 10^6 * 10^18 units of collateral token).
 - All the Ilks have a shared simple [oracle](https://github.com/makerdao/dss-allocator/blob/dev/src/AllocatorOracle.sol) that just returns a fixed price of 1 Million (which multiplied by the collateral amount makes sure the debt ceiling can indeed be reached).
 
 ### AllocatorVault
@@ -92,7 +92,7 @@ It enforces that:
 
 ### Swapper Callees
 
-Contracts that perform the actual swap and send the resulting funds to the Allocation Buffer.
+Contracts that perform the actual swap and send the resulting funds to the Swapper (to be forwarded to the AllocationBuffer).
 
 - They can be implemented on top of any DEX / swap vehicle.
 - An example is SwapperCalleeUniV3, where swaps in Uniswap V3 can be triggered.
@@ -114,7 +114,7 @@ An automation contract, which can be used by the AllocatorDaos to set up recurri
 
 An automation contract sample, which can be used by the AllocatorDaos to set up recurring deposits or withdraws. 
 
-- In order to use it the AllocatorDao should list it as an operator of its DepositorUniv3 primitive in the AllocatorRoles contract.
+- In order to use it the AllocatorDao should list it as an operator of its DepositorUniV3 primitive in the AllocatorRoles contract.
 - The Depositor primitive will rate-limit the automation contract.
 
 ### ConduitMover
