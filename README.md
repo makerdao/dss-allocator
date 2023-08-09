@@ -15,7 +15,7 @@ The system is comprised of several layers:
 
 - Core Allocation System (*green above*):
     - Smart contracts that can be considered a part of the Maker Core Protocol, and are immutable and present in all Allocators.
-    - Their main role is to mint NST (New Stable Token) and hold it (possibly with other tokens) in the AllocationBuffer.
+    - Their main role is to mint NST (New Stable Token) and hold it (possibly with other tokens) in the AllocatorBuffer.
 - Deployment Funnels (*blue above*):
     - Contracts that pull funds from the AllocatorBuffer.
     - The funds can be swapped and/or deployed into AMM pools or specific conduits.
@@ -67,7 +67,7 @@ Single contract per Ilk, which operators can use to:
 A simple contract for the AllocatorDAO to hold funds in.
 
 - Supports approving contracts to `transferFrom` it.
-- Note that although the AllocatorVault pushes and pulls NST to/from the AllocationBuffer, it can manage other tokens as well.
+- Note that although the AllocatorVault pushes and pulls NST to/from the AllocatorBuffer, it can manage other tokens as well.
 
 ### AllocatorRoles
 
@@ -82,7 +82,7 @@ A registry where each AllocatorDao’s AllocatorBuffer address is listed.
 
 ### Swapper
 
-A module that pulls tokens from the AllocationBuffer and sends them to be swapped at a callee contract. The resulting funds are sent back to the AllocationBuffer.
+A module that pulls tokens from the AllocatorBuffer and sends them to be swapped at a callee contract. The resulting funds are sent back to the AllocatorBuffer.
 
 It enforces that:
 
@@ -92,7 +92,7 @@ It enforces that:
 
 ### Swapper Callees
 
-Contracts that perform the actual swap and send the resulting funds to the Swapper (to be forwarded to the AllocationBuffer).
+Contracts that perform the actual swap and send the resulting funds to the Swapper (to be forwarded to the AllocatoBuffer).
 
 - They can be implemented on top of any DEX / swap vehicle.
 - An example is SwapperCalleeUniV3, where swaps in Uniswap V3 can be triggered.
