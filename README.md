@@ -127,7 +127,7 @@ An interface which each Conduit should implement.
 
 ## Security Model:
 - AllocatorDAOs can not incur a loss of more than the debt ceiling (`line`) of their respective `ilk`.
-- A funnel operator (whether a facilitator or an automated contract) can not incur a loss of more than `cap` amount of funds per `era` interval for a specific configuration. This includes not being able to move funds directly to any unknown contract that the AllocatorDAO Proxy did not approve.
+- A funnel operator (whether a facilitator or an automated contract) can not incur a loss of more than `cap` amount of funds per `era` interval for a specific configuration. This includes not being able to move funds directly to any unknown address that the AllocatorDAO Proxy did not approve.
 - A keeper can not incur a loss of more than the funnel opeator can, and any loss it can incur is also constrained by `req` or `req0` and `req1` for a specific configuration.
 
 ## Technical Assumptions:
@@ -139,5 +139,5 @@ An interface which each Conduit should implement.
   * Implement fee on transfer.
   * Include rebasing logic.
   * Implement callbacks/hooks.
-- In the Swapper, in case `limit.era` is zero the full cap amount can be swapped for multiple times in the same transaction because `limit.due` will be reset upon re-entry. However this is  consistent with the intended behavior, as in that case zero cooldown is explicitly defined.
+- In the Swapper, in case `limit.era` is zero the full cap amount can be swapped for multiple times in the same transaction because `limit.due` will be reset upon re-entry. However, this is consistent with the intended behavior, as in that case zero cooldown is explicitly defined.
 - The Allocation System assumes that the ESM threshold is set large enough prior to its deployment, so Emergency Shutdown can never be called.
