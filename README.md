@@ -30,7 +30,7 @@ The allocation system includes several actor types:
     - Performs actions through spells with governance delay.
     - In charge of setting up the core components and the NST minting instant access modules (DC-IAMs).
     - Ward of the singleton contracts (e.g RWA conduits, Coinbase Custody, AllocatorRoles).
-- AllocatorDao Proxy:
+- AllocatorDAO Proxy:
     - Performs actions through a sub-spell with governance delay.
     - Ward of its AllocatorVault and its funnel contracts.
     - In charge of adding new contracts to the funnel network (e.g Swapper, DepositorUniV3).
@@ -73,7 +73,7 @@ A simple contract for the AllocatorDAO to hold funds in.
 
 A global permissions registry, inspired by [ds-roles](https://github.com/dapphub/ds-roles).
 
-- Allows AllocatorDaos to list operators to manage AllocatorVaults, funnels and conduits in a per-action resolution.
+- Allows AllocatorDAOs to list operators to manage AllocatorVaults, funnels and conduits in a per-action resolution.
 - Warded by the Pause Proxy, which needs to add a new AllocatorDAO once one is onboarded.
 
 ### AllocatorRegistry
@@ -126,13 +126,13 @@ An automation contract sample, which can be used by the AllocatorDAOs to move fu
 An interface which each Conduit should implement.
 
 ## Security Model:
-- AllocatorDao Proxies can not incur a loss of more than the debt ceiling (`line`) of their respecive `ilk`.
-- A funnel operator (whether a facilitator or an automated contract) can not incur a loss of more than `cap` amount of funds per `era` interval for a specific configuration. This includes not being able to move funds directly to any unknown contract that the AllocatorDao Proxy did not approve.
+- AllocatorDAOs can not incur a loss of more than the debt ceiling (`line`) of their respective `ilk`.
+- A funnel operator (whether a facilitator or an automated contract) can not incur a loss of more than `cap` amount of funds per `era` interval for a specific configuration. This includes not being able to move funds directly to any unknown contract that the AllocatorDAO Proxy did not approve.
 - A keeper can not incur a loss of more than the funnel opeator can, and any loss it can incur is also constrained by `req` or `req0` and `req1` for a specific configuration.
 
 ## Technical Assumptions:
 - A `uint32` is suitable for storing timestamps or time intervals in the funnels, as the current version of the Allocation System is not expected to be utilized up untill 2106.
-- A `uint96` is suitable for storing token amounts in the funnels, as amounts in the scale of 70B are not expected to be used. This takes into account also tokens with very low prices.
+- A `uint96` is suitable for storing token amounts in the funnels, as amounts in the scale of 70B are not expected to be used. This implies that the Allocation System does not support tokens with very low prices.
 - As with most MakerDAO contracts, non standard token implementations are assumed to not be supported. As examples, this includes tokens that:
   * Do not have a decimals field or have more than 18 decimals.
   * Do not revert and instead rely on a return value.
@@ -140,4 +140,4 @@ An interface which each Conduit should implement.
   * Include rebasing logic.
   * Implement callbacks/hooks.
 - In the Swapper, in case `limit.era` is zero the full cap amount can be swapped for multiple times in the same transaction because `limit.due` will be reset upon re-entry. However this is  consistent with the intended behavior, as in that case zero cooldown is explicitly defined.
-- The Allocation System assume that the ESM threshold is set large enough prior to its deployment, so Emergency Shutdown can never be called.
+- The Allocation System assumes that the ESM threshold is set large enough prior to its deployment, so Emergency Shutdown can never be called.
