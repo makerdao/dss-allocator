@@ -74,11 +74,11 @@ A simple contract for the AllocatorDAO to hold funds in.
 A global permissions registry, inspired by [ds-roles](https://github.com/dapphub/ds-roles).
 
 - Allows AllocatorDaos to list operators to manage AllocatorVaults, funnels and conduits in a per-action resolution.
-- Warded by the Pause Proxy, which needs to add a new AllocatorDao once one is onboarded.
+- Warded by the Pause Proxy, which needs to add a new AllocatorDAO once one is onboarded.
 
 ### AllocatorRegistry
 
-A registry where each AllocatorDao’s AllocatorBuffer address is listed.
+A registry where each AllocatorDAO’s AllocatorBuffer address is listed.
 
 ### Swapper
 
@@ -105,21 +105,21 @@ As the Swapper, it includes rate limit protection and is designed so facilitator
 
 ### StableSwapper
 
-An automation contract, which can be used by the AllocatorDaos to set up recurring swaps of stable tokens (e.g NST to USDC).
+An automation contract, which can be used by the AllocatorDAOs to set up recurring swaps of stable tokens (e.g NST to USDC).
 
-- In order to use it the AllocatorDao should list it as an operator of its Swapper primitive in the AllocatorRoles contract.
+- In order to use it the AllocatorDAO should list it as an operator of its Swapper primitive in the AllocatorRoles contract.
 - The Swapper primitive will rate-limit the automation contract.
 
 ### StableDepositorUniV3
 
-An automation contract sample, which can be used by the AllocatorDaos to set up recurring deposits or withdraws. 
+An automation contract sample, which can be used by the AllocatorDAOs to set up recurring deposits or withdraws. 
 
-- In order to use it the AllocatorDao should list it as an operator of its DepositorUniV3 primitive in the AllocatorRoles contract.
+- In order to use it the AllocatorDAO should list it as an operator of its DepositorUniV3 primitive in the AllocatorRoles contract.
 - The Depositor primitive will rate-limit the automation contract.
 
 ### ConduitMover
 
-An automation contract sample, which can be used by the AllocatorDaos to move funds between their AllocatorBuffer and the conduits in an automated manner.
+An automation contract sample, which can be used by the AllocatorDAOs to move funds between their AllocatorBuffer and the conduits in an automated manner.
 
 ### IAllocatorConduit
 
