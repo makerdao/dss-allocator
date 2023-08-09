@@ -33,13 +33,13 @@ The allocation system includes several actor types:
 - AllocatorDao Proxy:
     - Performs actions through a sub-spell with governance delay.
     - Ward of its AllocatorVault and its funnel contracts.
-    - In charge of adding new contracts to the funnel network (e.g Swapper, DepositorUniv3).
+    - In charge of adding new contracts to the funnel network (e.g Swapper, DepositorUniV3).
     - Can add operators to its funnel network through the AllocatorRoles contract.
     - In charge of setting rate-limiting safety parameters for operators.
 - Operator:
     - Performs actions without a spell and without governance delay.
     - An optional actor which is whitelisted through the AllocatorRoles contract to perform specified actions on the AllocatorVault, funnels and conduits.
-    - Will typically be a facilitator multisig or an automation contract controlled by one (e.g StableSwapper, StableDepositorUniv3).
+    - Will typically be a facilitator multisig or an automation contract controlled by one (e.g StableSwapper, StableDepositorUniV3).
 - Keeper:
     - An optional actor which can be set up to trigger the automation contracts in case repetitive actions are needed (such as swapping NST to USDC every time interval).
 
