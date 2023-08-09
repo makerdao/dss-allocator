@@ -77,9 +77,9 @@ contract AllocatorRoles
         emit Deny(usr);
     }
 
-    function setIlkAdmin(bytes32 ilk, address user) external auth {
-        ilkAdmins[ilk] = user;
-        emit SetIlkAdmin(ilk, user);
+    function setIlkAdmin(bytes32 ilk, address usr) external auth {
+        ilkAdmins[ilk] = usr;
+        emit SetIlkAdmin(ilk, usr);
     }
 
     // --- ilk administration ---
