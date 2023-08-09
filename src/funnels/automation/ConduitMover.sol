@@ -96,11 +96,11 @@ contract ConduitMover {
 
         require(cfg.num > 0, "ConduitMover/exceeds-num");
         require(block.timestamp >= cfg.zzz + cfg.hop, "ConduitMover/too-soon");
-        configs[from][to][gem].num = cfg.num - 1;
+        unchecked { configs[from][to][gem].num = cfg.num - 1; }
         configs[from][to][gem].zzz = uint32(block.timestamp);
 
-        ConduitLike(from).withdraw(ilk, gem, cfg.lot);
-        ConduitLike(to).deposit(ilk, gem, cfg.lot);
+        if (from != buffer) ConduitLike(from).withdraw(ilk, gem, cfg.lot);
+        if (to   != buffer) ConduitLike(to).deposit(ilk, gem, cfg.lot);
 
         emit Move(from, to, gem, cfg.lot);
     }
