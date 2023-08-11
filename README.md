@@ -131,7 +131,7 @@ An interface which each Conduit should implement.
 - A keeper can not incur a loss of more than the funnel opeator can, and any loss it can incur is also constrained by `req` or `req0` and `req1` for a specific configuration.
 
 ## Technical Assumptions:
-- A `uint32` is suitable for storing timestamps or time intervals in the funnels, as the current version of the Allocation System is not expected to be utilized up untill 2106.
+- A `uint32` is suitable for storing timestamps or time intervals in the funnels, as the current version of the Allocation System is expected to be deprecated long before 2106.
 - A `uint96` is suitable for storing token amounts in the funnels, as amounts in the scale of 70B are not expected to be used. This implies that the Allocation System does not support tokens with very low prices.
 - As with most MakerDAO contracts, non standard token implementations are assumed to not be supported. As examples, this includes tokens that:
   * Do not have a decimals field or have more than 18 decimals.
