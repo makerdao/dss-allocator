@@ -1,11 +1,10 @@
-# `dss-conduits`
+# `dss-allocator`
 
 Part of this code was inspired by https://github.com/makerdao/rwa-toolkit/blob/master/src/urns/RwaUrn.sol mainly authored by livnev and https://github.com/dapphub/ds-roles/blob/master/src/roles.sol authored by DappHub.
 Since it should belong to the MakerDAO community the Copyright from our additions has been transferred to Dai Foundation.
 
 ## Overview
-Implementation of the allocation system, based on the [technical specification forum post](https://forum.makerdao.com/t/preliminary-technical-specification-of-the-allocation-system/20921
-).
+Implementation of the allocation system, based on the [technical specification forum post](https://forum.makerdao.com/t/preliminary-technical-specification-of-the-allocation-system/20921).
 
 ![Untitled](https://github.com/makerdao/dss-allocator/assets/130549691/388f20fa-2d0c-484b-b716-fe4fa742115b)
 
@@ -32,7 +31,7 @@ The allocation system includes several actor types:
     - Ward of the singleton contracts (e.g RWA conduits, Coinbase Custody, AllocatorRoles).
 - AllocatorDAO Proxy:
     - Performs actions through a sub-spell with governance delay.
-    - Ward of its AllocatorVault and its funnel contracts.
+    - Ward of its AllocatorVault, AllocatorBuffer and funnel contracts.
     - In charge of adding new contracts to the funnel network (e.g Swapper, DepositorUniV3).
     - Can add operators to its funnel network through the AllocatorRoles contract.
     - In charge of setting rate-limiting safety parameters for operators.
@@ -107,14 +106,14 @@ As the Swapper, it includes rate limit protection and is designed so facilitator
 
 An automation contract, which can be used by the AllocatorDAOs to set up recurring swaps of stable tokens (e.g NST to USDC).
 
-- In order to use it the AllocatorDAO should list it as an operator of its Swapper primitive in the AllocatorRoles contract.
+- In order to use it, the AllocatorDAO should list it as an operator of its Swapper primitive in the AllocatorRoles contract.
 - The Swapper primitive will rate-limit the automation contract.
 
 ### StableDepositorUniV3
 
 An automation contract sample, which can be used by the AllocatorDAOs to set up recurring deposits or withdraws. 
 
-- In order to use it the AllocatorDAO should list it as an operator of its DepositorUniV3 primitive in the AllocatorRoles contract.
+- In order to use it, the AllocatorDAO should list it as an operator of its DepositorUniV3 primitive in the AllocatorRoles contract.
 - The Depositor primitive will rate-limit the automation contract.
 
 ### ConduitMover
@@ -132,7 +131,7 @@ An interface which each Conduit should implement.
 
 ## Technical Assumptions:
 - A `uint32` is suitable for storing timestamps or time intervals in the funnels, as the current version of the Allocation System is expected to be deprecated long before 2106.
-- A `uint96` is suitable for storing token amounts in the funnels, as amounts in the scale of 70B are not expected to be used. This implies that the Allocation System does not support tokens with very low prices.
+- A `uint96` is suitable for storing token amounts in the funnels, as amounts in the scale of 70B are not expected to be used. This implies that the Allocation System does not support tokens with extremely low prices.
 - As with most MakerDAO contracts, non standard token implementations are assumed to not be supported. As examples, this includes tokens that:
   * Do not have a decimals field or have more than 18 decimals.
   * Do not revert and instead rely on a return value.
