@@ -27,8 +27,8 @@ contract AllocatorVaultTest is DssTest {
     bytes32         public ilk;
 
     event Init(uint256 supply);
-    event Draw(address indexed sender, address indexed to, uint256 wad);
-    event Wipe(address indexed sender, address indexed from, uint256 wad);
+    event Draw(address indexed sender, uint256 wad);
+    event Wipe(address indexed sender, uint256 wad);
 
     function _divup(uint256 x, uint256 y) internal pure returns (uint256 z) {
         unchecked {
@@ -59,12 +59,10 @@ contract AllocatorVaultTest is DssTest {
     }
 
     function testModifiers() public {
-        bytes4[] memory authedMethods = new bytes4[](5);
+        bytes4[] memory authedMethods = new bytes4[](3);
         authedMethods[0] = vault.init.selector;
-        authedMethods[1] = bytes4(keccak256("draw(address,uint256)"));
-        authedMethods[2] = bytes4(keccak256("draw(uint256)"));
-        authedMethods[3] = bytes4(keccak256("wipe(address,uint256)"));
-        authedMethods[4] = bytes4(keccak256("wipe(uint256)"));
+        authedMethods[1] = bytes4(keccak256("draw(uint256)"));
+        authedMethods[2] = bytes4(keccak256("wipe(uint256)"));
 
         vm.startPrank(address(0xBEEF));
         checkModifier(address(vault), "AllocatorVault/not-authorized", authedMethods);
@@ -112,7 +110,7 @@ contract AllocatorVaultTest is DssTest {
         (, uint256 art) = vat.urns(ilk, address(buffer));
         assertEq(art, 0);
         vm.expectEmit(true, true, true, true);
-        emit Draw(address(this), address(buffer), 50 * 10**18);
+        emit Draw(address(this), 50 * 10**18);
         vault.draw(50 * 10**18);
         (, art) = vat.urns(ilk, address(vault));
         assertEq(art, 50 * 10**18);
@@ -122,7 +120,7 @@ contract AllocatorVaultTest is DssTest {
         assertEq(nst.balanceOf(address(buffer)), 50 * 10**18);
         vm.warp(block.timestamp + 1);
         vm.expectEmit(true, true, true, true);
-        emit Draw(address(this), address(buffer), 50 * 10**18);
+        emit Draw(address(this), 50 * 10**18);
         vault.draw(50 * 10**18);
         (, art) = vat.urns(ilk, address(vault));
         uint256 expectedArt = 50 * 10**18 + _divup(50 * 10**18 * 1000, div);
@@ -140,33 +138,18 @@ contract AllocatorVaultTest is DssTest {
         vm.expectRevert();
         vault.wipe(100.06 * 10**18); // It will try to wipe more art than existing, then reverts
         vm.expectEmit(true, true, true, true);
-        emit Wipe(address(this), address(buffer), 100.05 * 10**18);
+        emit Wipe(address(this), 100.05 * 10**18);
         vault.wipe(100.05 * 10**18);
         assertEq(nst.balanceOf(address(buffer)), 0.01 * 10**18);
         (, art) = vat.urns(ilk, address(vault));
         assertEq(art, 1); // Dust which is impossible to wipe
     }
 
-    function testDrawAndWipeOtherAddress() public {
-        vault.init();
-        vault.file("jug", address(jug));
-        vm.expectEmit(true, true, true, true);
-        emit Draw(address(this), address(0xBEEF), 50 * 10**18);
-        vault.draw(address(0xBEEF), 50 * 10**18);
-        assertEq(nst.balanceOf(address(0xBEEF)), 50 * 10**18);
-        vm.prank(address(0xBEEF));
-        nst.approve(address(vault), 50 * 10**18);
-        vm.expectEmit(true, true, true, true);
-        emit Wipe(address(this), address(0xBEEF), 50 * 10**18);
-        vault.wipe(address(0xBEEF), 50 * 10**18);
-        assertEq(nst.balanceOf(address(0xBEEF)), 0);
-    }
-
     function testDebtOverLine() public {
         vault.init();
         vault.file("jug", address(jug));
         vm.expectEmit(true, true, true, true);
-        emit Draw(address(this), address(buffer), vault.line());
+        emit Draw(address(this), vault.line());
         vault.draw(vault.line());
         vm.warp(block.timestamp + 1);
         jug.drip(ilk);
