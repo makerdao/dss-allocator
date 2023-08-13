@@ -47,16 +47,16 @@ The allocation system includes several actor types:
 ## Contracts and Configuration
 ### VAT Configuration
 
-Each AllocatorDAO has a unique ilk (collateral type) with one VAT vault set up for it.
+Each AllocatorDAO has a unique `ilk` (collateral type) with one VAT vault set up for it.
 
-- Each ilk supports a 1 trillion NST max debt ceiling.
-- Each ilk has a special collateral token that is minted and locked in the system.
+- Each `ilk` supports a 1 trillion NST max debt ceiling.
+- Each `ilk` has a special collateral token that is minted and locked in the system.
 - The collateral amount of each vault is 1 million WAD (i.e. 10^6 * 10^18 units of collateral token).
-- All the ilks have a shared simple [oracle](https://github.com/makerdao/dss-allocator/blob/dev/src/AllocatorOracle.sol) that just returns a fixed price of 1 Million (which multiplied by the collateral amount makes sure the max debt ceiling can indeed be reached).
+- All the `ilk`s have a shared simple [oracle](https://github.com/makerdao/dss-allocator/blob/dev/src/AllocatorOracle.sol) that just returns a fixed price of 1 Million (which multiplied by the collateral amount makes sure the max debt ceiling can indeed be reached).
 
 ### AllocatorVault
 
-Single contract per ilk, which operators can use to:
+Single contract per `ilk`, which operators can use to:
 
 - Mint (`draw` ) NST from the vault to the AllocatorBuffer.
 - Repay (`wipe`) NST from the AllocatorBuffer.
