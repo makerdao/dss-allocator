@@ -143,4 +143,6 @@ An interface which each Conduit should implement.
   * Include rebasing logic.
   * Implement callbacks/hooks.
 - In the Swapper, in case `limit.era` is zero the full cap amount can be swapped for multiple times in the same transaction because `limit.due` will be reset upon re-entry. However, this is consistent with the intended behavior, as in that case zero cooldown is explicitly defined.
+- In StableSwapper the keeper's minimal out value is assumed to be updated whenever `configs[src][dst]` is changed. Failing to do so may result in the swap call reverting or in taking on more slippage than intended (up to a limit controlled by `configs[src][dst].min`).
+- In StableDepositorUniV3 the keeper's minimal amt values are assumed to be updated whenever `configs[gem0][gem1][fee][tickLower][tickUpper]` is changed. Failing to do so may result in the deposit/withdraw call reverting or in taking on more slippage than intended (up to a limit controlled by `configs[gem0][gem1][fee][tickLower][tickUpper].req0/1`).
 - The Allocation System assumes that the ESM threshold is set large enough prior to its deployment, so Emergency Shutdown can never be called.
