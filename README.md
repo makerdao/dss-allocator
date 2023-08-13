@@ -4,7 +4,8 @@ Part of this code was inspired by https://github.com/makerdao/rwa-toolkit/blob/m
 Since it should belong to the MakerDAO community the Copyright from our additions has been transferred to Dai Foundation.
 
 ## Overview
-Implementation of the allocation system, based on the [technical specification forum post](https://forum.makerdao.com/t/preliminary-technical-specification-of-the-allocation-system/20921).
+Implementation of the allocation system, based on the [technical specification forum post](https://forum.makerdao.com/t/preliminary-technical-specification-of-the-allocation-system/20921).  
+The conduits are implemented separately. See for example [dss-conduits](https://github.com/makerdao/dss-conduits).
 
 ![Untitled-2023-08-07-1511](https://github.com/makerdao/dss-allocator/assets/130549691/af24bcb8-5e5a-4394-8eee-a1f7d6f44341)
 
