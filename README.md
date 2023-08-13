@@ -119,6 +119,10 @@ An automation contract sample, which can be used by the AllocatorDAOs to set up 
 ### ConduitMover
 
 An automation contract sample, which can be used by the AllocatorDAOs to move funds between their AllocatorBuffer and the conduits in an automated manner.
+- Although there is no built-in rate limit in the transfer of funds from/to the AllocatorBuffer to/form the conduits,
+this can be useful for optimizing yield by moving funds to the destination conduit just in time for them to get processed
+(in case the destination conduit has an agreed upon rate limiting).
+- It can also be useful for automating movement of funds from the buffer in the same rate as they are swapped or withdrawn into it.
 
 ### IAllocatorConduit
 
