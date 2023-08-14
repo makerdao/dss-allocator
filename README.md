@@ -14,9 +14,9 @@ The system is comprised of several layers:
 
 - Core Allocation System (*green above*):
     - Smart contracts that can be considered a part of the Maker Core Protocol, and are immutable and present in all Allocators.
-    - Their main role is to mint NST (New Stable Token) and hold it (possibly with other tokens) in the AllocatorBuffer.
+    - Their main role is to mint NST (New Stable Token) and hold it (possibly with other tokens) in the `AllocatorBuffer`.
 - Deployment Funnels (*blue above*):
-    - Contracts that pull funds from the AllocatorBuffer.
+    - Contracts that pull funds from the `AllocatorBuffer`.
     - The funds can be swapped and/or deployed into AMM pools or specific conduits.
     - A typical setting for a funnel includes a base rate-limited contract (such as Swapper) and an automation contract on top of it (such as StableSwapper).
 - Conduits (*orange above*):
@@ -28,17 +28,17 @@ The allocation system includes several actor types:
 - Pause Proxy:
     - Performs actions through spells with governance delay.
     - In charge of setting up the core components and the NST minting instant access modules (DC-IAMs).
-    - Ward of the singleton contracts (e.g RWA conduits, Coinbase Custody, AllocatorRoles).
+    - Ward of the singleton contracts (e.g RWA conduits, Coinbase Custody, `AllocatorRoles`).
 - AllocatorDAO Proxy:
     - Performs actions through a sub-spell with governance delay.
-    - Ward of its AllocatorVault, AllocatorBuffer and funnel contracts.
+    - Ward of its `AllocatorVault`, `AllocatorBuffer` and funnel contracts.
     - In charge of adding new contracts to the funnel network (e.g Swapper, DepositorUniV3).
-    - Can add operators to its funnel network through the AllocatorRoles contract.
+    - Can add operators to its funnel network through the `AllocatorRoles` contract.
     - In charge of setting rate-limiting safety parameters for operators.
 - Operator:
     - Performs actions without a spell and without governance delay.
-    - An optional actor which is whitelisted through the AllocatorRoles contract to perform specified actions on the AllocatorVault, funnels and conduits.
-    - Will typically be a facilitator multisig or an automation contract controlled by one (e.g StableSwapper, StableDepositorUniV3).
+    - An optional actor which is whitelisted through the `AllocatorRoles` contract to perform specified actions on the `AllocatorVault`, funnels and conduits.
+    - Will typically be a facilitator multisig or an automation contract controlled by one (e.g `StableSwapper`, `StableDepositorUniV3`).
 - Keeper:
     - An optional actor which can be set up to trigger the automation contracts in case repetitive actions are needed (such as swapping NST to USDC every time interval).
 
@@ -58,7 +58,7 @@ Each AllocatorDAO has a unique `ilk` (collateral type) with one VAT vault set up
 
 Single contract per `ilk`, which operators can use to:
 
-- Mint (`draw` ) NST from the vault to the AllocatorBuffer.
+- Mint (`draw`) NST from the vault to the AllocatorBuffer.
 - Repay (`wipe`) NST from the AllocatorBuffer.
 
 ### AllocatorBuffer
@@ -66,22 +66,22 @@ Single contract per `ilk`, which operators can use to:
 A simple contract for the AllocatorDAO to hold funds in.
 
 - Supports approving contracts to `transferFrom` it.
-- Note that although the AllocatorVault pushes and pulls NST to/from the AllocatorBuffer, it can manage other tokens as well.
+- Note that although the `AllocatorVault` pushes and pulls NST to/from the `AllocatorBuffer`, it can manage other tokens as well.
 
 ### AllocatorRoles
 
 A global permissions registry, inspired by [ds-roles](https://github.com/dapphub/ds-roles).
 
-- Allows AllocatorDAOs to list operators to manage AllocatorVaults, funnels and conduits in a per-action resolution.
+- Allows AllocatorDAOs to list operators to manage `AllocatorVault`s, funnels and conduits in a per-action resolution.
 - Warded by the Pause Proxy, which needs to add a new AllocatorDAO once one is onboarded.
 
 ### AllocatorRegistry
 
-A registry where each AllocatorDAO’s AllocatorBuffer address is listed.
+A registry where each AllocatorDAO’s `AllocatorBuffer` address is listed.
 
 ### Swapper
 
-A module that pulls tokens from the AllocatorBuffer and sends them to be swapped at a callee contract. The resulting funds are sent back to the AllocatorBuffer.
+A module that pulls tokens from the `AllocatorBuffer` and sends them to be swapped at a callee contract. The resulting funds are sent back to the `AllocatorBuffer`.
 
 It enforces that:
 
@@ -94,7 +94,7 @@ It enforces that:
 Contracts that perform the actual swap and send the resulting funds to the Swapper (to be forwarded to the AllocatoBuffer).
 
 - They can be implemented on top of any DEX / swap vehicle.
-- An example is SwapperCalleeUniV3, where swaps in Uniswap V3 can be triggered.
+- An example is `SwapperCalleeUniV3`, where swaps in Uniswap V3 can be triggered.
 
 ### DepositorUniV3
 
@@ -106,20 +106,20 @@ As the Swapper, it includes rate limit protection and is designed so facilitator
 
 An automation contract, which can be used by the AllocatorDAOs to set up recurring swaps of stable tokens (e.g NST to USDC).
 
-- In order to use it, the AllocatorDAO should list it as an operator of its Swapper primitive in the AllocatorRoles contract.
-- The Swapper primitive will rate-limit the automation contract.
+- In order to use it, the AllocatorDAO should list it as an operator of its `Swapper` primitive in the `AllocatorRoles` contract.
+- The `Swapper` primitive will rate-limit the automation contract.
 
 ### StableDepositorUniV3
 
 An automation contract sample, which can be used by the AllocatorDAOs to set up recurring deposits or withdraws. 
 
-- In order to use it, the AllocatorDAO should list it as an operator of its DepositorUniV3 primitive in the AllocatorRoles contract.
-- The Depositor primitive will rate-limit the automation contract.
+- In order to use it, the AllocatorDAO should list it as an operator of its `DepositorUniV3` primitive in the `AllocatorRoles` contract.
+- The `Depositor` primitive will rate-limit the automation contract.
 
 ### ConduitMover
 
-An automation contract sample, which can be used by the AllocatorDAOs to move funds between their AllocatorBuffer and the conduits in an automated manner.
-- Although there is no built-in rate limit in the transfer of funds from/to the AllocatorBuffer to/form the conduits,
+An automation contract sample, which can be used by the AllocatorDAOs to move funds between their `AllocatorBuffer` and the conduits in an automated manner.
+- Although there is no built-in rate limit in the transfer of funds from/to the `AllocatorBuffer` to/form the conduits,
 this can be useful for optimizing yield by moving funds to the destination conduit just in time for them to get processed
 (in case the destination conduit has an agreed upon rate limiting).
 - It can also be useful for automating movement of funds from the buffer in the same rate as they are swapped or withdrawn into it.
