@@ -66,9 +66,17 @@ contract AllocatorRolesTest is DssTest {
         vm.expectRevert("AuthedMock/not-authorized");
         authed.exec();
 
+        assertTrue(!roles.hasActionRole(ilk, address(authed), bytes4(keccak256("exec()")), admin_role));
+        assertTrue(!roles.hasActionRole(ilk, address(authed), bytes4(keccak256("exec()")), mod_role));
+        assertTrue(!roles.hasActionRole(ilk, address(authed), bytes4(keccak256("exec()")), user_role));
+        assertTrue(!roles.hasActionRole(ilk, address(authed), bytes4(keccak256("exec()")), max_role));
         vm.expectEmit(true, true, true, true);
         emit SetRoleAction(ilk, admin_role, address(authed), bytes4(keccak256("exec()")), true);
         roles.setRoleAction(ilk, admin_role, address(authed), bytes4(keccak256("exec()")), true);
+        assertTrue( roles.hasActionRole(ilk, address(authed), bytes4(keccak256("exec()")), admin_role));
+        assertTrue(!roles.hasActionRole(ilk, address(authed), bytes4(keccak256("exec()")), mod_role));
+        assertTrue(!roles.hasActionRole(ilk, address(authed), bytes4(keccak256("exec()")), user_role));
+        assertTrue(!roles.hasActionRole(ilk, address(authed), bytes4(keccak256("exec()")), max_role));
 
         assertTrue(roles.canCall(ilk, address(this), address(authed), bytes4(keccak256("exec()"))));
         authed.exec();
