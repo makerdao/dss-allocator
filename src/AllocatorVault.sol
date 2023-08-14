@@ -81,8 +81,8 @@ contract AllocatorVault {
     event Deny(address indexed usr);
     event File(bytes32 indexed what, address data);
     event Init(uint256 supply);
-    event Draw(address indexed sender, address indexed to, uint256 wad);
-    event Wipe(address indexed sender, address indexed from, uint256 wad);
+    event Draw(address indexed sender, uint256 wad);
+    event Wipe(address indexed sender, uint256 wad);
 
     // --- modifiers ---
 
@@ -177,30 +177,22 @@ contract AllocatorVault {
 
     // --- funnels execution ---
 
-    function draw(address to, uint256 wad) public auth {
+    function draw(uint256 wad) public auth {
         uint256 rate = jug.drip(ilk);
         uint256 dart = _divup(wad * RAY, rate);
         require(dart <= uint256(type(int256).max), "AllocatorVault/overflow");
         vat.frob(ilk, address(this), address(0), address(this), 0, int256(dart));
-        nstJoin.exit(to, wad);
-        emit Draw(msg.sender, to, wad);
+        nstJoin.exit(buffer, wad);
+        emit Draw(msg.sender, wad);
     }
 
-    function draw(uint256 wad) external {
-        draw(buffer, wad);
-    }
-
-    function wipe(address from, uint256 wad) public auth {
-        nst.transferFrom(from, address(this), wad);
+    function wipe(uint256 wad) public auth {
+        nst.transferFrom(buffer, address(this), wad);
         nstJoin.join(address(this), wad);
         uint256 rate = jug.drip(ilk);
         uint256 dart = wad * RAY / rate;
         require(dart <= uint256(type(int256).max), "AllocatorVault/overflow");
         vat.frob(ilk, address(this), address(this), address(this), 0, -int256(dart));
-        emit Wipe(msg.sender, from, wad);
-    }
-
-    function wipe(uint256 wad) external {
-        wipe(buffer, wad);
+        emit Wipe(msg.sender, wad);
     }
 }
