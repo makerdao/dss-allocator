@@ -278,28 +278,31 @@ rule draw_revert(uint256 wad) {
 
     draw@withrevert(e, wad);
 
-    bool revert1 = e.msg.value > 0;
-    bool revert2 = !canCall && wardsSender != 1;
-    bool revert3 = wad * RAY() > max_uint256;
-    bool revert4 = dart > max_int256();
-    bool revert5 = vatArtVault + dart > max_uint256;
-    bool revert6 = rate > max_int256();
-    bool revert6 = rate * dart > max_int256();
-    bool revert7 = vatDaiVault + rate * dart > max_uint256;
-    bool revert4 = vatCanVaultNstJoin != 1;
-    bool revert8 = vatDaiNstJoin + wad * RAY() > max_uint256;
-    bool revert9 = nstTotalSupply + wad > max_uint256;
+    bool revert1  = e.msg.value > 0;
+    bool revert2  = !canCall && wardsSender != 1;
+    bool revert3  = wad * RAY() > max_uint256;
+    bool revert4  = dart > max_int256();
+    bool revert5  = vatArtVault + dart > max_uint256;
+    bool revert6  = rate > max_int256();
+    bool revert7  = rate * dart > max_int256();
+    bool revert8  = vatDaiVault + rate * dart > max_uint256;
+    bool revert9  = vatCanVaultNstJoin != 1;
+    bool revert10 = vatDaiNstJoin + wad * RAY() > max_uint256;
+    bool revert11 = nstTotalSupply + wad > max_uint256;
 
-    assert revert1 => lastReverted, "revert1 failed";
-    assert revert2 => lastReverted, "revert2 failed";
-    assert revert3 => lastReverted, "revert3 failed";
-    assert revert4 => lastReverted, "revert4 failed";
-    assert revert5 => lastReverted, "revert5 failed";
-    assert revert6 => lastReverted, "revert6 failed";
-    assert revert7 => lastReverted, "revert7 failed";
-    assert revert8 => lastReverted, "revert8 failed";
-    assert revert9 => lastReverted, "revert9 failed";
-    assert lastReverted => revert1 || revert2 || revert3 ||
-                           revert4 || revert5 || revert6 ||
-                           revert7 || revert8 || revert9, "Revert rules are not covering all the cases";
+    assert revert1  => lastReverted, "revert1 failed";
+    assert revert2  => lastReverted, "revert2 failed";
+    assert revert3  => lastReverted, "revert3 failed";
+    assert revert4  => lastReverted, "revert4 failed";
+    assert revert5  => lastReverted, "revert5 failed";
+    assert revert6  => lastReverted, "revert6 failed";
+    assert revert7  => lastReverted, "revert7 failed";
+    assert revert8  => lastReverted, "revert8 failed";
+    assert revert9  => lastReverted, "revert9 failed";
+    assert revert10 => lastReverted, "revert10 failed";
+    assert revert11 => lastReverted, "revert11 failed";
+    assert lastReverted => revert1  || revert2 || revert3 ||
+                           revert4  || revert5 || revert6 ||
+                           revert7  || revert8 || revert9 ||
+                           revert10 || revert11, "Revert rules are not covering all the cases";
 }
