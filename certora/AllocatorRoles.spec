@@ -5,10 +5,30 @@ methods {
     function ilkAdmins(bytes32) external returns (address) envfree;
     function userRoles(bytes32, address) external returns (bytes32) envfree;
     function actionsRoles(bytes32, address, bytes4) external returns (bytes32) envfree;
+    function hasUserRole(bytes32, address, uint8) external returns (bool) envfree;
+    function hasActionRole(bytes32, address, bytes4, uint8) external returns (bool) envfree;
     function canCall(bytes32, address, address, bytes4) external returns (bool) envfree;
 }
 
 definition bitNot(uint256 input) returns uint256 = input xor max_uint256;
+
+// Verify correct response from hasUserRole
+rule hasUserRole(bytes32 ilk, address who, uint8 role) {
+    bool ok = userRoles(ilk, who) & to_bytes32(assert_uint256(2^role)) != to_bytes32(0);
+
+    bool ok2 = hasUserRole(ilk, who, role);
+
+    assert ok2 == ok, "hasUserRole did not return the expected result";
+}
+
+// Verify correct response from hasActionRole
+rule hasActionRole(bytes32 ilk, address target, bytes4 sign, uint8 role) {
+    bool ok = actionsRoles(ilk, target, sign) & to_bytes32(assert_uint256(2^role)) != to_bytes32(0);
+
+    bool ok2 = hasActionRole(ilk, target, sign, role);
+
+    assert ok2 == ok, "hasActionRole did not return the expected result";
+}
 
 // Verify correct storage changes for non reverting rely
 rule rely(address usr) {
