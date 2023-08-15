@@ -71,7 +71,6 @@ contract AllocatorVault {
     address     immutable public buffer;
     VatLike     immutable public vat;
     bytes32     immutable public ilk;
-    GemJoinLike immutable public gemJoin;
     NstJoinLike immutable public nstJoin;
     GemLike     immutable public nst;
 
@@ -80,7 +79,7 @@ contract AllocatorVault {
     event Rely(address indexed usr);
     event Deny(address indexed usr);
     event File(bytes32 indexed what, address data);
-    event Init(uint256 supply);
+    event Init();
     event Draw(address indexed sender, uint256 wad);
     event Wipe(address indexed sender, uint256 wad);
 
@@ -94,18 +93,16 @@ contract AllocatorVault {
 
     // --- constructor ---
 
-    constructor(address roles_, address buffer_, address vat_, address gemJoin_, address nstJoin_) {
+    constructor(address roles_, address buffer_, address vat_, bytes32 ilk_, address nstJoin_) {
         roles = RolesLike(roles_);
 
         buffer = buffer_;
         vat = VatLike(vat_);
-
-        gemJoin = GemJoinLike(gemJoin_);
+        ilk = ilk_;
         nstJoin = NstJoinLike(nstJoin_);
 
-        require(vat_ == gemJoin.vat() && vat_ == nstJoin.vat(), "AllocatorVault/vat-not-match");
+        require(vat_ == nstJoin.vat(), "AllocatorVault/vat-not-match");
 
-        ilk = GemJoinLike(gemJoin_).ilk();
         nst = NstJoinLike(nstJoin_).nst();
 
         VatLike(vat_).hope(nstJoin_);
@@ -147,15 +144,8 @@ contract AllocatorVault {
     // --- administration ---
 
     function init() external auth {
-        GemLike gem = gemJoin.gem();
-        uint256 supply = gem.totalSupply();
-        require(supply == 10**6 * WAD, "AllocatorVault/supply-not-one-million-wad");
-
-        gem.approve(address(gemJoin), supply);
-        gemJoin.join(address(this), supply);
-        vat.frob(ilk, address(this), address(this), address(0), int256(supply), 0);
-
-        emit Init(supply);
+        vat.frob(ilk, address(this), address(this), address(0), int256(10**6 * WAD), 0);
+        emit Init();
     }
 
     function rely(address usr) external auth {
