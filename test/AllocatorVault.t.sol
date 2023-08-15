@@ -9,7 +9,6 @@ import { RolesMock } from "test/mocks/RolesMock.sol";
 import { VatMock } from "test/mocks/VatMock.sol";
 import { JugMock } from "test/mocks/JugMock.sol";
 import { GemMock } from "test/mocks/GemMock.sol";
-import { GemJoinMock } from "test/mocks/GemJoinMock.sol";
 import { NstJoinMock } from "test/mocks/NstJoinMock.sol";
 
 contract AllocatorVaultTest is DssTest {
@@ -17,8 +16,6 @@ contract AllocatorVaultTest is DssTest {
 
     VatMock         public vat;
     JugMock         public jug;
-    GemMock         public gem;
-    GemJoinMock     public gemJoin;
     GemMock         public nst;
     NstJoinMock     public nstJoin;
     AllocatorBuffer public buffer;
@@ -26,7 +23,7 @@ contract AllocatorVaultTest is DssTest {
     AllocatorVault  public vault;
     bytes32         public ilk;
 
-    event Init(uint256 supply);
+    event Init();
     event Draw(address indexed sender, uint256 wad);
     event Wipe(address indexed sender, uint256 wad);
 
@@ -40,18 +37,17 @@ contract AllocatorVaultTest is DssTest {
         ilk     = "TEST-ILK";
         vat     = new VatMock();
         jug     = new JugMock(vat);
-        gem     = new GemMock(1_000_000 * 10**18);
-        gemJoin = new GemJoinMock(vat, ilk, gem);
         nst     = new GemMock(0);
         nstJoin = new NstJoinMock(vat, nst);
         buffer  = new AllocatorBuffer();
         roles   = new RolesMock();
-        vault   = new AllocatorVault(address(roles), address(buffer), address(vat), address(gemJoin), address(nstJoin));
+        vault   = new AllocatorVault(address(roles), address(buffer), address(vat), ilk, address(nstJoin));
         buffer.approve(address(nst), address(vault), type(uint256).max);
-        gem.transfer(address(vault), 1_000_000 * 10**18);
+
+        vat.slip(ilk, address(vault), int256(1_000_000 * WAD));
 
         // Add some existing DAI assigned to nstJoin to avoid a particular error
-        stdstore.target(address(vat)).sig("dai(address)").with_key(address(nstJoin)).depth(0).checked_write(100_000 * 10**45);
+        stdstore.target(address(vat)).sig("dai(address)").with_key(address(nstJoin)).depth(0).checked_write(100_000 * RAD);
     }
 
     function testAuth() public {
@@ -82,28 +78,24 @@ contract AllocatorVaultTest is DssTest {
     }
 
     function testInit() public {
-        assertEq(gem.balanceOf(address(vault)),  gem.totalSupply());
-        assertEq(gem.balanceOf(address(gemJoin)), 0);
+        assertEq(vat.gem(ilk, address(vault)), 10**6 * WAD);
         (uint256 ink, ) = vat.urns(ilk, address(vault));
         assertEq(ink, 0);
         vault.init();
-        assertEq(gem.balanceOf(address(vault)),  0);
-        assertEq(gem.balanceOf(address(gemJoin)), gem.totalSupply());
+        assertEq(vat.gem(ilk, address(vault)), 0);
         (ink, ) = vat.urns(ilk, address(vault));
-        assertEq(ink, gem.totalSupply());
+        assertEq(ink, 10**6 * WAD);
     }
 
-    function testInitNotTotalSupply() public {
-        deal(address(gem), address(vault), gem.balanceOf(address(vault)) - 1);
-        vm.expectRevert("Gem/insufficient-balance");
+    function testInitNotEnoughBalance() public {
+        vat.slip(ilk, address(vault), -1);
+        vm.expectRevert();
         vault.init();
     }
 
-    uint256 div = 1001; // Hack to solve a compiling issue
-
     function testDrawWipe() public {
         vm.expectEmit(true, true, true, true);
-        emit Init(gem.totalSupply());
+        emit Init();
         vault.init();
         vault.file("jug", address(jug));
         assertEq(vault.line(), 20_000_000 * 10**18);
@@ -123,7 +115,7 @@ contract AllocatorVaultTest is DssTest {
         emit Draw(address(this), 50 * 10**18);
         vault.draw(50 * 10**18);
         (, art) = vat.urns(ilk, address(vault));
-        uint256 expectedArt = 50 * 10**18 + _divup(50 * 10**18 * 1000, div);
+        uint256 expectedArt = 50 * 10**18 + _divup(50 * 10**18 * 1000, 1001);
         assertEq(art, expectedArt);
         assertEq(vat.rate(), 1001 * 10**27 / 1000);
         assertEq(vault.debt(), _divup(expectedArt * 1001, 1000));
