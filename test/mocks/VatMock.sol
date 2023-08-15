@@ -33,7 +33,7 @@ contract VatMock {
         Art = urn.art = dart >= 0 ? urn.art + uint256(dart) : urn.art - uint256(-dart);
 
         gem[i][v] = dink >= 0 ? gem[i][v] - uint256(dink) : gem[i][v] + uint256(-dink);
-        require(rate <= uint256(type(int256).max));
+        require(dart == 0 || rate <= uint256(type(int256).max));
         int256 dtab = int256(rate) * dart;
         dai[w] = dtab >= 0 ? dai[w] + uint256(dtab) : dai[w] - uint256(-dtab);
 

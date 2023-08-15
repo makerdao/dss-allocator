@@ -3,9 +3,7 @@
 using AllocatorRoles as roles;
 using VatMock as vat;
 using JugMock as jug;
-using GemJoinMock as gemJoin;
 using NstJoinMock as nstJoin;
-using GemMock as gem;
 using NstMock as nst;
 
 methods {
@@ -21,9 +19,6 @@ methods {
     function vat.rate() external returns (uint256) envfree;
     function jug.duty() external returns (uint256) envfree;
     function jug.rho() external returns (uint256) envfree;
-    function gemJoin.ilk() external returns (bytes32) envfree;
-    function gem.balanceOf(address) external returns (uint256) envfree;
-    function gem.totalSupply() external returns (uint256) envfree;
     function nst.balanceOf(address) external returns (uint256) envfree;
     function nst.totalSupply() external returns (uint256) envfree;
 }
@@ -41,10 +36,6 @@ rule init() {
 
     mathint wardsBefore = wards(any);
     address jugBefore = jug();
-    mathint gemTotalSupply = gem.totalSupply();
-    mathint gemBalanceOfVaultBefore = gem.balanceOf(currentContract);
-    mathint gemBalanceOfGemJoinBefore = gem.balanceOf(gemJoin);
-    require gemBalanceOfVaultBefore + gemBalanceOfGemJoinBefore <= to_mathint(gem.totalSupply());
     mathint vatInkVaultBefore; mathint vatArtVaultBefore;
     vatInkVaultBefore, vatArtVaultBefore = vat.urns(ilk(), currentContract);
     require vatInkVaultBefore == 0;
@@ -54,15 +45,11 @@ rule init() {
 
     mathint wardsAfter = wards(any);
     address jugAfter = jug();
-    mathint gemBalanceOfVaultAfter = gem.balanceOf(currentContract);
-    mathint gemBalanceOfGemJoinAfter = gem.balanceOf(gemJoin);
     mathint vatInkVaultAfter; mathint vatArtVaultAfter;
     vatInkVaultAfter, vatArtVaultAfter = vat.urns(ilk(), currentContract);
 
     assert wardsAfter == wardsBefore, "init did not keep unchanged every wards[x]";
     assert jugAfter == jugBefore, "init did not keep unchanged jug";
-    assert gemBalanceOfVaultAfter == 0, "init did not removed all gem supply from vault";
-    assert gemBalanceOfGemJoinAfter == 10^6 * WAD(), "init did not added all gem supply to gemJoin";
     assert vatInkVaultAfter == 10^6 * WAD(), "init did not set all gem supply to vat.urns(ilk,vault).ink";
     assert vatArtVaultAfter == 0, "init did not keep vat.urns(ilk,vault).art set to 0";
 }
@@ -71,17 +58,9 @@ rule init() {
 rule init_revert() {
     env e;
 
-    require gemJoin.ilk() == ilk();
-
     bool canCall = roles.canCall(ilk(), e.msg.sender, currentContract, to_bytes4(0xe1c7392a));
     mathint wardsSender = wards(e.msg.sender);
-    mathint gemTotalSupply = gem.totalSupply();
-    mathint gemBalanceOfVault = gem.balanceOf(currentContract);
-    require gemBalanceOfVault <= gemTotalSupply;
-    mathint gemBalanceOfGemJoin = gem.balanceOf(gemJoin);
-    require gemBalanceOfGemJoin == 0;
     mathint vatGemVault = vat.gem(ilk(), currentContract);
-    require vatGemVault == 0;
     mathint vatInkVault; mathint vatArtVault;
     vatInkVault, vatArtVault = vat.urns(ilk(), currentContract);
     require vatInkVault == 0;
@@ -91,15 +70,12 @@ rule init_revert() {
 
     bool revert1 = e.msg.value > 0;
     bool revert2 = !canCall && wardsSender != 1;
-    bool revert3 = gemTotalSupply != 10^6 * WAD();
-    bool revert4 = gemBalanceOfVault < 10^6 * WAD();
+    bool revert3 = vatGemVault < 10^6 * WAD();
 
     assert revert1 => lastReverted, "revert1 failed";
     assert revert2 => lastReverted, "revert2 failed";
     assert revert3 => lastReverted, "revert3 failed";
-    assert revert4 => lastReverted, "revert4 failed";
-    assert lastReverted => revert1 || revert2 || revert3 ||
-                           revert4, "Revert rules are not covering all the cases";
+    assert lastReverted => revert1 || revert2 || revert3, "Revert rules are not covering all the cases";
 }
 
 // Verify correct storage changes for non reverting rely
@@ -251,8 +227,6 @@ rule draw(uint256 wad) {
 // Verify revert rules on draw
 rule draw_revert(uint256 wad) {
     env e;
-
-    require gemJoin.ilk() == ilk();
 
     bool canCall = roles.canCall(ilk(), e.msg.sender, currentContract, to_bytes4(0x3b304147));
     mathint wardsSender = wards(e.msg.sender);
