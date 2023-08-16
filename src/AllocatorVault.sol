@@ -167,7 +167,7 @@ contract AllocatorVault {
 
     // --- funnels execution ---
 
-    function draw(uint256 wad) public auth {
+    function draw(uint256 wad) external auth {
         uint256 rate = jug.drip(ilk);
         uint256 dart = _divup(wad * RAY, rate);
         require(dart <= uint256(type(int256).max), "AllocatorVault/overflow");
@@ -176,7 +176,7 @@ contract AllocatorVault {
         emit Draw(msg.sender, wad);
     }
 
-    function wipe(uint256 wad) public auth {
+    function wipe(uint256 wad) external auth {
         nst.transferFrom(buffer, address(this), wad);
         nstJoin.join(address(this), wad);
         uint256 rate = jug.drip(ilk);
