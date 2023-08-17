@@ -17,7 +17,13 @@
 pragma solidity >=0.8.0;
 
 import { DssInstance } from "dss-test/MCD.sol";
-import { AllocatorSharedInstance, AllocatorCoreInstance, AllocatorFunnelsInstance } from "./AllocatorInstances.sol";
+import { AllocatorSharedInstance, AllocatorNetworkInstance } from "./AllocatorInstances.sol";
+
+interface WardsLike {
+    function wards(address) external view returns (uint256);
+    function rely(address) external;
+    function deny(address) external;
+}
 
 interface RolesLike {
     function setIlkAdmin(bytes32, address) external;
@@ -31,6 +37,7 @@ interface RegistryLike {
 
 interface VaultLike {
     function ilk() external view returns (bytes32);
+    function nst() external view returns (address);
     function file(bytes32, address) external;
     function init() external;
     function draw(uint256) external;
@@ -48,18 +55,12 @@ interface SwapperLike {
 struct AllocatorConfig {
     uint256 debtCeiling;
     address allocatorProxy;
-}
-
-struct CoreConfig {
-    uint8 operatorRole;
-    address facilitator;
-    address nst;
-}
-
-struct FunnelsConfig {
-    uint8 operatorRole;
+    uint8 facilitatorRole;
+    uint8 automationRole;
     address facilitator;
     address keeper;
+    address[] memory swapGems;
+    address[] memory depositGems;
 }
 
 library AllocatorInit {
@@ -67,75 +68,89 @@ library AllocatorInit {
     uint256 constant RAY = 10 ** 27;
     uint256 constant RAD = 10 ** 45;
 
+    function switchOwner(address base, address currentOwner, address newOwner) internal {
+        if (currentOwner == newOwner) return;
+        require(WardsLike(base).wards(currentOwner) == 1, "cAllocatorInit/current-owner-not-authed");
+        WardsLike(base).rely(newOwner);
+        WardsLike(base).deny(currentOwner);
+    }
+
     // TODO: sanity checks
     // TODO: add contracts to changelog
     // TODO: add to ilk registry?
+    // TODO: support also conduit mover?
 
-    // Should be called from Pause Proxy
     function initAllocator(
         DssInstance memory dss,
         AllocatorSharedInstance memory sharedInstance,
-        AllocatorCoreInstance memory coreInstance,
-        AllocatorConfig memory config
+        AllocatorNetworkInstance memory networkInstance,
+        AllocatorConfig memory cfg
     ) internal {
+        bytes32 ilk = VaultLike(networkInstance.vault).ilk();
 
-        bytes32 ilk = VaultLike(coreInstance.vault).ilk();
+        // Onboard the ilk
         dss.vat.init(ilk);
-        dss.vat.slip(ilk, coreInstance.vault, int256(1_000_000 * WAD));
         dss.jug.init(ilk);
 
-        require(config.debtCeiling < WAD, "AllocatorInit/incorrect-ilk-line-precision");
-        dss.vat.file(ilk, "line", config.debtCeiling * RAD);
-        dss.vat.file("Line", dss.vat.Line() + config.debtCeiling * RAD);
+        require(cfg.debtCeiling < WAD, "AllocatorInit/incorrect-ilk-line-precision");
+        dss.vat.file(ilk, "line", cfg.debtCeiling * RAD);
+        dss.vat.file("Line", dss.vat.Line() + cfg.debtCeiling * RAD);
 
         dss.spotter.file(ilk, "pip", sharedInstance.oracle);
-        dss.spotter.file(ilk, "mat", RAY); // TODO: do we need this?
+        dss.spotter.file(ilk, "mat", RAY);
         dss.spotter.poke(ilk);
 
-        RolesLike(sharedInstance.roles).setIlkAdmin(ilk, config.allocatorProxy);
-        RegistryLike(sharedInstance.registry).file(ilk, "buffer", coreInstance.buffer);
-    }
+        // Configure the Registry and Roles contracts
+        RolesLike(sharedInstance.roles).setIlkAdmin(ilk, cfg.allocatorProxy);
+        RegistryLike(sharedInstance.registry).file(ilk, "buffer", networkInstance.buffer);
 
-    // TODO: sanity checks
-    // TODO: make sure it is agreed that only core contracts (vault + buffer) are added to changelog
+        // Onboard the vault
+        dss.vat.slip(ilk, networkInstance.vault, int256(1_000_000 * WAD));
+        VaultLike(networkInstance.vault).init();
+        VaultLike(networkInstance.vault).file("jug", address(dss.jug));
 
-    // // Should be called from Allocator Proxy
-    function initCore(
-        DssInstance memory dss,
-        AllocatorSharedInstance memory sharedInstance,
-        AllocatorCoreInstance memory coreInstance,
-        CoreConfig memory config
-    ) internal {
-        VaultLike(coreInstance.vault).init();
-        VaultLike(coreInstance.vault).file("jug", address(dss.jug));
-        BufferLike(coreInstance.buffer).approve(config.nst, coreInstance.vault, type(uint256).max);
+        // Allow vault and funnels to pull funds from the buffer
+        BufferLike(networkInstance.buffer).approve(VaultLike(networkInstance.vault).nst(), networkInstance.vault, type(uint256).max);
+        for(uint256 i = 0; i < cfg.swapGems.length; i++) {
+            BufferLike(networkInstance.buffer).approve(cfg.swapGems[i], networkInstance.swapper, type(uint256).max);
+        }
+        for(uint256 i = 0; i < cfg.depositGems.length; i++) {
+            BufferLike(networkInstance.buffer).approve(cfg.depositGems[i], networkInstance.depositor, type(uint256).max);
+        }
 
-        bytes32 ilk = VaultLike(coreInstance.vault).ilk();
-        RolesLike(sharedInstance.roles).setUserRole(ilk, config.facilitator, config.operatorRole, true);
-        RolesLike(sharedInstance.roles).setRoleAction(ilk, config.operatorRole, coreInstance.vault, VaultLike.draw.selector, true);
-        RolesLike(sharedInstance.roles).setRoleAction(ilk, config.operatorRole, coreInstance.vault, VaultLike.wipe.selector, true);
-    }
+        // Allow the facilitator to operate on the vault and funnels directly
+        RolesLike(sharedInstance.roles).setUserRole(ilk, cfg.facilitator, cfg.facilitatorRole, true);
 
-    // TODO: sanity checks
-    // TODO: not that we do not approve NST from the buffer, as it could be any token that we want to swap
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, networkInstance.vault,          VaultLike.draw.selector,      true);
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, networkInstance.vault,          VaultLike.wipe.selector,      true);
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, networkInstance.swapper,        SwapperLike.swap.selector,    true);
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, networkInstance.depositorUniV3, SwapperLike.deposit.selector, true);
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, networkInstance.depositorUniV3, SwapperLike.withdraw.selector,true);
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, networkInstance.depositorUniV3, SwapperLike.collect.selector, true);
 
-    // Should be called from Allocator Proxy
-    function initFunnels(
-        AllocatorSharedInstance memory sharedInstance,
-        AllocatorCoreInstance memory coreInstance,
-        AllocatorFunnelsInstance memory funnelsInstance,
-        FunnelsConfig memory config
-    ) internal {
+        // Allow the automation contracts to operate on the funnels
+        RolesLike(sharedInstance.roles).setUserRole(ilk, networkInstance.stableSwapper,        cfg.automationRole, true);
+        RolesLike(sharedInstance.roles).setUserRole(ilk, networkInstance.stableDepositorUniV3, cfg.automationRole, true);
 
-        bytes32 ilk = VaultLike(coreInstance.vault).ilk();
-        RolesLike(sharedInstance.roles).setRoleAction(ilk, config.operatorRole, funnelsInstance.swapper, SwapperLike.swap.selector, true);
-        // TODO: same for the depositor
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, networkInstance.swapper,        SwapperLike.swap.selector,    true);
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, networkInstance.depositorUniV3, SwapperLike.deposit.selector, true);
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, networkInstance.depositorUniV3, SwapperLike.withdraw.selector,true);
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, networkInstance.depositorUniV3, SwapperLike.collect.selector, true);
 
-        // TODO: are we fine with the same role ("operatorRole") for different entities (facilitator, stableSwapper...) operating on different contracts (vault, swapper..)?
-        RolesLike(sharedInstance.roles).setUserRole(ilk, funnelsInstance.stableSwapper, config.operatorRole, true);
-        //RolesLike(sharedInstance.roles).setUserRole(ilk, funnelsInstance.stableDepositor, config.operatorRole, true);
+        // Allow facilitator to set configurations in the automation contracts
+        WardsLike(networkInstance.stableSwapper).rely(cfg.facilitator);
+        WardsLike(networkInstance.stableDepositorUniV3).rely(cfg.facilitator);
 
-        // TODO: rely facilitator on automation contracts
-        // TODO: add keepers to automation contracts
+        // Add keepers to the automation contracts
+        WardsLike(networkInstance.stableSwapper).kiss(cfg.keeper);
+        WardsLike(networkInstance.stableDepositorUniV3).kiss(cfg.keeper);
+
+        // Move ownership of the network contracts to the allocator proxy
+        switchOwner(networkInstance.vault,                networkInstance.owner, cfg.allocatorProxy);
+        switchOwner(networkInstance.buffer,               networkInstance.owner, cfg.allocatorProxy);
+        switchOwner(networkInstance.swapper,              networkInstance.owner, cfg.allocatorProxy);
+        switchOwner(networkInstance.depositorUniV3,       networkInstance.owner, cfg.allocatorProxy);
+        switchOwner(networkInstance.stableSwapper,        networkInstance.owner, cfg.allocatorProxy);
+        switchOwner(networkInstance.stableDepositorUniV3, networkInstance.owner, cfg.allocatorProxy);
     }
 }

@@ -22,12 +22,10 @@ struct AllocatorSharedInstance {
     address registry;
 }
 
-struct AllocatorCoreInstance {
-    address buffer;
+struct AllocatorNetworkInstance {
+    address owner;
     address vault;
-}
-
-struct AllocatorFunnelsInstance {
+    address buffer;
     address swapper;
     address depositorUniV3;
     address stableSwapper;
