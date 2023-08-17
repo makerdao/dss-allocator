@@ -42,7 +42,7 @@ contract SwapperCalleeUniV3 {
         uniV3Router = _uniV3Router;
     }
 
-    function swap(address src, address dst, uint256 amt, uint256 minOut, address to, bytes calldata data) external {
+    function swapCallback(address src, address dst, uint256 amt, uint256 minOut, address to, bytes calldata data) external {
         bytes memory path = data;
 
         address firstToken;

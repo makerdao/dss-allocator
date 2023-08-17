@@ -14,7 +14,7 @@ interface GemLike {
 }
 
 contract CalleeMock is DssTest {
-    function swap(address src, address dst, uint256 amt, uint256, address to, bytes calldata) external {
+    function swapCallback(address src, address dst, uint256 amt, uint256, address to, bytes calldata) external {
         GemLike(src).transfer(address(0xDEAD), amt);
         deal(dst, address(this), amt, true);
         GemLike(dst).transfer(to, amt);
