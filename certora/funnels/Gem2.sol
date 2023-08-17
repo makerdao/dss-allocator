@@ -4,5 +4,5 @@ pragma solidity ^0.8.16;
 
 import { GemMock } from "test/mocks/GemMock.sol";
 
-contract DstGem is GemMock(1_000_000*10**18) {
+contract Gem2 is GemMock(1_000_000*10**18) {
 }

@@ -1,8 +1,8 @@
 // Swapper.spec
 
 using AllocatorRoles as roles;
-using SrcGem as srcGem;
-using DstGem as dstGem;
+using Gem1 as gem1;
+using Gem2 as gem2;
 using Callee as calleeCon;
 
 methods {
@@ -161,8 +161,8 @@ rule setLimits_revert(address src, address dst, uint96 cap, uint32 era) {
 rule swap(address src, address dst, uint256 amt, uint256 minOut, address callee, bytes data) {
     env e;
 
-    require src == srcGem;
-    require dst == dstGem;
+    require src == gem1;
+    require dst == gem2;
     require callee == calleeCon;
 
     address anyAddr;
@@ -180,9 +180,9 @@ rule swap(address src, address dst, uint256 amt, uint256 minOut, address callee,
     capBefore, eraBefore, dueBefore, endBefore = limits(src, dst);
     mathint capOtherBefore; mathint eraOtherBefore; mathint dueOtherBefore; mathint endOtherBefore;
     capOtherBefore, eraOtherBefore, dueOtherBefore, endOtherBefore = limits(otherAddr, otherAddr2);
-    mathint dstBalanceOfBufferBefore = dstGem.balanceOf(e, buffer);
+    mathint dstBalanceOfBufferBefore = gem2.balanceOf(e, buffer);
 
-    require dstBalanceOfBufferBefore + dstGem.balanceOf(e, currentContract) + dstGem.balanceOf(e, callee) <= max_uint256;
+    require dstBalanceOfBufferBefore + gem2.balanceOf(e, currentContract) + gem2.balanceOf(e, callee) <= max_uint256;
 
     swap(e, src, dst, amt, minOut, callee, data);
 
@@ -194,7 +194,7 @@ rule swap(address src, address dst, uint256 amt, uint256 minOut, address callee,
 
     mathint expectedDue = (to_mathint(e.block.timestamp) >= endBefore ? capBefore : dueBefore) - amt;
     mathint expectedEnd = to_mathint(e.block.timestamp) >= endBefore ? e.block.timestamp + eraBefore : endBefore;
-    mathint dstBalanceOfBufferAfter = dstGem.balanceOf(e, buffer);
+    mathint dstBalanceOfBufferAfter = gem2.balanceOf(e, buffer);
 
     assert wardsAfter == wardsBefore, "swap did not keep unchanged every wards[x]";
     assert capAfter == capBefore, "swap did not keep unchanged limits[src][dst].cap";
@@ -212,8 +212,8 @@ rule swap(address src, address dst, uint256 amt, uint256 minOut, address callee,
 rule swap_revert(address src, address dst, uint256 amt, uint256 minOut, address callee, bytes data) {
     env e;
 
-    require src == srcGem;
-    require dst == dstGem;
+    require src == gem1;
+    require dst == gem2;
     require callee == calleeCon;
 
     address buffer = buffer();
@@ -224,10 +224,10 @@ rule swap_revert(address src, address dst, uint256 amt, uint256 minOut, address 
     mathint cap; mathint era; mathint due; mathint end;
     cap, era, due, end = limits(src, dst);
     mathint dueUpdated = to_mathint(e.block.timestamp) >= end ? cap : due;
-    mathint srcBalanceOfBuffer = srcGem.balanceOf(e, buffer);
-    mathint srcAllowanceBufferSwapper = srcGem.allowance(e, buffer, currentContract);
-    mathint dstBalanceOfSwapper = dstGem.balanceOf(e, currentContract);
-    mathint dstBalanceOfCallee = dstGem.balanceOf(e, callee);
+    mathint srcBalanceOfBuffer = gem1.balanceOf(e, buffer);
+    mathint srcAllowanceBufferSwapper = gem1.allowance(e, buffer, currentContract);
+    mathint dstBalanceOfSwapper = gem2.balanceOf(e, currentContract);
+    mathint dstBalanceOfCallee = gem2.balanceOf(e, callee);
 
     swap@withrevert(e, src, dst, amt, minOut, callee, data);
 
