@@ -190,7 +190,7 @@ rule file_revert(bytes32 what, address data) {
     assert lastReverted => revert1 || revert2 || revert3, "Revert rules are not covering all the cases";
 }
 
-// Verify correct storage changes for non reverting init
+// Verify correct storage changes for non reverting draw
 rule draw(uint256 wad) {
     env e;
 
