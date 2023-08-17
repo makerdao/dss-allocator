@@ -124,16 +124,16 @@ rule setLimits(address src, address dst, uint96 cap, uint32 era) {
     setLimits(e, src, dst, cap, era);
 
     mathint wardsAfter = wards(anyAddr);
-    mathint capAfter; mathint eraAfter; mathint dueAfter; mathint endAfter;
-    capAfter, eraAfter, dueAfter, endAfter = limits(src, dst);
+    mathint capSrcDstAfter; mathint eraSrcDstAfter; mathint dueSrcDstAfter; mathint endSrcDstAfter;
+    capSrcDstAfter, eraSrcDstAfter, dueSrcDstAfter, endSrcDstAfter = limits(src, dst);
     mathint capOtherAfter; mathint eraOtherAfter; mathint dueOtherAfter; mathint endOtherAfter;
     capOtherAfter, eraOtherAfter, dueOtherAfter, endOtherAfter = limits(otherAddr, otherAddr2);
 
     assert wardsAfter == wardsBefore, "setLimits did not keep unchanged every wards[x]";
-    assert capAfter == to_mathint(cap), "setLimits did not set limits[src][dst].cap to cap";
-    assert eraAfter == to_mathint(era), "setLimits did not set limits[src][dst].era to era";
-    assert dueAfter == 0, "setLimits did not set limits[src][dst].due to 0";
-    assert endAfter == 0, "setLimits did not set limits[src][dst].end to 0";
+    assert capSrcDstAfter == to_mathint(cap), "setLimits did not set limits[src][dst].cap to cap";
+    assert eraSrcDstAfter == to_mathint(era), "setLimits did not set limits[src][dst].era to era";
+    assert dueSrcDstAfter == 0, "setLimits did not set limits[src][dst].due to 0";
+    assert endSrcDstAfter == 0, "setLimits did not set limits[src][dst].end to 0";
     assert capOtherAfter == capOtherBefore, "setLimits did not keep unchanged the rest of limits[x][y].cap";
     assert eraOtherAfter == eraOtherBefore, "setLimits did not keep unchanged the rest of limits[x][y].era";
     assert dueOtherAfter == dueOtherBefore, "setLimits did not keep unchanged the rest of limits[x][y].due";
