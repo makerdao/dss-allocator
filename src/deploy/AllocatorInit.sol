@@ -92,6 +92,8 @@ struct AllocatorConfig {
     address keeper;
     address[] swapGems;
     address[] depositGems;
+    bytes32 vaultClKey;
+    bytes32 bufferClKey;
 }
 
 library AllocatorInit {
@@ -106,10 +108,17 @@ library AllocatorInit {
         WardsLike(base).deny(currentOwner);
     }
 
-    // TODO: sanity checks
-    // TODO: add contracts to changelog
     // TODO: add to ilk registry?
-    // TODO: support also conduit mover?
+    // TODO: sanity checks
+
+    function initShared(
+        DssInstance memory dss,
+        AllocatorSharedInstance memory sharedInstance
+    ) internal {
+        dss.chainlog.setAddress("ALLOCATOR_ORACLE",   sharedInstance.oracle);
+        dss.chainlog.setAddress("ALLOCATOR_ROLES",    sharedInstance.roles);
+        dss.chainlog.setAddress("ALLOCATOR_REGISTRY", sharedInstance.registry);
+    }
 
     function initAllocator(
         DssInstance memory dss,
@@ -186,5 +195,9 @@ library AllocatorInit {
         switchOwner(networkInstance.stableSwapper,        networkInstance.owner, cfg.allocatorProxy);
         switchOwner(networkInstance.stableDepositorUniV3, networkInstance.owner, cfg.allocatorProxy);
         switchOwner(networkInstance.conduitMover,         networkInstance.owner, cfg.allocatorProxy);
+
+        // Add contracts to changelog
+        dss.chainlog.setAddress(cfg.vaultClKey, networkInstance.vault);
+        dss.chainlog.setAddress(cfg.bufferClKey, networkInstance.buffer);
     }
 }
