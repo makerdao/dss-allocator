@@ -52,6 +52,37 @@ interface SwapperLike {
     function swap(address, address, uint256, uint256, address, bytes calldata) external;
 }
 
+interface DepositorUniV3Like {
+    struct LiquidityParams {
+        address gem0;
+        address gem1;
+        uint24  fee;
+        int24   tickLower;
+        int24   tickUpper;
+        uint128 liquidity;
+        uint256 amt0Desired;
+        uint256 amt1Desired;
+        uint256 amt0Min;
+        uint256 amt1Min;
+    }
+
+    struct CollectParams {
+        address gem0;
+        address gem1;
+        uint24  fee;
+        int24   tickLower;
+        int24   tickUpper;
+    }
+
+    function deposit(LiquidityParams memory) external returns (uint128, uint256, uint256);
+    function withdraw(LiquidityParams memory, bool) external returns (uint256, uint256);
+    function collect(CollectParams memory) external returns (uint256, uint256);
+}
+
+interface KissLike {
+    function kiss(address) external;
+}
+
 struct AllocatorConfig {
     uint256 debtCeiling;
     address allocatorProxy;
@@ -59,8 +90,8 @@ struct AllocatorConfig {
     uint8 automationRole;
     address facilitator;
     address keeper;
-    address[] memory swapGems;
-    address[] memory depositGems;
+    address[] swapGems;
+    address[] depositGems;
 }
 
 library AllocatorInit {
@@ -115,7 +146,7 @@ library AllocatorInit {
             BufferLike(networkInstance.buffer).approve(cfg.swapGems[i], networkInstance.swapper, type(uint256).max);
         }
         for(uint256 i = 0; i < cfg.depositGems.length; i++) {
-            BufferLike(networkInstance.buffer).approve(cfg.depositGems[i], networkInstance.depositor, type(uint256).max);
+            BufferLike(networkInstance.buffer).approve(cfg.depositGems[i], networkInstance.depositorUniV3, type(uint256).max);
         }
 
         // Allow the facilitator to operate on the vault and funnels directly
@@ -124,26 +155,28 @@ library AllocatorInit {
         RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, networkInstance.vault,          VaultLike.draw.selector,      true);
         RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, networkInstance.vault,          VaultLike.wipe.selector,      true);
         RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, networkInstance.swapper,        SwapperLike.swap.selector,    true);
-        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, networkInstance.depositorUniV3, SwapperLike.deposit.selector, true);
-        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, networkInstance.depositorUniV3, SwapperLike.withdraw.selector,true);
-        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, networkInstance.depositorUniV3, SwapperLike.collect.selector, true);
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, networkInstance.depositorUniV3, DepositorUniV3Like.deposit.selector, true);
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, networkInstance.depositorUniV3, DepositorUniV3Like.withdraw.selector,true);
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, networkInstance.depositorUniV3, DepositorUniV3Like.collect.selector, true);
 
         // Allow the automation contracts to operate on the funnels
         RolesLike(sharedInstance.roles).setUserRole(ilk, networkInstance.stableSwapper,        cfg.automationRole, true);
         RolesLike(sharedInstance.roles).setUserRole(ilk, networkInstance.stableDepositorUniV3, cfg.automationRole, true);
 
         RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, networkInstance.swapper,        SwapperLike.swap.selector,    true);
-        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, networkInstance.depositorUniV3, SwapperLike.deposit.selector, true);
-        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, networkInstance.depositorUniV3, SwapperLike.withdraw.selector,true);
-        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, networkInstance.depositorUniV3, SwapperLike.collect.selector, true);
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, networkInstance.depositorUniV3, DepositorUniV3Like.deposit.selector, true);
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, networkInstance.depositorUniV3, DepositorUniV3Like.withdraw.selector,true);
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, networkInstance.depositorUniV3, DepositorUniV3Like.collect.selector, true);
 
         // Allow facilitator to set configurations in the automation contracts
         WardsLike(networkInstance.stableSwapper).rely(cfg.facilitator);
         WardsLike(networkInstance.stableDepositorUniV3).rely(cfg.facilitator);
+        WardsLike(networkInstance.conduitMover).rely(cfg.facilitator);
 
         // Add keepers to the automation contracts
-        WardsLike(networkInstance.stableSwapper).kiss(cfg.keeper);
-        WardsLike(networkInstance.stableDepositorUniV3).kiss(cfg.keeper);
+        KissLike(networkInstance.stableSwapper).kiss(cfg.keeper);
+        KissLike(networkInstance.stableDepositorUniV3).kiss(cfg.keeper);
+        KissLike(networkInstance.conduitMover).kiss(cfg.keeper);
 
         // Move ownership of the network contracts to the allocator proxy
         switchOwner(networkInstance.vault,                networkInstance.owner, cfg.allocatorProxy);
@@ -152,5 +185,6 @@ library AllocatorInit {
         switchOwner(networkInstance.depositorUniV3,       networkInstance.owner, cfg.allocatorProxy);
         switchOwner(networkInstance.stableSwapper,        networkInstance.owner, cfg.allocatorProxy);
         switchOwner(networkInstance.stableDepositorUniV3, networkInstance.owner, cfg.allocatorProxy);
+        switchOwner(networkInstance.conduitMover,         networkInstance.owner, cfg.allocatorProxy);
     }
 }

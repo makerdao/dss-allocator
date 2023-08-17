@@ -27,6 +27,7 @@ import { Swapper }              from "src/funnels/Swapper.sol";
 import { DepositorUniV3 }       from "src/funnels/DepositorUniV3.sol";
 import { StableSwapper }        from "src/funnels/automation/StableSwapper.sol";
 import { StableDepositorUniV3 } from "src/funnels/automation/StableDepositorUniV3.sol";
+import { ConduitMover }         from "src/funnels/automation/ConduitMover.sol";
 
 import { AllocatorSharedInstance, AllocatorNetworkInstance } from "./AllocatorInstances.sol";
 
@@ -58,7 +59,6 @@ library AllocatorDeploy {
         address vat,
         bytes32 ilk,
         address nstJoin,
-        address buffer,
         address uniV3Factory
     ) internal returns (AllocatorNetworkInstance memory networkInstance) {
         address _buffer = address(new AllocatorBuffer());
@@ -67,10 +67,10 @@ library AllocatorDeploy {
         address _vault  = address(new AllocatorVault(roles, _buffer, vat, ilk, nstJoin));
         ScriptTools.switchOwner(_vault, deployer, owner);
 
-        address _swapper = address(new Swapper(roles, ilk, buffer));
+        address _swapper = address(new Swapper(roles, ilk, _buffer));
         ScriptTools.switchOwner(_swapper, deployer, owner);
 
-        address _depositorUniV3 = address(new DepositorUniV3(roles, ilk, uniV3Factory, buffer));
+        address _depositorUniV3 = address(new DepositorUniV3(roles, ilk, uniV3Factory, _buffer));
         ScriptTools.switchOwner(_depositorUniV3, deployer, owner);
 
         address _stableSwapper = address(new StableSwapper(_swapper));
@@ -79,6 +79,8 @@ library AllocatorDeploy {
         address _stableDepositorUniV3 = address(new StableDepositorUniV3(_depositorUniV3));
         ScriptTools.switchOwner(_stableDepositorUniV3, deployer, owner);
 
+        address _conduitMover = address(new ConduitMover(ilk, _buffer));
+
         networkInstance.owner                = owner;
         networkInstance.vault                = _vault;
         networkInstance.buffer               = _buffer;
@@ -86,5 +88,6 @@ library AllocatorDeploy {
         networkInstance.depositorUniV3       = _depositorUniV3;
         networkInstance.stableSwapper        = _stableSwapper;
         networkInstance.stableDepositorUniV3 = _stableDepositorUniV3;
+        networkInstance.conduitMover         = _conduitMover;
     }
 }

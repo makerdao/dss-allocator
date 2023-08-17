@@ -30,4 +30,5 @@ struct AllocatorNetworkInstance {
     address depositorUniV3;
     address stableSwapper;
     address stableDepositorUniV3;
+    address conduitMover;
 }
