@@ -11,7 +11,7 @@ methods {
     function wards(address) external returns (uint256) envfree;
     function limits(address, address) external returns (uint96, uint32, uint96, uint32) envfree;
     function roles.canCall(bytes32, address, address, bytes4) external returns (bool) envfree;
-    function _.swapCallback(address, address, uint256, uint256, address, bytes) external => DISPATCHER(true) UNRESOLVED; // assuming a non reentrant callee won't be used (authed function)
+    function _.swapCallback(address, address, uint256, uint256, address, bytes) external => DISPATCHER(true) UNRESOLVED;
     function _.allowance(address, address) external => DISPATCHER(true) UNRESOLVED;
     function _.balanceOf(address) external => DISPATCHER(true) UNRESOLVED;
     function _.transfer(address, uint256) external => DISPATCHER(true) UNRESOLVED;
