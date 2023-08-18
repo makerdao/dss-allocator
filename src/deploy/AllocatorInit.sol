@@ -103,7 +103,7 @@ library AllocatorInit {
 
     function switchOwner(address base, address currentOwner, address newOwner) internal {
         if (currentOwner == newOwner) return;
-        require(WardsLike(base).wards(currentOwner) == 1, "cAllocatorInit/current-owner-not-authed");
+        require(WardsLike(base).wards(currentOwner) == 1, "AllocatorInit/current-owner-not-authed");
         WardsLike(base).rely(newOwner);
         WardsLike(base).deny(currentOwner);
     }
