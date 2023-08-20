@@ -80,6 +80,7 @@ library AllocatorDeploy {
         ScriptTools.switchOwner(_stableDepositorUniV3, deployer, owner);
 
         address _conduitMover = address(new ConduitMover(ilk, _buffer));
+        ScriptTools.switchOwner(_conduitMover, deployer, owner);
 
         networkInstance.owner                = owner;
         networkInstance.vault                = _vault;
