@@ -10,7 +10,7 @@ interface GemLike {
 contract Callee {
     uint256 random;
 
-    function swapCallback(address dst, address, uint256, uint256, address, bytes calldata) external {
+    function swapCallback(address, address dst, uint256, uint256, address, bytes calldata) external {
         GemLike(dst).transfer(msg.sender, GemLike(dst).balanceOf(address(this)));
     }
 }

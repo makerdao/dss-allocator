@@ -216,6 +216,9 @@ rule swap_revert(address src, address dst, uint256 amt, uint256 minOut, address 
     require dst == dstCon;
     require callee == calleeCon;
 
+    require data.length < max_uint32;
+    require e.block.timestamp <= max_uint32;
+
     address buffer = buffer();
     require buffer != currentContract;
 
@@ -226,17 +229,20 @@ rule swap_revert(address src, address dst, uint256 amt, uint256 minOut, address 
     mathint dueUpdated = to_mathint(e.block.timestamp) >= end ? cap : due;
     mathint srcBalanceOfBuffer = srcCon.balanceOf(e, buffer);
     mathint srcAllowanceBufferSwapper = srcCon.allowance(e, buffer, currentContract);
+    mathint dstBalanceOfBuffer = dstCon.balanceOf(e, buffer);
     mathint dstBalanceOfSwapper = dstCon.balanceOf(e, currentContract);
     mathint dstBalanceOfCallee = dstCon.balanceOf(e, callee);
+    require dstBalanceOfBuffer + dstBalanceOfSwapper + dstBalanceOfCallee <= max_uint256;
 
     swap@withrevert(e, src, dst, amt, minOut, callee, data);
 
     bool revert1 = e.msg.value > 0;
     bool revert2 = !canCall && wardsSender != 1;
-    bool revert3 = to_mathint(amt) > dueUpdated;
-    bool revert4 = srcBalanceOfBuffer < to_mathint(amt);
-    bool revert5 = srcAllowanceBufferSwapper < to_mathint(amt);
-    bool revert6 = dstBalanceOfSwapper + dstBalanceOfCallee < to_mathint(minOut);
+    bool revert3 = to_mathint(e.block.timestamp) >= end && e.block.timestamp + era > max_uint32;
+    bool revert4 = to_mathint(amt) > dueUpdated;
+    bool revert5 = srcBalanceOfBuffer < to_mathint(amt);
+    bool revert6 = srcAllowanceBufferSwapper < to_mathint(amt);
+    bool revert7 = dstBalanceOfSwapper + dstBalanceOfCallee < to_mathint(minOut);
 
     assert revert1 => lastReverted, "revert1 failed";
     assert revert2 => lastReverted, "revert2 failed";
@@ -244,6 +250,8 @@ rule swap_revert(address src, address dst, uint256 amt, uint256 minOut, address 
     assert revert4 => lastReverted, "revert4 failed";
     assert revert5 => lastReverted, "revert5 failed";
     assert revert6 => lastReverted, "revert6 failed";
+    assert revert7 => lastReverted, "revert7 failed";
     assert lastReverted => revert1 || revert2 || revert3 ||
-                           revert4 || revert5 || revert6, "Revert rules are not covering all the cases";
+                           revert4 || revert5 || revert6 ||
+                           revert7, "Revert rules are not covering all the cases";
 }
