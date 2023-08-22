@@ -35,7 +35,7 @@ echo $JSON | jq -c '.[]' | while read i; do
     cfg_calldata=$(cast calldata "configs(address,address,uint24,int24,int24)" $params)
     # Note that we run `cast call` using the raw calldata to avoid issues with negative arguments
     cfg=$(cast call $STABLE_DEPOSITOR $cfg_calldata)
-    decoded_cfg=$(cast abi-decode "configs(address,address,uint24,int24,int24)(int32,uint32,uint96,uint96,uint96,uint96,uint32)" $cfg)
+    decoded_cfg=$(cast abi-decode --input "x(int32,uint32,uint96,uint96,uint96,uint96,uint32)" $cfg)
     num=$(echo $decoded_cfg | cut -d" " -f1)
 
     if (( num > 0 )); then
