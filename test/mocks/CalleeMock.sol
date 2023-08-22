@@ -7,7 +7,7 @@ interface GemLike {
     function transfer(address, uint256) external;
 }
 
-contract Callee {
+contract CalleeMock {
     uint256 random;
 
     function swapCallback(address, address dst, uint256, uint256, address, bytes calldata) external {

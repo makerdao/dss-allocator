@@ -1,9 +1,9 @@
 // Swapper.spec
 
 using AllocatorRoles as roles;
-using Gem0 as srcCon;
-using Gem1 as dstCon;
-using Callee as calleeCon;
+using Gem0Mock as srcCon;
+using Gem1Mock as dstCon;
+using CalleeMock as calleeCon;
 
 methods {
     function ilk() external returns (bytes32) envfree;
@@ -174,6 +174,7 @@ rule swap(address src, address dst, uint256 amt, uint256 minOut, address callee,
 
     address buffer = buffer();
     require buffer != currentContract;
+    require buffer != callee;
 
     mathint wardsBefore = wards(anyAddr);
     mathint capBefore; mathint eraBefore; mathint dueBefore; mathint endBefore;
