@@ -197,7 +197,7 @@ contract DepositorUniV3 {
         require(msg.sender == pool, "DepositorUniV3/sender-not-a-pool");
 
         if (amt0Owed > 0) GemLike(decoded.gem0).transferFrom(buffer, msg.sender, amt0Owed);
-        if (amt0Owed > 0) GemLike(decoded.gem1).transferFrom(buffer, msg.sender, amt1Owed);
+        if (amt1Owed > 0) GemLike(decoded.gem1).transferFrom(buffer, msg.sender, amt1Owed);
     }
 
     struct LiquidityParams {
