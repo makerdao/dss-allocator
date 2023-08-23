@@ -179,11 +179,10 @@ library AllocatorInit {
         require(DepositorUniV3Like(networkInstance.depositorUniV3).ilk()    == ilk,                    "AllocatorInit/depositorUniV3-ilk-mismatch");
         require(DepositorUniV3Like(networkInstance.depositorUniV3).buffer() == networkInstance.buffer, "AllocatorInit/depositorUniV3-buffer-mismatch");
 
-        require(StableSwapperLike(networkInstance.stableSwapper).swapper() == networkInstance.swapper, "AllocatorInit/stableSwapper-swapper-mismatch");
-
+        require(StableSwapperLike(networkInstance.stableSwapper).swapper()                 == networkInstance.swapper,        "AllocatorInit/stableSwapper-swapper-mismatch");
         require(StableDepositorUniV3Like(networkInstance.stableDepositorUniV3).depositor() == networkInstance.depositorUniV3, "AllocatorInit/stableDepositorUniV3-depositorUniV3-mismatch");
 
-        require(ConduitMoverLike(networkInstance.conduitMover).ilk() == ilk,                       "AllocatorInit/conduitMover-ilk-mismatch");
+        require(ConduitMoverLike(networkInstance.conduitMover).ilk()    == ilk,                    "AllocatorInit/conduitMover-ilk-mismatch");
         require(ConduitMoverLike(networkInstance.conduitMover).buffer() == networkInstance.buffer, "AllocatorInit/conduitMover-buffer-mismatch");
 
         // Onboard the ilk
@@ -260,7 +259,7 @@ library AllocatorInit {
         switchOwner(networkInstance.conduitMover,         networkInstance.owner, cfg.allocatorProxy);
 
         // Add allocator-specific contracts to changelog
-        dss.chainlog.setAddress(cfg.vaultClKey, networkInstance.vault);
+        dss.chainlog.setAddress(cfg.vaultClKey,  networkInstance.vault);
         dss.chainlog.setAddress(cfg.bufferClKey, networkInstance.buffer);
 
         // Add to ilk registry

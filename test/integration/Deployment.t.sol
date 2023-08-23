@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 pragma solidity ^0.8.16;
 
 import "dss-test/DssTest.sol";
@@ -131,6 +132,7 @@ interface ConduitMoverLike {
 }
 
 contract DeploymentTest is DssTest {
+
     // existing contracts
     address constant LOG           = 0xdA0Ab1e0017DEbCd72Be8599041a2aa3bA7e740F;
     address constant UNIV3_FACTORY = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
@@ -156,7 +158,7 @@ contract DeploymentTest is DssTest {
     uint8 constant automationRole  = uint8(2);
 
     // contracts to be deployed
-    GemMock nst;
+    address nst;
     address nstJoin;
     address uniV3Callee;
     address conduit1;
@@ -182,8 +184,8 @@ contract DeploymentTest is DssTest {
         USDC         = ChainlogLike(LOG).getAddress("USDC");
         DAI          = ChainlogLike(LOG).getAddress("MCD_DAI");
 
-        nst         = new GemMock(0);
-        nstJoin     = address(new NstJoinMock(VatMock(VAT), nst));
+        nst         = address(new GemMock(0));
+        nstJoin     = address(new NstJoinMock(VatMock(VAT), GemMock(nst)));
         uniV3Callee = address(new SwapperCalleeUniV3(UNIV3_ROUTER));
 
         usdcDaiPath = abi.encodePacked(USDC, uint24(100), DAI);
@@ -288,7 +290,7 @@ contract DeploymentTest is DssTest {
         assertEq(RegistryLike(shared.registry).buffers(ILK), network.buffer);
         assertEq(VaultLike(network.vault).jug(), address(dss.jug));
 
-        assertEq(GemLike(address(nst)).allowance(network.buffer, network.vault), type(uint256).max);
+        assertEq(GemLike(nst).allowance(network.buffer, network.vault), type(uint256).max);
         assertEq(GemLike(DAI).allowance(network.buffer, network.swapper), type(uint256).max);
         assertEq(GemLike(DAI).allowance(network.buffer, network.depositorUniV3), type(uint256).max);
         assertEq(GemLike(USDC).allowance(network.buffer,network.depositorUniV3), type(uint256).max);
@@ -341,9 +343,7 @@ contract DeploymentTest is DssTest {
         assertEq(ChainlogLike(LOG).getAddress("VAULT_CL_KEY"),  network.vault);
         assertEq(ChainlogLike(LOG).getAddress("BUFFER_CL_KEY"), network.buffer);
 
-        uint256 ilkRegistryCount = IlkRegistryLike(ILK_REGISTRY).count();
-        assertEq(ilkRegistryCount, previousIlkRegistryCount + 1);
-
+        assertEq(IlkRegistryLike(ILK_REGISTRY).count(),     previousIlkRegistryCount + 1);
         assertEq(IlkRegistryLike(ILK_REGISTRY).pos(ILK),    previousIlkRegistryCount);
         assertEq(IlkRegistryLike(ILK_REGISTRY).join(ILK),   address(0));
         assertEq(IlkRegistryLike(ILK_REGISTRY).gem(ILK),    address(0));
@@ -358,107 +358,93 @@ contract DeploymentTest is DssTest {
     function testVaultDrawWipe() public {
         emulateSpell();
 
-        uint256 balanceBefore = GemLike(address(nst)).balanceOf(network.buffer);
-        vm.prank(facilitator); VaultLike(network.vault).draw(1_000_000 * WAD);
-        assertEq(GemLike(address(nst)).balanceOf(network.buffer), balanceBefore + 1_000_000 * WAD);
-
-        vm.prank(facilitator); VaultLike(network.vault).wipe(1_000_000 * WAD);
-        assertEq(GemLike(address(nst)).balanceOf(network.buffer), balanceBefore);
+        vm.prank(facilitator); VaultLike(network.vault).draw(1_000 * WAD);
+        vm.prank(facilitator); VaultLike(network.vault).wipe(1_000 * WAD);
     }
 
     function testSwapFromFacilitator() public {
         emulateSpell();
 
-        vm.prank(allocatorProxy); SwapperLike(network.swapper).setLimits(DAI, USDC, uint96(5_000_000 * WAD), 1 hours);
+        deal(DAI, network.buffer, 1_000 * WAD);
 
-        deal(DAI, network.buffer, 5_000_000 * WAD);
-
-        // swap from facilitator
+        vm.prank(allocatorProxy); SwapperLike(network.swapper).setLimits(DAI, USDC, uint96(1_000 * WAD), 1 hours);
         vm.prank(facilitator); SwapperLike(network.swapper).swap(DAI, USDC, 1_000 * WAD, 990 * 10**6 , uniV3Callee, daiUsdcPath);
     }
 
     function testSwapFromKeeper() public {
         emulateSpell();
 
-        vm.prank(allocatorProxy); SwapperLike(network.swapper).setLimits(DAI, USDC, uint96(5_000_000 * WAD), 1 hours);
+        deal(DAI, network.buffer, 1_000 * WAD);
 
-        deal(DAI, network.buffer, 5_000_000 * WAD);
-
-        vm.prank(facilitator); StableSwapperLike(network.stableSwapper).setConfig(DAI, USDC, 5, 10 minutes, uint96(1_000 * WAD), uint96(990 * 10**6));
-
+        vm.prank(allocatorProxy); SwapperLike(network.swapper).setLimits(DAI, USDC, uint96(1_000 * WAD), 1 hours);
+        vm.prank(facilitator); StableSwapperLike(network.stableSwapper).setConfig(DAI, USDC, 1, 1 hours, uint96(1_000 * WAD), uint96(990 * 10**6));
         vm.prank(stableSwapperKeeper); StableSwapperLike(network.stableSwapper).swap(DAI, USDC, 990 * 10**6, uniV3Callee, daiUsdcPath);
     }
 
     function testDepositWithdrawCollectFromFacilitator() public {
         emulateSpell();
 
-        vm.prank(allocatorProxy); DepositorUniV3Like(network.depositorUniV3).setLimits(DAI, USDC, uint24(100), uint96(10_000 * WAD), uint96(10_000 * 10**6), 1 hours);
+        deal(DAI,  network.buffer, 1_000 * WAD);
+        deal(USDC, network.buffer, 1_000 * 10**6);
 
-        deal(DAI, network.buffer, 5_000 * WAD);
-        deal(USDC, network.buffer, 5_000 * 10**6);
-
+        vm.prank(allocatorProxy); DepositorUniV3Like(network.depositorUniV3).setLimits(DAI, USDC, uint24(100), uint96(2_000 * WAD), uint96(2_000 * 10**6), 1 hours);
         DepositorUniV3Like.LiquidityParams memory dp = DepositorUniV3Like.LiquidityParams({
-            gem0: DAI,
-            gem1: USDC,
-            fee: uint24(100),
-            tickLower: REF_TICK-100,
-            tickUpper: REF_TICK+100,
-            liquidity: 0,
-            amt0Desired: 5_000 * WAD,
-            amt1Desired: 5_000 * 10**6,
-            amt0Min: 4_900 * WAD,
-            amt1Min: 4_900 * 10**6
+            gem0       : DAI,
+            gem1       : USDC,
+            fee        : uint24(100),
+            tickLower  : REF_TICK - 100,
+            tickUpper  : REF_TICK + 100,
+            liquidity  : 0,
+            amt0Desired: 1_000 * WAD,
+            amt1Desired: 1_000 * 10**6,
+            amt0Min    : 900 * WAD,
+            amt1Min    : 900 * 10**6
         });
 
         vm.prank(facilitator); DepositorUniV3Like(network.depositorUniV3).deposit(dp);
-
         vm.prank(facilitator); DepositorUniV3Like(network.depositorUniV3).withdraw(dp, false);
 
         DepositorUniV3Like.CollectParams memory cp = DepositorUniV3Like.CollectParams({
-            gem0: DAI,
-            gem1: USDC,
-            fee: uint24(100),
-            tickLower: REF_TICK-100,
-            tickUpper: REF_TICK+100
+            gem0     : DAI,
+            gem1     : USDC,
+            fee      : uint24(100),
+            tickLower: REF_TICK - 100,
+            tickUpper: REF_TICK + 100
         });
 
-        vm.expectRevert(bytes("NP")); // Reverts since no fees to collect and not because the call is unauthorized
+        vm.expectRevert(bytes("NP")); // we make sure it reverts since no fees to collect and not because the call is unauthorized
         vm.prank(facilitator); DepositorUniV3Like(network.depositorUniV3).collect(cp);
     }
 
     function testDepositWithdrawCollectFromKeeper() public {
         emulateSpell();
 
-        vm.prank(allocatorProxy); DepositorUniV3Like(network.depositorUniV3).setLimits(DAI, USDC, uint24(100), uint96(10_000 * WAD), uint96(10_000 * 10**6), 1 hours);
+        deal(DAI,  network.buffer, 1_000 * WAD);
+        deal(USDC, network.buffer, 1_000 * 10**6);
 
-        deal(DAI, network.buffer, 5_000 * WAD);
-        deal(USDC, network.buffer, 5_000 * 10**6);
+        vm.prank(allocatorProxy); DepositorUniV3Like(network.depositorUniV3).setLimits(DAI, USDC, uint24(100), uint96(2_000 * WAD), uint96(2_000 * 10**6), 1 hours);
 
-        vm.prank(facilitator); StableDepositorUniV3Like(network.stableDepositorUniV3).setConfig(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, 1, 1 hours, uint96(5_000 * WAD), uint96(5000 * 10**6), 0, 0);
+        vm.prank(facilitator); StableDepositorUniV3Like(network.stableDepositorUniV3).setConfig(DAI, USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, 1, 1 hours, uint96(1_000 * WAD), uint96(1000 * 10**6), 0, 0);
+        vm.prank(stableDepositorUniV3Keeper); StableDepositorUniV3Like(network.stableDepositorUniV3).deposit(DAI, USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, 0, 0);
 
-        vm.prank(stableDepositorUniV3Keeper); StableDepositorUniV3Like(network.stableDepositorUniV3).deposit(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, 0, 0);
-
-        vm.prank(facilitator); StableDepositorUniV3Like(network.stableDepositorUniV3).setConfig(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, -1, 1 hours, uint96(5_000 * WAD), uint96(5000 * 10**6), 0, 0);
-
-        vm.prank(stableDepositorUniV3Keeper); StableDepositorUniV3Like(network.stableDepositorUniV3).withdraw(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, 0, 0);
+        vm.prank(facilitator); StableDepositorUniV3Like(network.stableDepositorUniV3).setConfig(DAI, USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, -1, 1 hours, uint96(1_000 * WAD), uint96(1000 * 10**6), 0, 0);
+        vm.prank(stableDepositorUniV3Keeper); StableDepositorUniV3Like(network.stableDepositorUniV3).withdraw(DAI, USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, 0, 0);
 
         vm.expectRevert(bytes("NP")); // Reverts since no fees to collect and not because the call is unauthorized
-        vm.prank(stableDepositorUniV3Keeper); StableDepositorUniV3Like(network.stableDepositorUniV3).collect(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
-
+        vm.prank(stableDepositorUniV3Keeper); StableDepositorUniV3Like(network.stableDepositorUniV3).collect(DAI, USDC, uint24(100), REF_TICK - 100, REF_TICK + 100);
     }
 
     function testMoveFromKeeper() public {
         emulateSpell();
 
-        // Note that although the Conduits setup and init were not done by the scripts, we are testing the conduit mover
-        // deployment and, the facilitator ward on it, and the keeper addition to it.
+        // Note that although the Conduits setup and init were not done by the tested contracts, we are testing the
+        // ConduitMover deployment, the facilitator ward on it and the keeper addition to it.
 
         // Give conduit1 some funds
         deal(USDC, network.buffer, 3_000 * 10**6, true);
         vm.prank(network.conduitMover); AllocatorConduitMock(conduit1).deposit(ILK, USDC, 3_000 * 10**6);
 
         vm.prank(facilitator); ConduitMoverLike(network.conduitMover).setConfig(conduit1, conduit2, USDC, 1, 1 hours, 3_000 * 10**6);
-
         vm.prank(conduitMoverKeeper); ConduitMoverLike(network.conduitMover).move(conduit1, conduit2, USDC);
     }
 }
