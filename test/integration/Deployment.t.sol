@@ -18,9 +18,9 @@ pragma solidity ^0.8.16;
 
 import "dss-test/DssTest.sol";
 
-import { AllocatorSharedInstance, AllocatorNetworkInstance } from "src/deploy/AllocatorInstances.sol";
-import { AllocatorDeploy } from "src/deploy/AllocatorDeploy.sol";
-import { AllocatorInit, AllocatorConfig } from "src/deploy/AllocatorInit.sol";
+import { AllocatorSharedInstance, AllocatorNetworkInstance } from "deploy/AllocatorInstances.sol";
+import { AllocatorDeploy } from "deploy/AllocatorDeploy.sol";
+import { AllocatorInit, AllocatorConfig } from "deploy/AllocatorInit.sol";
 
 import { SwapperCalleeUniV3 } from "src/funnels/callees/SwapperCalleeUniV3.sol";
 
