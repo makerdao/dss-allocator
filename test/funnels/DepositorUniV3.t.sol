@@ -795,6 +795,18 @@ contract DepositorUniV3Test is DssTest {
         vm.prank(DAI_USDC_POOL);
             depositor.uniswapV3MintCallback({
             amt0Owed: 1,
+            amt1Owed: 0,
+            data: abi.encode(DepositorUniV3.MintCallbackData({gem0: DAI, gem1: USDC, fee: 100}))
+        });
+
+        assertEq(GemLike(DAI).balanceOf(address(buffer)), initialDAI - 1);
+        assertEq(GemLike(USDC).balanceOf(address(buffer)), initialUSDC);
+        assertEq(GemLike(DAI).balanceOf(DAI_USDC_POOL), initialPoolDAI + 1);
+        assertEq(GemLike(USDC).balanceOf(DAI_USDC_POOL), initialPoolUSDC);
+
+        vm.prank(DAI_USDC_POOL);
+            depositor.uniswapV3MintCallback({
+            amt0Owed: 0,
             amt1Owed: 2,
             data: abi.encode(DepositorUniV3.MintCallbackData({gem0: DAI, gem1: USDC, fee: 100}))
         });
@@ -803,6 +815,7 @@ contract DepositorUniV3Test is DssTest {
         assertEq(GemLike(USDC).balanceOf(address(buffer)), initialUSDC - 2);
         assertEq(GemLike(DAI).balanceOf(DAI_USDC_POOL), initialPoolDAI + 1);
         assertEq(GemLike(USDC).balanceOf(DAI_USDC_POOL), initialPoolUSDC + 2);
+
     }
 
     function testMintCallbackNotFromPool() public {
