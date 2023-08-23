@@ -816,6 +816,17 @@ contract DepositorUniV3Test is DssTest {
         assertEq(GemLike(DAI).balanceOf(DAI_USDC_POOL), initialPoolDAI + 1);
         assertEq(GemLike(USDC).balanceOf(DAI_USDC_POOL), initialPoolUSDC + 2);
 
+        vm.prank(DAI_USDC_POOL);
+            depositor.uniswapV3MintCallback({
+            amt0Owed: 10,
+            amt1Owed: 20,
+            data: abi.encode(DepositorUniV3.MintCallbackData({gem0: DAI, gem1: USDC, fee: 100}))
+        });
+
+        assertEq(GemLike(DAI).balanceOf(address(buffer)), initialDAI - 11);
+        assertEq(GemLike(USDC).balanceOf(address(buffer)), initialUSDC - 22);
+        assertEq(GemLike(DAI).balanceOf(DAI_USDC_POOL), initialPoolDAI + 11);
+        assertEq(GemLike(USDC).balanceOf(DAI_USDC_POOL), initialPoolUSDC + 22);
     }
 
     function testMintCallbackNotFromPool() public {
