@@ -107,7 +107,7 @@ interface StableSwapperLike {
 }
 
 interface StableDepositorUniV3Like {
-    function depositorUniV3() external view returns (address);
+    function depositor() external view returns (address);
 }
 
 interface ConduitMoverLike {
@@ -181,7 +181,7 @@ library AllocatorInit {
 
         require(StableSwapperLike(networkInstance.stableSwapper).swapper() == networkInstance.swapper, "AllocatorInit/stableSwapper-swapper-mismatch");
 
-        require(StableDepositorUniV3Like(networkInstance.stableDepositorUniV3).depositorUniV3() == networkInstance.depositorUniV3, "AllocatorInit/stableDepositorUniV3-depositorUniV3-mismatch");
+        require(StableDepositorUniV3Like(networkInstance.stableDepositorUniV3).depositor() == networkInstance.depositorUniV3, "AllocatorInit/stableDepositorUniV3-depositorUniV3-mismatch");
 
         require(ConduitMoverLike(networkInstance.conduitMover).ilk() == ilk,                       "AllocatorInit/conduitMover-ilk-mismatch");
         require(ConduitMoverLike(networkInstance.conduitMover).buffer() == networkInstance.buffer, "AllocatorInit/conduitMover-buffer-mismatch");
@@ -216,7 +216,7 @@ library AllocatorInit {
         }
 
         // Set the pause proxy temporarily as ilk admin so we can set all the roles below
-        RolesLike(sharedInstance.roles).setIlkAdmin(ilk, address(this));
+        RolesLike(sharedInstance.roles).setIlkAdmin(ilk, networkInstance.owner);
 
         // Allow the facilitator to operate on the vault and funnels directly
         RolesLike(sharedInstance.roles).setUserRole(ilk, cfg.facilitator, cfg.facilitatorRole, true);

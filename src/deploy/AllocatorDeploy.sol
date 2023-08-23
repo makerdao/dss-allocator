@@ -31,6 +31,10 @@ import { ConduitMover }         from "src/funnels/automation/ConduitMover.sol";
 
 import { AllocatorSharedInstance, AllocatorNetworkInstance } from "./AllocatorInstances.sol";
 
+interface NstJoinLike {
+    function vat() external view returns (address);
+}
+
 library AllocatorDeploy {
 
     // Note: owner is assumed to be the pause proxy
@@ -56,39 +60,38 @@ library AllocatorDeploy {
         address deployer,
         address owner,
         address roles,
-        address vat,
         bytes32 ilk,
         address nstJoin,
         address uniV3Factory
     ) internal returns (AllocatorNetworkInstance memory networkInstance) {
         address _buffer = address(new AllocatorBuffer());
         ScriptTools.switchOwner(_buffer, deployer, owner);
+        networkInstance.buffer = _buffer;
 
-        address _vault  = address(new AllocatorVault(roles, _buffer, vat, ilk, nstJoin));
+        address _vault  = address(new AllocatorVault(roles, _buffer, NstJoinLike(nstJoin).vat(), ilk, nstJoin));
         ScriptTools.switchOwner(_vault, deployer, owner);
+        networkInstance.vault = _vault;
 
         address _swapper = address(new Swapper(roles, ilk, _buffer));
         ScriptTools.switchOwner(_swapper, deployer, owner);
+        networkInstance.swapper = _swapper;
 
         address _depositorUniV3 = address(new DepositorUniV3(roles, ilk, uniV3Factory, _buffer));
         ScriptTools.switchOwner(_depositorUniV3, deployer, owner);
+        networkInstance.depositorUniV3 = _depositorUniV3;
 
         address _stableSwapper = address(new StableSwapper(_swapper));
         ScriptTools.switchOwner(_stableSwapper, deployer, owner);
+        networkInstance.stableSwapper        = _stableSwapper;
 
         address _stableDepositorUniV3 = address(new StableDepositorUniV3(_depositorUniV3));
         ScriptTools.switchOwner(_stableDepositorUniV3, deployer, owner);
+        networkInstance.stableDepositorUniV3 = _stableDepositorUniV3;
 
         address _conduitMover = address(new ConduitMover(ilk, _buffer));
         ScriptTools.switchOwner(_conduitMover, deployer, owner);
+        networkInstance.conduitMover = _conduitMover;
 
-        networkInstance.owner                = owner;
-        networkInstance.vault                = _vault;
-        networkInstance.buffer               = _buffer;
-        networkInstance.swapper              = _swapper;
-        networkInstance.depositorUniV3       = _depositorUniV3;
-        networkInstance.stableSwapper        = _stableSwapper;
-        networkInstance.stableDepositorUniV3 = _stableDepositorUniV3;
-        networkInstance.conduitMover         = _conduitMover;
+        networkInstance.owner = owner;
     }
 }
