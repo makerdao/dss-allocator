@@ -19,11 +19,10 @@ methods {
     function poolCon.fee() external returns (uint24) envfree;
     function poolCon.random0() external returns (uint256) envfree;
     function poolCon.random1() external returns (uint256) envfree;
-    // function _.allowance(address, address) external => DISPATCHER(true) UNRESOLVED;
-    // function _.balanceOf(address) external => DISPATCHER(true) UNRESOLVED;
-    // function _.transfer(address, uint256) external => DISPATCHER(true) UNRESOLVED;
     function gem0Con.balanceOf(address) external returns (uint256) envfree;
     function gem1Con.balanceOf(address) external returns (uint256) envfree;
+    function gem0Con.allowance(address, address) external returns (uint256) envfree;
+    function gem1Con.allowance(address, address) external returns (uint256) envfree;
     function _.transferFrom(address, address, uint256) external => DISPATCHER(true) UNRESOLVED;
 }
 
@@ -255,4 +254,62 @@ rule deposit(DepositorUniV3.LiquidityParams p) {
     assert gem1BalanceOfBufferAfter == gem1BalanceOfBufferBefore - amt1, "deposit did not decrease gem1.balanceOf(buffer) by amt1";
     assert gem0BalanceOfPoolAfter == gem0BalanceOfPoolBefore + amt0, "deposit did not increase gem0.balanceOf(pool) by amt0";
     assert gem1BalanceOfPoolAfter == gem1BalanceOfPoolBefore + amt1, "deposit did not increase gem1.balanceOf(pool) by amt1";
+}
+
+// Verify revert rules on deposit
+rule deposit_revert(DepositorUniV3.LiquidityParams p) {
+    env e;
+
+    require p.gem0 == gem0Con;
+    require p.gem1 == gem1Con;
+    require p.gem0 == poolCon.gem0();
+    require p.gem1 == poolCon.gem1();
+    require p.fee  == poolCon.fee();
+
+    require e.block.timestamp <= max_uint32;
+
+    address buffer = buffer();
+    require buffer != currentContract;
+    require buffer != poolCon;
+
+    bool canCall = roles.canCall(ilk(), e.msg.sender, currentContract, to_bytes4(0xc82cb114));
+    mathint wardsSender = wards(e.msg.sender);
+    mathint cap0Gem0Gem1Fee; mathint cap1Gem0Gem1Fee; mathint eraGem0Gem1Fee; mathint due0Gem0Gem1Fee; mathint due1Gem0Gem1Fee; mathint endGem0Gem1Fee;
+    cap0Gem0Gem1Fee, cap1Gem0Gem1Fee, eraGem0Gem1Fee, due0Gem0Gem1Fee, due1Gem0Gem1Fee, endGem0Gem1Fee = limits(p.gem0, p.gem1, p.fee);
+    mathint amt0 = poolCon.random0();
+    mathint amt1 = poolCon.random1();
+    mathint gem0AllowanceBufferDepositor = gem0Con.allowance(buffer, currentContract);
+    mathint gem0BalanceOfBuffer = gem0Con.balanceOf(buffer);
+    mathint gem1AllowanceBufferDepositor = gem1Con.allowance(buffer, currentContract);
+    mathint gem1BalanceOfBuffer = gem1Con.balanceOf(buffer);
+    mathint due0Updated = to_mathint(e.block.timestamp) >= endGem0Gem1Fee ? cap0Gem0Gem1Fee : due0Gem0Gem1Fee;
+    mathint due1Updated = to_mathint(e.block.timestamp) >= endGem0Gem1Fee ? cap1Gem0Gem1Fee : due1Gem0Gem1Fee;
+
+    deposit@withrevert(e, p);
+
+    bool revert1  = e.msg.value > 0;
+    bool revert2  = !canCall && wardsSender != 1;
+    bool revert3  = p.gem0 >= p.gem1;
+    bool revert4  = to_mathint(e.block.timestamp) >= endGem0Gem1Fee && e.block.timestamp + eraGem0Gem1Fee > max_uint32;
+    bool revert5  = gem0AllowanceBufferDepositor < amt0;
+    bool revert6  = gem0BalanceOfBuffer < amt0;
+    bool revert7  = gem1AllowanceBufferDepositor < amt1;
+    bool revert8  = gem1BalanceOfBuffer < amt1;
+    bool revert9  = amt0 < to_mathint(p.amt0Min) || amt1 < to_mathint(p.amt1Min);
+    bool revert10 = amt0 > due0Updated || amt1 > due1Updated;
+
+    assert revert1  => lastReverted, "revert1 failed";
+    assert revert2  => lastReverted, "revert2 failed";
+    assert revert3  => lastReverted, "revert3 failed";
+    assert revert4  => lastReverted, "revert4 failed";
+    assert revert5  => lastReverted, "revert5 failed";
+    assert revert6  => lastReverted, "revert6 failed";
+    assert revert7  => lastReverted, "revert7 failed";
+    assert revert8  => lastReverted, "revert8 failed";
+    assert revert9  => lastReverted, "revert9 failed";
+    assert revert10 => lastReverted, "revert10 failed";
+    assert lastReverted => revert1  || revert2 || revert3 ||
+                           revert4  || revert5 || revert6 ||
+                           revert7  || revert8 || revert9 ||
+                           revert10, "Revert rules are not covering all the cases";
 }
