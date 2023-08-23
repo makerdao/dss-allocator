@@ -1,19 +1,36 @@
 // DepositorUniV3.spec
 
 using AllocatorRoles as roles;
-// using Gem0 as gem0;
-// using Gem1 as gem1;
+using PoolUniV3Mock as poolCon;
+using Gem0Mock as gem0Con;
+using Gem1Mock as gem1Con;
 
 methods {
     function ilk() external returns (bytes32) envfree;
     function buffer() external returns (address) envfree;
     function wards(address) external returns (uint256) envfree;
     function limits(address, address, uint24) external returns (uint96, uint96, uint32, uint96, uint96, uint32) envfree;
+    function _getLiquidityForAmts(address pool, int24 tickLower, int24 tickUpper, uint256 amt0Desired, uint256 amt1Desired) internal returns (uint128) => getLiquidityForAmtsSummary(pool, tickLower, tickUpper, amt0Desired, amt1Desired);
     function roles.canCall(bytes32, address, address, bytes4) external returns (bool) envfree;
+    function _.mint(address, int24, int24, uint128, bytes) external => DISPATCHER(true);
+    function _.uniswapV3MintCallback(uint256, uint256, bytes) external => DISPATCHER(true);
+    function poolCon.gem0() external returns (address) envfree;
+    function poolCon.gem1() external returns (address) envfree;
+    function poolCon.fee() external returns (uint24) envfree;
+    function poolCon.random0() external returns (uint256) envfree;
+    function poolCon.random1() external returns (uint256) envfree;
     // function _.allowance(address, address) external => DISPATCHER(true) UNRESOLVED;
     // function _.balanceOf(address) external => DISPATCHER(true) UNRESOLVED;
     // function _.transfer(address, uint256) external => DISPATCHER(true) UNRESOLVED;
-    // function _.transferFrom(address, address, uint256) external => DISPATCHER(true) UNRESOLVED;
+    function gem0Con.balanceOf(address) external returns (uint256) envfree;
+    function gem1Con.balanceOf(address) external returns (uint256) envfree;
+    function _.transferFrom(address, address, uint256) external => DISPATCHER(true) UNRESOLVED;
+}
+
+ghost mapping(address => mapping(int24 => mapping(int24 => mapping(uint256 => mapping(uint256 => uint128))))) _liquidityMap;
+
+function getLiquidityForAmtsSummary(address pool, int24 tickLower, int24 tickUpper, uint256 amt0Desired, uint256 amt1Desired) returns uint128 {
+    return _liquidityMap[pool][tickLower][tickUpper][amt0Desired][amt1Desired];
 }
 
 // Verify correct storage changes for non reverting rely
@@ -166,4 +183,76 @@ rule setLimits_revert(address gem0, address gem1, uint24 fee, uint96 cap0, uint9
     assert revert2 => lastReverted, "revert2 failed";
     assert revert3 => lastReverted, "revert3 failed";
     assert lastReverted => revert1 || revert2 || revert3, "Revert rules are not covering all the cases";
+}
+
+// Verify correct storage changes for non reverting deposit
+rule deposit(DepositorUniV3.LiquidityParams p) {
+    env e;
+
+    require p.gem0 == gem0Con;
+    require p.gem1 == gem1Con;
+    require p.gem0 == poolCon.gem0();
+    require p.gem1 == poolCon.gem1();
+    require p.fee  == poolCon.fee();
+
+    address anyAddr;
+    address otherAddr;
+    address otherAddr2;
+    uint24 otherUint24;
+    require otherAddr != p.gem0 || otherAddr2 != p.gem1 || otherUint24 != p.fee;
+
+    require e.block.timestamp <= max_uint32;
+
+    address buffer = buffer();
+    require buffer != poolCon;
+
+    mathint wardsBefore = wards(anyAddr);
+    mathint cap0Gem0Gem1FeeBefore; mathint cap1Gem0Gem1FeeBefore; mathint eraGem0Gem1FeeBefore; mathint due0Gem0Gem1FeeBefore; mathint due1Gem0Gem1FeeBefore; mathint endGem0Gem1FeeBefore;
+    cap0Gem0Gem1FeeBefore, cap1Gem0Gem1FeeBefore, eraGem0Gem1FeeBefore, due0Gem0Gem1FeeBefore, due1Gem0Gem1FeeBefore, endGem0Gem1FeeBefore = limits(p.gem0, p.gem1, p.fee);
+    mathint cap0OtherBefore; mathint cap1OtherBefore; mathint eraOtherBefore; mathint due0OtherBefore; mathint due1OtherBefore; mathint endOtherBefore;
+    cap0OtherBefore, cap1OtherBefore, eraOtherBefore, due0OtherBefore, due1OtherBefore, endOtherBefore = limits(otherAddr, otherAddr2, otherUint24);
+    mathint gem0BalanceOfBufferBefore = gem0Con.balanceOf(buffer);
+    mathint gem1BalanceOfBufferBefore = gem1Con.balanceOf(buffer);
+    mathint gem0BalanceOfPoolBefore   = gem0Con.balanceOf(poolCon);
+    mathint gem1BalanceOfPoolBefore   = gem1Con.balanceOf(poolCon);
+
+    require gem0BalanceOfBufferBefore + gem0BalanceOfPoolBefore <= max_uint256;
+    require gem1BalanceOfBufferBefore + gem1BalanceOfPoolBefore <= max_uint256;
+
+    mathint amt0 = poolCon.random0();
+    mathint amt1 = poolCon.random1();
+
+    deposit(e, p);
+
+    mathint wardsAfter = wards(anyAddr);
+    mathint cap0Gem0Gem1FeeAfter; mathint cap1Gem0Gem1FeeAfter; mathint eraGem0Gem1FeeAfter; mathint due0Gem0Gem1FeeAfter; mathint due1Gem0Gem1FeeAfter; mathint endGem0Gem1FeeAfter;
+    cap0Gem0Gem1FeeAfter, cap1Gem0Gem1FeeAfter, eraGem0Gem1FeeAfter, due0Gem0Gem1FeeAfter, due1Gem0Gem1FeeAfter, endGem0Gem1FeeAfter = limits(p.gem0, p.gem1, p.fee);
+    mathint cap0OtherAfter; mathint cap1OtherAfter; mathint eraOtherAfter; mathint due0OtherAfter; mathint due1OtherAfter; mathint endOtherAfter;
+    cap0OtherAfter, cap1OtherAfter, eraOtherAfter, due0OtherAfter, due1OtherAfter, endOtherAfter = limits(otherAddr, otherAddr2, otherUint24);
+    mathint gem0BalanceOfBufferAfter = gem0Con.balanceOf(buffer);
+    mathint gem1BalanceOfBufferAfter = gem1Con.balanceOf(buffer);
+    mathint gem0BalanceOfPoolAfter   = gem0Con.balanceOf(poolCon);
+    mathint gem1BalanceOfPoolAfter   = gem1Con.balanceOf(poolCon);
+
+    mathint expectedDue0 = (to_mathint(e.block.timestamp) >= endGem0Gem1FeeBefore ? cap0Gem0Gem1FeeBefore : due0Gem0Gem1FeeBefore) - amt0;
+    mathint expectedDue1 = (to_mathint(e.block.timestamp) >= endGem0Gem1FeeBefore ? cap1Gem0Gem1FeeBefore : due1Gem0Gem1FeeBefore) - amt1;
+    mathint expectedEnd = to_mathint(e.block.timestamp) >= endGem0Gem1FeeBefore ? e.block.timestamp + eraGem0Gem1FeeBefore : endGem0Gem1FeeBefore;
+
+    assert wardsAfter == wardsBefore, "deposit did not keep unchanged every wards[x]";
+    assert cap0Gem0Gem1FeeAfter == cap0Gem0Gem1FeeBefore, "deposit did not keep unchanged limits[gem0][gem1][fee].cap0";
+    assert cap1Gem0Gem1FeeAfter == cap1Gem0Gem1FeeBefore, "deposit did not keep unchanged limits[gem0][gem1][fee].cap1";
+    assert eraGem0Gem1FeeAfter == eraGem0Gem1FeeBefore, "deposit did not keep unchanged limits[gem0][gem1][fee].era";
+    assert due0Gem0Gem1FeeAfter == expectedDue0, "deposit did not set limits[gem0][gem1][fee].due0 to the expected value";
+    assert due1Gem0Gem1FeeAfter == expectedDue1, "deposit did not set limits[gem0][gem1][fee].due1 to the expected value";
+    assert endGem0Gem1FeeAfter == expectedEnd, "deposit did not set limits[gem0][gem1][fee].end to the expected value";
+    assert cap0OtherAfter == cap0OtherBefore, "deposit did not keep unchanged the rest of limits[x][y][z].cap0";
+    assert cap1OtherAfter == cap1OtherBefore, "deposit did not keep unchanged the rest of limits[x][y][z].cap0";
+    assert eraOtherAfter == eraOtherBefore, "deposit did not keep unchanged the rest of limits[x][y][z].era";
+    assert due0OtherAfter == due0OtherBefore, "deposit did not keep unchanged the rest of limits[x][y][z].due0";
+    assert due1OtherAfter == due1OtherBefore, "deposit did not keep unchanged the rest of limits[x][y][z].due1";
+    assert endOtherAfter == endOtherBefore, "deposit did not keep unchanged the rest of limits[x][y][z].end";
+    assert gem0BalanceOfBufferAfter == gem0BalanceOfBufferBefore - amt0, "deposit did not decrease gem0.balanceOf(buffer) by amt0";
+    assert gem1BalanceOfBufferAfter == gem1BalanceOfBufferBefore - amt1, "deposit did not decrease gem1.balanceOf(buffer) by amt1";
+    assert gem0BalanceOfPoolAfter == gem0BalanceOfPoolBefore + amt0, "deposit did not increase gem0.balanceOf(pool) by amt0";
+    assert gem1BalanceOfPoolAfter == gem1BalanceOfPoolBefore + amt1, "deposit did not increase gem1.balanceOf(pool) by amt1";
 }
