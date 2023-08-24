@@ -472,3 +472,108 @@ rule withdraw_revert(DepositorUniV3.LiquidityParams p, bool takeFees) {
                            revert4  || revert5 || revert6 ||
                            revert7  || revert8, "Revert rules are not covering all the cases";
 }
+
+// Verify correct storage changes for non reverting collect
+rule collect(DepositorUniV3.CollectParams p) {
+    env e;
+
+    require p.gem0 == gem0Con;
+    require p.gem1 == gem1Con;
+    require p.gem0 == poolCon.gem0();
+    require p.gem1 == poolCon.gem1();
+    require p.fee  == poolCon.fee();
+
+    require poolCon.random2() >= poolCon.random0();
+    require poolCon.random3() >= poolCon.random1();
+
+    address anyAddr;
+    address anyAddr2;
+    uint24 anyUint24;
+
+    require e.block.timestamp <= max_uint32;
+
+    address buffer = buffer();
+    require buffer != poolCon;
+
+    mathint wardsBefore = wards(anyAddr);
+    mathint cap0Before; mathint cap1Before; mathint eraBefore; mathint due0Before; mathint due1Before; mathint endBefore;
+    cap0Before, cap1Before, eraBefore, due0Before, due1Before, endBefore = limits(anyAddr, anyAddr2, anyUint24);
+    mathint gem0BalanceOfBufferBefore = gem0Con.balanceOf(buffer);
+    mathint gem1BalanceOfBufferBefore = gem1Con.balanceOf(buffer);
+    mathint gem0BalanceOfPoolBefore   = gem0Con.balanceOf(poolCon);
+    mathint gem1BalanceOfPoolBefore   = gem1Con.balanceOf(poolCon);
+
+    require gem0BalanceOfBufferBefore + gem0BalanceOfPoolBefore <= max_uint256;
+    require gem1BalanceOfBufferBefore + gem1BalanceOfPoolBefore <= max_uint256;
+
+    mathint fees0 = poolCon.random2();
+    mathint fees1 = poolCon.random3();
+
+    mathint retFees0; mathint retFees1;
+    retFees0, retFees1 = collect(e, p);
+
+    mathint wardsAfter = wards(anyAddr);
+    mathint cap0After; mathint cap1After; mathint eraAfter; mathint due0After; mathint due1After; mathint endAfter;
+    cap0After, cap1After, eraAfter, due0After, due1After, endAfter = limits(anyAddr, anyAddr2, anyUint24);
+    mathint gem0BalanceOfBufferAfter = gem0Con.balanceOf(buffer);
+    mathint gem1BalanceOfBufferAfter = gem1Con.balanceOf(buffer);
+    mathint gem0BalanceOfPoolAfter   = gem0Con.balanceOf(poolCon);
+    mathint gem1BalanceOfPoolAfter   = gem1Con.balanceOf(poolCon);
+
+    assert wardsAfter == wardsBefore, "collect did not keep unchanged every wards[x]";
+    assert cap0After == cap0Before, "collect did not keep unchanged every limits[x][y][z].cap0";
+    assert cap1After == cap1Before, "collect did not keep unchanged every limits[x][y][z].cap0";
+    assert eraAfter == eraBefore, "collect did not keep unchanged every limits[x][y][z].era";
+    assert due0After == due0Before, "collect did not keep unchanged every limits[x][y][z].due0";
+    assert due1After == due1Before, "collect did not keep unchanged every limits[x][y][z].due1";
+    assert endAfter == endBefore, "collect did not keep unchanged every limits[x][y][z].end";
+    assert gem0BalanceOfBufferAfter == gem0BalanceOfBufferBefore + fees0, "collect did not increase gem0.balanceOf(buffer) by fees0";
+    assert gem1BalanceOfBufferAfter == gem1BalanceOfBufferBefore + fees1, "collect did not increase gem1.balanceOf(buffer) by fees1";
+    assert gem0BalanceOfPoolAfter == gem0BalanceOfPoolBefore - fees0, "collect did not decrease gem0.balanceOf(pool) by fees0";
+    assert gem1BalanceOfPoolAfter == gem1BalanceOfPoolBefore - fees1, "collect did not decrease gem1.balanceOf(pool) by fees1";
+    assert retFees0 == fees0, "collect did not return the expected fees0";
+    assert retFees1 == fees1, "collect did not return the expected fees1";
+}
+
+// Verify revert rules on collect
+rule collect_revert(DepositorUniV3.CollectParams p) {
+    env e;
+
+    require p.gem0 == gem0Con;
+    require p.gem1 == gem1Con;
+    require p.gem0 == poolCon.gem0();
+    require p.gem1 == poolCon.gem1();
+    require p.fee  == poolCon.fee();
+
+    require poolCon.random2() >= poolCon.random0();
+    require poolCon.random3() >= poolCon.random1();
+
+    require e.block.timestamp <= max_uint32;
+
+    address buffer = buffer();
+    require buffer != currentContract;
+    require buffer != poolCon;
+
+    bool canCall = roles.canCall(ilk(), e.msg.sender, currentContract, to_bytes4(0x4ead5ba3));
+    mathint wardsSender = wards(e.msg.sender);
+    mathint fees0 = poolCon.random2();
+    mathint fees1 = poolCon.random3();
+    mathint gem0BalanceOfPool = gem0Con.balanceOf(poolCon);
+    mathint gem1BalanceOfPool = gem1Con.balanceOf(poolCon);
+
+    collect@withrevert(e, p);
+
+    bool revert1 = e.msg.value > 0;
+    bool revert2 = !canCall && wardsSender != 1;
+    bool revert3 = p.gem0 >= p.gem1;
+    bool revert4 = gem0BalanceOfPool < fees0;
+    bool revert5 = gem1BalanceOfPool < fees1;
+
+    assert revert1 => lastReverted, "revert1 failed";
+    assert revert2 => lastReverted, "revert2 failed";
+    assert revert3 => lastReverted, "revert3 failed";
+    assert revert4 => lastReverted, "revert4 failed";
+    assert revert5 => lastReverted, "revert5 failed";
+    assert lastReverted => revert1  || revert2 || revert3 ||
+                           revert4  || revert5, "Revert rules are not covering all the cases";
+}
