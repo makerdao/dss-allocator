@@ -31,8 +31,10 @@ contract PoolUniV3Mock {
     }
 
     function collect(address recipient, int24, int24, uint128 amt0R, uint128 amt1R) external returns (uint128, uint128) {
-        GemLike(gem0).transfer(recipient, amt0R > random2 ? random2 : amt0R);
-        GemLike(gem1).transfer(recipient, amt1R > random3 ? random3 : amt1R);
-        return (random2, random3);
+        uint128 col0 = amt0R > random2 ? random2 : amt0R;
+        uint128 col1 = amt1R > random3 ? random3 : amt1R;
+        GemLike(gem0).transfer(recipient, col0);
+        GemLike(gem1).transfer(recipient, col1);
+        return (col0, col1);
     }
 }
