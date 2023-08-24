@@ -10,6 +10,7 @@ methods {
     function buffer() external returns (address) envfree;
     function wards(address) external returns (uint256) envfree;
     function limits(address, address, uint24) external returns (uint96, uint96, uint32, uint96, uint96, uint32) envfree;
+    function _getPool(address gem0, address gem1, uint24 fee) internal returns (address) => getPoolSummary(gem0, gem1, fee);
     function _getLiquidityForAmts(address pool, int24 tickLower, int24 tickUpper, uint256 amt0Desired, uint256 amt1Desired) internal returns (uint128) => getLiquidityForAmtsSummary(pool, tickLower, tickUpper, amt0Desired, amt1Desired);
     function roles.canCall(bytes32, address, address, bytes4) external returns (bool) envfree;
     function _.mint(address, int24, int24, uint128, bytes) external => DISPATCHER(true);
@@ -35,6 +36,12 @@ ghost mapping(address => mapping(int24 => mapping(int24 => mapping(uint256 => ma
 
 function getLiquidityForAmtsSummary(address pool, int24 tickLower, int24 tickUpper, uint256 amt0Desired, uint256 amt1Desired) returns uint128 {
     return _liquidityMap[pool][tickLower][tickUpper][amt0Desired][amt1Desired];
+}
+
+ghost mapping(address => mapping(address => mapping(uint24 => address))) _poolMap;
+
+function getPoolSummary(address gem0, address gem1, uint24 fee) returns address {
+    return _poolMap[gem0][gem1][fee];
 }
 
 // Verify correct storage changes for non reverting rely
@@ -226,7 +233,10 @@ rule deposit(DepositorUniV3.LiquidityParams p) {
     mathint amt0 = poolCon.random0();
     mathint amt1 = poolCon.random1();
 
-    deposit(e, p);
+    mathint liquidity = p.liquidity > 0 ? p.liquidity : getLiquidityForAmtsSummary(poolCon, p.tickLower, p.tickUpper, p.amt0Desired, p.amt1Desired);
+
+    mathint retLiq; mathint retAmt0; mathint retAmt1;
+    retLiq, retAmt0, retAmt1 = deposit(e, p);
 
     mathint wardsAfter = wards(anyAddr);
     mathint cap0Gem0Gem1FeeAfter; mathint cap1Gem0Gem1FeeAfter; mathint eraGem0Gem1FeeAfter; mathint due0Gem0Gem1FeeAfter; mathint due1Gem0Gem1FeeAfter; mathint endGem0Gem1FeeAfter;
@@ -259,6 +269,9 @@ rule deposit(DepositorUniV3.LiquidityParams p) {
     assert gem1BalanceOfBufferAfter == gem1BalanceOfBufferBefore - amt1, "deposit did not decrease gem1.balanceOf(buffer) by amt1";
     assert gem0BalanceOfPoolAfter == gem0BalanceOfPoolBefore + amt0, "deposit did not increase gem0.balanceOf(pool) by amt0";
     assert gem1BalanceOfPoolAfter == gem1BalanceOfPoolBefore + amt1, "deposit did not increase gem1.balanceOf(pool) by amt1";
+    // assert retLiq == liquidity, "deposit did not return the expected liquidity";
+    assert retAmt0 == amt0, "deposit did not return the expected amt0";
+    assert retAmt1 == amt1, "deposit did not return the expected amt1";
 }
 
 // Verify revert rules on deposit
@@ -361,7 +374,10 @@ rule withdraw(DepositorUniV3.LiquidityParams p, bool takeFees) {
     mathint col0 = takeFees ? poolCon.random2() : amt0;
     mathint col1 = takeFees ? poolCon.random3() : amt1;
 
-    withdraw(e, p, takeFees);
+    mathint liquidity = p.liquidity > 0 ? p.liquidity : getLiquidityForAmtsSummary(poolCon, p.tickLower, p.tickUpper, p.amt0Desired, p.amt1Desired);
+
+    mathint retLiq; mathint retAmt0; mathint retAmt1; mathint retFees0; mathint retFees1;
+    retLiq, retAmt0, retAmt1, retFees0, retFees1 = withdraw(e, p, takeFees);
 
     mathint wardsAfter = wards(anyAddr);
     mathint cap0Gem0Gem1FeeAfter; mathint cap1Gem0Gem1FeeAfter; mathint eraGem0Gem1FeeAfter; mathint due0Gem0Gem1FeeAfter; mathint due1Gem0Gem1FeeAfter; mathint endGem0Gem1FeeAfter;
@@ -394,6 +410,11 @@ rule withdraw(DepositorUniV3.LiquidityParams p, bool takeFees) {
     assert gem1BalanceOfBufferAfter == gem1BalanceOfBufferBefore + col1, "withdraw did not increase gem1.balanceOf(buffer) by col1";
     assert gem0BalanceOfPoolAfter == gem0BalanceOfPoolBefore - col0, "withdraw did not decrease gem0.balanceOf(pool) by col0";
     assert gem1BalanceOfPoolAfter == gem1BalanceOfPoolBefore - col1, "withdraw did not decrease gem1.balanceOf(pool) by col1";
+    // assert retLiq == liquidity, "withdraw did not return the expected liquidity";
+    assert retAmt0 == amt0, "withdraw did not return the expected amt0";
+    assert retAmt1 == amt1, "withdraw did not return the expected amt1";
+    assert retFees0 == col0 - amt0, "withdraw did not return the expected col0 - amt0";
+    assert retFees1 == col1 - amt1, "withdraw did not return the expected col1 - amt1";
 }
 
 // Verify revert rules on withdraw
