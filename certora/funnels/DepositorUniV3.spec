@@ -13,6 +13,7 @@ methods {
     function limits(address, address, uint24) external returns (uint96, uint96, uint32, uint96, uint96, uint32) envfree;
     function _getPool(address gem0, address gem1, uint24 fee) internal returns (address) => getPoolSummary(gem0, gem1, fee);
     function _getLiquidityForAmts(address pool, int24 tickLower, int24 tickUpper, uint256 amt0Desired, uint256 amt1Desired) internal returns (uint128) => getLiquidityForAmtsSummary(pool, tickLower, tickUpper, amt0Desired, amt1Desired);
+    function getPosition(address, address, uint24, int24, int24) external returns (uint128, uint256, uint256, uint128, uint128) envfree;
     function roles.canCall(bytes32, address, address, bytes4) external returns (bool) envfree;
     function _.mint(address, int24, int24, uint128, bytes) external => DISPATCHER(true);
     function _.burn(int24, int24, uint128) external => DISPATCHER(true);
@@ -25,10 +26,12 @@ methods {
     function poolCon.random1() external returns (uint128) envfree;
     function poolCon.random2() external returns (uint128) envfree;
     function poolCon.random3() external returns (uint128) envfree;
+    function _.positions(bytes32) external => DISPATCHER(true);
     function gem0Con.balanceOf(address) external returns (uint256) envfree;
     function gem1Con.balanceOf(address) external returns (uint256) envfree;
     function gem0Con.allowance(address, address) external returns (uint256) envfree;
     function gem1Con.allowance(address, address) external returns (uint256) envfree;
+    function aux.getHash(address, int24, int24) external returns (bytes32) envfree;
     function aux.decode(bytes) external returns (address, address, uint24) envfree;
     function _.transfer(address, uint256) external => DISPATCHER(true) UNRESOLVED;
     function _.transferFrom(address, address, uint256) external => DISPATCHER(true) UNRESOLVED;
@@ -196,6 +199,24 @@ rule setLimits_revert(address gem0, address gem1, uint24 fee, uint96 cap0, uint9
     assert revert2 => lastReverted, "revert2 failed";
     assert revert3 => lastReverted, "revert3 failed";
     assert lastReverted => revert1 || revert2 || revert3, "Revert rules are not covering all the cases";
+}
+
+// Verify correct response from getPosition
+rule getPosition(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tickUpper) {
+    env e;
+
+    bytes32 hashC = aux.getHash(currentContract, tickLower, tickUpper);
+    mathint expLiquidity; mathint expFeeGrowthInside0LastX128; mathint expFeeGrowthInside1LastX128; mathint expTokensOwed0; mathint expTokensOwed1;
+    expLiquidity, expFeeGrowthInside0LastX128, expFeeGrowthInside1LastX128, expTokensOwed0, expTokensOwed1 = poolCon.positions(e, hashC);
+
+    mathint liquidity; mathint feeGrowthInside0LastX128; mathint feeGrowthInside1LastX128; mathint tokensOwed0; mathint tokensOwed1;
+    liquidity, feeGrowthInside0LastX128, feeGrowthInside1LastX128, tokensOwed0, tokensOwed1 = getPosition(gem0, gem1, fee, tickLower, tickUpper);
+
+    assert liquidity == expLiquidity, "getPosition did not return the expected liquidity value";
+    assert feeGrowthInside0LastX128 == expFeeGrowthInside0LastX128, "getPosition did not return the expected feeGrowthInside0LastX128 value";
+    assert feeGrowthInside1LastX128 == expFeeGrowthInside1LastX128, "getPosition did not return the expected feeGrowthInside1LastX128 value";
+    assert tokensOwed0 == expTokensOwed0, "getPosition did not return the expected tokensOwed0 value";
+    assert tokensOwed1 == expTokensOwed1, "getPosition did not return the expected tokensOwed1 value";
 }
 
 // Verify correct storage changes for non reverting uniswapV3MintCallback

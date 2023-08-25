@@ -20,6 +20,16 @@ contract PoolUniV3Mock {
     uint128 public random2;
     uint128 public random3;
 
+    mapping (bytes32 => Position) public positions;
+
+    struct Position {
+        uint128 liquidity;
+        uint256 feeGrowthInside0LastX128;
+        uint256 feeGrowthInside1LastX128;
+        uint128 tokensOwed0;
+        uint128 tokensOwed1;
+    }
+
     function mint(address, int24, int24, uint128, bytes calldata) external returns (uint128, uint128) {
         DepositorLike(msg.sender).uniswapV3MintCallback(random0, random1, abi.encode(gem0, gem1, fee));
         
