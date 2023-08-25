@@ -4,6 +4,7 @@ using AllocatorRoles as roles;
 using PoolUniV3Mock as poolCon;
 using Gem0Mock as gem0Con;
 using Gem1Mock as gem1Con;
+using Auxiliar as aux;
 
 methods {
     function ilk() external returns (bytes32) envfree;
@@ -28,6 +29,7 @@ methods {
     function gem1Con.balanceOf(address) external returns (uint256) envfree;
     function gem0Con.allowance(address, address) external returns (uint256) envfree;
     function gem1Con.allowance(address, address) external returns (uint256) envfree;
+    function aux.decode(bytes) external returns (address, address, uint24) envfree;
     function _.transfer(address, uint256) external => DISPATCHER(true) UNRESOLVED;
     function _.transferFrom(address, address, uint256) external => DISPATCHER(true) UNRESOLVED;
 }
@@ -194,6 +196,100 @@ rule setLimits_revert(address gem0, address gem1, uint24 fee, uint96 cap0, uint9
     assert revert2 => lastReverted, "revert2 failed";
     assert revert3 => lastReverted, "revert3 failed";
     assert lastReverted => revert1 || revert2 || revert3, "Revert rules are not covering all the cases";
+}
+
+// Verify correct storage changes for non reverting uniswapV3MintCallback
+rule uniswapV3MintCallback(uint256 amt0Owed, uint256 amt1Owed, bytes data) {
+    env e;
+
+    address gem0; address gem1; uint24 fee;
+    gem0, gem1, fee = aux.decode(data);
+
+    require gem0 == gem0Con;
+    require gem1 == gem1Con;
+
+    address anyAddr;
+    address anyAddr2;
+    uint24 anyUint24;
+
+    address buffer = buffer();
+    require buffer != e.msg.sender;
+
+    mathint wardsBefore = wards(anyAddr);
+    mathint cap0Before; mathint cap1Before; mathint eraBefore; mathint due0Before; mathint due1Before; mathint endBefore;
+    cap0Before, cap1Before, eraBefore, due0Before, due1Before, endBefore = limits(anyAddr, anyAddr2, anyUint24);
+    mathint gem0BalanceOfBufferBefore = gem0Con.balanceOf(buffer);
+    mathint gem1BalanceOfBufferBefore = gem1Con.balanceOf(buffer);
+    mathint gem0BalanceOfSenderBefore = gem0Con.balanceOf(e.msg.sender);
+    mathint gem1BalanceOfSenderBefore = gem1Con.balanceOf(e.msg.sender);
+
+    require gem0BalanceOfBufferBefore + gem0BalanceOfSenderBefore <= max_uint256;
+    require gem1BalanceOfBufferBefore + gem1BalanceOfSenderBefore <= max_uint256;
+
+    uniswapV3MintCallback(e, amt0Owed, amt1Owed, data);
+
+    mathint wardsAfter = wards(anyAddr);
+    mathint cap0After; mathint cap1After; mathint eraAfter; mathint due0After; mathint due1After; mathint endAfter;
+    cap0After, cap1After, eraAfter, due0After, due1After, endAfter = limits(anyAddr, anyAddr2, anyUint24);
+    mathint gem0BalanceOfBufferAfter = gem0Con.balanceOf(buffer);
+    mathint gem1BalanceOfBufferAfter = gem1Con.balanceOf(buffer);
+    mathint gem0BalanceOfSenderAfter = gem0Con.balanceOf(e.msg.sender);
+    mathint gem1BalanceOfSenderAfter = gem1Con.balanceOf(e.msg.sender);
+
+    assert wardsAfter == wardsBefore, "uniswapV3MintCallback did not keep unchanged every wards[x]";
+    assert cap0After == cap0Before, "uniswapV3MintCallback did not keep unchanged every limits[x][y][z].cap0";
+    assert cap1After == cap1Before, "uniswapV3MintCallback did not keep unchanged every limits[x][y][z].cap0";
+    assert eraAfter == eraBefore, "uniswapV3MintCallback did not keep unchanged every limits[x][y][z].era";
+    assert due0After == due0Before, "uniswapV3MintCallback did not keep unchanged every limits[x][y][z].due0";
+    assert due1After == due1Before, "uniswapV3MintCallback did not keep unchanged every limits[x][y][z].due1";
+    assert endAfter == endBefore, "uniswapV3MintCallback did not keep unchanged every limits[x][y][z].end";
+    assert gem0BalanceOfBufferAfter == gem0BalanceOfBufferBefore - amt0Owed, "uniswapV3MintCallback did not decrease gem0.balanceOf(buffer) by amt0Owed";
+    assert gem1BalanceOfBufferAfter == gem1BalanceOfBufferBefore - amt1Owed, "uniswapV3MintCallback did not decrease gem1.balanceOf(buffer) by amt1Owed";
+    assert gem0BalanceOfSenderAfter == gem0BalanceOfSenderBefore + amt0Owed, "uniswapV3MintCallback did not increase gem0.balanceOf(pool) by amt0Owed";
+    assert gem1BalanceOfSenderAfter == gem1BalanceOfSenderBefore + amt1Owed, "uniswapV3MintCallback did not increase gem1.balanceOf(pool) by amt1Owed";
+}
+
+// Verify revert rules on uniswapV3MintCallback
+rule uniswapV3MintCallback_revert(uint256 amt0Owed, uint256 amt1Owed, bytes data) {
+    env e;
+
+    address gem0; address gem1; uint24 fee;
+    gem0, gem1, fee = aux.decode(data);
+
+    require gem0 == gem0Con;
+    require gem1 == gem1Con;
+
+    address buffer = buffer();
+    require buffer != currentContract;
+    require buffer != e.msg.sender;
+
+    address pool = getPoolSummary(gem0, gem1, fee);
+
+    mathint gem0BalanceOfBuffer = gem0Con.balanceOf(buffer);
+    mathint gem1BalanceOfBuffer = gem1Con.balanceOf(buffer);
+    mathint gem0AllowanceBufferDepositor = gem0Con.allowance(buffer, currentContract);
+    mathint gem1AllowanceBufferDepositor = gem1Con.allowance(buffer, currentContract);
+
+    require gem0BalanceOfBuffer + gem0Con.balanceOf(e.msg.sender) <= max_uint256;
+    require gem1BalanceOfBuffer + gem1Con.balanceOf(e.msg.sender) <= max_uint256;
+
+    uniswapV3MintCallback@withrevert(e, amt0Owed, amt1Owed, data);
+
+    bool revert1 = e.msg.value > 0;
+    bool revert2 = e.msg.sender != pool;
+    bool revert3 = gem0BalanceOfBuffer < to_mathint(amt0Owed);
+    bool revert4 = gem0AllowanceBufferDepositor < to_mathint(amt0Owed);
+    bool revert5 = gem1BalanceOfBuffer < to_mathint(amt1Owed);
+    bool revert6 = gem1AllowanceBufferDepositor < to_mathint(amt1Owed);
+
+    assert revert1 => lastReverted, "revert1 failed";
+    assert revert2 => lastReverted, "revert2 failed";
+    assert revert3 => lastReverted, "revert3 failed";
+    assert revert4 => lastReverted, "revert4 failed";
+    assert revert5 => lastReverted, "revert5 failed";
+    assert revert6 => lastReverted, "revert6 failed";
+    assert lastReverted => revert1 || revert2 || revert3 ||
+                           revert4 || revert5 || revert6, "Revert rules are not covering all the cases";
 }
 
 // Verify correct storage changes for non reverting deposit
