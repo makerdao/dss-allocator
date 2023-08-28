@@ -56,7 +56,6 @@ interface VaultLike {
     function vat() external view returns (address);
     function nst() external view returns (address);
     function file(bytes32, address) external;
-    function init() external;
     function draw(uint256) external;
     function wipe(uint256) external;
 }
@@ -202,7 +201,8 @@ library AllocatorInit {
 
         // Initiate the allocator vault
         dss.vat.slip(ilk, networkInstance.vault, int256(1_000_000 * WAD));
-        VaultLike(networkInstance.vault).init();
+        dss.vat.grab(ilk, networkInstance.vault, networkInstance.vault, address(0), int256(1_000_000 * WAD), 0);
+
         VaultLike(networkInstance.vault).file("jug", address(dss.jug));
 
         // Allow vault and funnels to pull funds from the buffer
