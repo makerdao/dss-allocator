@@ -48,8 +48,8 @@ contract SwapperCalleeUniV3 {
         address firstToken;
         address lastToken;
         assembly {
-            firstToken := div(mload(add(path, 0x20)), 0x1000000000000000000000000)
-            lastToken := div(mload(sub(add(add(path, 0x20), mload(path)), 0x14)), 0x1000000000000000000000000)
+            firstToken := shr(0x60, mload(add(path, 0x20)))
+            lastToken := shr(0x60, mload(sub(add(add(path, 0x20), mload(path)), 0x14)))
         }
         require(src == firstToken && dst == lastToken, "SwapperCalleeUniV3/invalid-path");
 
