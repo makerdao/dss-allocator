@@ -40,7 +40,7 @@ contract SwapperCalleeUniV3Test is DssTest {
         uint8 toDecimals = GemLike(to).decimals();
 
         GemLike(from).transfer(address(callee), 10_000 * 10**fromDecimals);
-        callee.swap(from, to, 10_000 * 10**fromDecimals, 9000 * 10**toDecimals, address(this), path);
+        callee.swapCallback(from, to, 10_000 * 10**fromDecimals, 9000 * 10**toDecimals, address(this), path);
         
         assertEq(GemLike(from).balanceOf(address(this)), prevFrom - 10_000 * 10**fromDecimals);
         assertGe(GemLike(to).balanceOf(address(this)), prevTo + 9000 * 10**toDecimals);
