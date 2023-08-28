@@ -386,7 +386,7 @@ rule deposit(DepositorUniV3.LiquidityParams p) {
     assert gem1BalanceOfBufferAfter == gem1BalanceOfBufferBefore - amt1, "deposit did not decrease gem1.balanceOf(buffer) by amt1";
     assert gem0BalanceOfPoolAfter == gem0BalanceOfPoolBefore + amt0, "deposit did not increase gem0.balanceOf(pool) by amt0";
     assert gem1BalanceOfPoolAfter == gem1BalanceOfPoolBefore + amt1, "deposit did not increase gem1.balanceOf(pool) by amt1";
-    // assert retLiq == liquidity, "deposit did not return the expected liquidity";
+    assert retLiq == liquidity, "deposit did not return the expected liquidity";
     assert retAmt0 == amt0, "deposit did not return the expected amt0";
     assert retAmt1 == amt1, "deposit did not return the expected amt1";
 }
@@ -527,7 +527,7 @@ rule withdraw(DepositorUniV3.LiquidityParams p, bool takeFees) {
     assert gem1BalanceOfBufferAfter == gem1BalanceOfBufferBefore + col1, "withdraw did not increase gem1.balanceOf(buffer) by col1";
     assert gem0BalanceOfPoolAfter == gem0BalanceOfPoolBefore - col0, "withdraw did not decrease gem0.balanceOf(pool) by col0";
     assert gem1BalanceOfPoolAfter == gem1BalanceOfPoolBefore - col1, "withdraw did not decrease gem1.balanceOf(pool) by col1";
-    // assert retLiq == liquidity, "withdraw did not return the expected liquidity";
+    assert retLiq == liquidity, "withdraw did not return the expected liquidity";
     assert retAmt0 == amt0, "withdraw did not return the expected amt0";
     assert retAmt1 == amt1, "withdraw did not return the expected amt1";
     assert retFees0 == col0 - amt0, "withdraw did not return the expected col0 - amt0";
