@@ -79,7 +79,6 @@ contract AllocatorVault {
     event Rely(address indexed usr);
     event Deny(address indexed usr);
     event File(bytes32 indexed what, address data);
-    event Init();
     event Draw(address indexed sender, uint256 wad);
     event Wipe(address indexed sender, uint256 wad);
 
@@ -142,11 +141,6 @@ contract AllocatorVault {
     }
 
     // --- administration ---
-
-    function init() external auth {
-        vat.frob(ilk, address(this), address(this), address(0), int256(10**6 * WAD), 0);
-        emit Init();
-    }
 
     function rely(address usr) external auth {
         wards[usr] = 1;

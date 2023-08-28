@@ -45,6 +45,7 @@ contract AllocatorVaultTest is DssTest {
         buffer.approve(address(nst), address(vault), type(uint256).max);
 
         vat.slip(ilk, address(vault), int256(1_000_000 * WAD));
+        vat.grab(ilk, address(vault), address(vault), address(0), int256(1_000_000 * WAD), 0);
 
         // Add some existing DAI assigned to nstJoin to avoid a particular error
         stdstore.target(address(vat)).sig("dai(address)").with_key(address(nstJoin)).depth(0).checked_write(100_000 * RAD);
@@ -55,10 +56,9 @@ contract AllocatorVaultTest is DssTest {
     }
 
     function testModifiers() public {
-        bytes4[] memory authedMethods = new bytes4[](3);
-        authedMethods[0] = vault.init.selector;
-        authedMethods[1] = bytes4(keccak256("draw(uint256)"));
-        authedMethods[2] = bytes4(keccak256("wipe(uint256)"));
+        bytes4[] memory authedMethods = new bytes4[](2);
+        authedMethods[0] = vault.draw.selector;
+        authedMethods[1] = vault.wipe.selector;
 
         vm.startPrank(address(0xBEEF));
         checkModifier(address(vault), "AllocatorVault/not-authorized", authedMethods);
@@ -77,26 +77,7 @@ contract AllocatorVaultTest is DssTest {
         vault.file("jug", address(0));
     }
 
-    function testInit() public {
-        assertEq(vat.gem(ilk, address(vault)), 10**6 * WAD);
-        (uint256 ink, ) = vat.urns(ilk, address(vault));
-        assertEq(ink, 0);
-        vault.init();
-        assertEq(vat.gem(ilk, address(vault)), 0);
-        (ink, ) = vat.urns(ilk, address(vault));
-        assertEq(ink, 10**6 * WAD);
-    }
-
-    function testInitNotEnoughBalance() public {
-        vat.slip(ilk, address(vault), -1);
-        vm.expectRevert();
-        vault.init();
-    }
-
     function testDrawWipe() public {
-        vm.expectEmit(true, true, true, true);
-        emit Init();
-        vault.init();
         vault.file("jug", address(jug));
         assertEq(vault.line(), 20_000_000 * 10**18);
         (, uint256 art) = vat.urns(ilk, address(buffer));
@@ -138,7 +119,6 @@ contract AllocatorVaultTest is DssTest {
     }
 
     function testDebtOverLine() public {
-        vault.init();
         vault.file("jug", address(jug));
         vm.expectEmit(true, true, true, true);
         emit Draw(address(this), vault.line());
