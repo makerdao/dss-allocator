@@ -279,3 +279,136 @@ rule setConfig_revert(address gem0, address gem1, uint24 fee, int24 tickLower, i
     assert revert3 => lastReverted, "revert3 failed";
     assert lastReverted => revert1 || revert2 || revert3, "Revert rules are not covering all the cases";
 }
+
+// Verify correct storage changes for non reverting deposit
+rule deposit(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tickUpper, uint128 amt0Min, uint128 amt1Min) {
+    env e;
+
+    address anyAddr;
+    address otherAddr;
+    address otherAddr2;
+    uint24 otherUint24;
+    int24 otherInt24;
+    int24 otherInt242;
+    require otherAddr != gem0 || otherAddr2 != gem1 || fee != otherUint24 || tickLower != otherInt24 || tickUpper != otherInt242;
+
+    require e.block.timestamp <= max_uint32;
+
+    mathint wardsBefore = wards(anyAddr);
+    mathint budsBefore = buds(anyAddr);
+    mathint numGem0Gem1Before; mathint zzzGem0Gem1Before; mathint amt0Gem0Gem1Before; mathint amt1Gem0Gem1Before; mathint req0Gem0Gem1Before; mathint req1Gem0Gem1Before; mathint hopGem0Gem1Before;
+    numGem0Gem1Before, zzzGem0Gem1Before, amt0Gem0Gem1Before, amt1Gem0Gem1Before, req0Gem0Gem1Before, req1Gem0Gem1Before, hopGem0Gem1Before = configs(gem0, gem1, fee, tickLower, tickUpper);
+    mathint numOtherBefore; mathint zzzOtherBefore; mathint amt0OtherBefore; mathint amt1OtherBefore; mathint req0OtherBefore; mathint req1OtherBefore; mathint hopOtherBefore;
+    numOtherBefore, zzzOtherBefore, amt0OtherBefore, amt1OtherBefore, req0OtherBefore, req1OtherBefore, hopOtherBefore = configs(otherAddr, otherAddr2, otherUint24, otherInt24, otherInt242);
+
+    deposit(e, gem0, gem1, fee, tickLower, tickUpper, amt0Min, amt1Min);
+
+    mathint wardsAfter = wards(anyAddr);
+    mathint budsAfter = buds(anyAddr);
+    mathint numGem0Gem1After; mathint zzzGem0Gem1After; mathint amt0Gem0Gem1After; mathint amt1Gem0Gem1After; mathint req0Gem0Gem1After; mathint req1Gem0Gem1After; mathint hopGem0Gem1After;
+    numGem0Gem1After, zzzGem0Gem1After, amt0Gem0Gem1After, amt1Gem0Gem1After, req0Gem0Gem1After, req1Gem0Gem1After, hopGem0Gem1After = configs(gem0, gem1, fee, tickLower, tickUpper);
+    mathint numOtherAfter; mathint zzzOtherAfter; mathint amt0OtherAfter; mathint amt1OtherAfter; mathint req0OtherAfter; mathint req1OtherAfter; mathint hopOtherAfter;
+    numOtherAfter, zzzOtherAfter, amt0OtherAfter, amt1OtherAfter, req0OtherAfter, req1OtherAfter, hopOtherAfter = configs(otherAddr, otherAddr2, otherUint24, otherInt24, otherInt242);
+
+    assert wardsAfter == wardsBefore, "deposit did not keep unchanged every wards[x]";
+    assert budsAfter == budsBefore, "deposit did not keep unchanged every buds[x]";
+    assert numGem0Gem1After == numGem0Gem1Before - 1, "deposit did not decrease configs[gem0][gem1][fee][tickLower][tickUpper].num by 1";
+    assert zzzGem0Gem1After == to_mathint(e.block.timestamp), "deposit did not set configs[gem0][gem1][fee][tickLower][tickUpper].zzz to block.timestamp";
+    assert amt0Gem0Gem1After == amt0Gem0Gem1Before, "deposit did not keep unchanged configs[gem0][gem1][fee][tickLower][tickUpper].amt0";
+    assert amt1Gem0Gem1After == amt1Gem0Gem1Before, "deposit did not keep unchanged configs[gem0][gem1][fee][tickLower][tickUpper].amt1";
+    assert req0Gem0Gem1After == req0Gem0Gem1Before, "deposit did not keep unchanged configs[gem0][gem1][fee][tickLower][tickUpper].req0";
+    assert req1Gem0Gem1After == req1Gem0Gem1Before, "deposit did not keep unchanged configs[gem0][gem1][fee][tickLower][tickUpper].req1";
+    assert hopGem0Gem1After == hopGem0Gem1Before, "deposit did not keep unchanged configs[gem0][gem1][fee][tickLower][tickUpper].hop";
+    assert numOtherAfter == numOtherBefore, "deposit did not keep unchanged the rest of configs[x][y][z][a][b].num";
+    assert zzzOtherAfter == zzzOtherBefore, "deposit did not keep unchanged the rest of configs[x][y][z][a][b].zzz";
+    assert amt0OtherAfter == amt0OtherBefore, "deposit did not keep unchanged the rest of configs[x][y][z][a][b].amt0";
+    assert amt1OtherAfter == amt1OtherBefore, "deposit did not keep unchanged the rest of configs[x][y][z][a][b].amt1";
+    assert req0OtherAfter == req0OtherBefore, "deposit did not keep unchanged the rest of configs[x][y][z][a][b].req0";
+    assert req1OtherAfter == req1OtherBefore, "deposit did not keep unchanged the rest of configs[x][y][z][a][b].req1";
+    assert hopOtherAfter == hopOtherBefore, "deposit did not keep unchanged the rest of configs[x][y][z][a][b].hop";
+}
+
+// Verify correct storage changes for non reverting withdraw
+rule withdraw(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tickUpper, uint128 amt0Min, uint128 amt1Min) {
+    env e;
+
+    address anyAddr;
+    address otherAddr;
+    address otherAddr2;
+    uint24 otherUint24;
+    int24 otherInt24;
+    int24 otherInt242;
+    require otherAddr != gem0 || otherAddr2 != gem1 || fee != otherUint24 || tickLower != otherInt24 || tickUpper != otherInt242;
+
+    require e.block.timestamp <= max_uint32;
+
+    mathint wardsBefore = wards(anyAddr);
+    mathint budsBefore = buds(anyAddr);
+    mathint numGem0Gem1Before; mathint zzzGem0Gem1Before; mathint amt0Gem0Gem1Before; mathint amt1Gem0Gem1Before; mathint req0Gem0Gem1Before; mathint req1Gem0Gem1Before; mathint hopGem0Gem1Before;
+    numGem0Gem1Before, zzzGem0Gem1Before, amt0Gem0Gem1Before, amt1Gem0Gem1Before, req0Gem0Gem1Before, req1Gem0Gem1Before, hopGem0Gem1Before = configs(gem0, gem1, fee, tickLower, tickUpper);
+    mathint numOtherBefore; mathint zzzOtherBefore; mathint amt0OtherBefore; mathint amt1OtherBefore; mathint req0OtherBefore; mathint req1OtherBefore; mathint hopOtherBefore;
+    numOtherBefore, zzzOtherBefore, amt0OtherBefore, amt1OtherBefore, req0OtherBefore, req1OtherBefore, hopOtherBefore = configs(otherAddr, otherAddr2, otherUint24, otherInt24, otherInt242);
+
+    withdraw(e, gem0, gem1, fee, tickLower, tickUpper, amt0Min, amt1Min);
+
+    mathint wardsAfter = wards(anyAddr);
+    mathint budsAfter = buds(anyAddr);
+    mathint numGem0Gem1After; mathint zzzGem0Gem1After; mathint amt0Gem0Gem1After; mathint amt1Gem0Gem1After; mathint req0Gem0Gem1After; mathint req1Gem0Gem1After; mathint hopGem0Gem1After;
+    numGem0Gem1After, zzzGem0Gem1After, amt0Gem0Gem1After, amt1Gem0Gem1After, req0Gem0Gem1After, req1Gem0Gem1After, hopGem0Gem1After = configs(gem0, gem1, fee, tickLower, tickUpper);
+    mathint numOtherAfter; mathint zzzOtherAfter; mathint amt0OtherAfter; mathint amt1OtherAfter; mathint req0OtherAfter; mathint req1OtherAfter; mathint hopOtherAfter;
+    numOtherAfter, zzzOtherAfter, amt0OtherAfter, amt1OtherAfter, req0OtherAfter, req1OtherAfter, hopOtherAfter = configs(otherAddr, otherAddr2, otherUint24, otherInt24, otherInt242);
+
+    assert wardsAfter == wardsBefore, "withdraw did not keep unchanged every wards[x]";
+    assert budsAfter == budsBefore, "withdraw did not keep unchanged every buds[x]";
+    assert numGem0Gem1After == numGem0Gem1Before + 1, "withdraw did not increase configs[gem0][gem1][fee][tickLower][tickUpper].num by 1";
+    assert zzzGem0Gem1After == to_mathint(e.block.timestamp), "withdraw did not set configs[gem0][gem1][fee][tickLower][tickUpper].zzz to block.timestamp";
+    assert amt0Gem0Gem1After == amt0Gem0Gem1Before, "withdraw did not keep unchanged configs[gem0][gem1][fee][tickLower][tickUpper].amt0";
+    assert amt1Gem0Gem1After == amt1Gem0Gem1Before, "withdraw did not keep unchanged configs[gem0][gem1][fee][tickLower][tickUpper].amt1";
+    assert req0Gem0Gem1After == req0Gem0Gem1Before, "withdraw did not keep unchanged configs[gem0][gem1][fee][tickLower][tickUpper].req0";
+    assert req1Gem0Gem1After == req1Gem0Gem1Before, "withdraw did not keep unchanged configs[gem0][gem1][fee][tickLower][tickUpper].req1";
+    assert hopGem0Gem1After == hopGem0Gem1Before, "withdraw did not keep unchanged configs[gem0][gem1][fee][tickLower][tickUpper].hop";
+    assert numOtherAfter == numOtherBefore, "withdraw did not keep unchanged the rest of configs[x][y][z][a][b].num";
+    assert zzzOtherAfter == zzzOtherBefore, "withdraw did not keep unchanged the rest of configs[x][y][z][a][b].zzz";
+    assert amt0OtherAfter == amt0OtherBefore, "withdraw did not keep unchanged the rest of configs[x][y][z][a][b].amt0";
+    assert amt1OtherAfter == amt1OtherBefore, "withdraw did not keep unchanged the rest of configs[x][y][z][a][b].amt1";
+    assert req0OtherAfter == req0OtherBefore, "withdraw did not keep unchanged the rest of configs[x][y][z][a][b].req0";
+    assert req1OtherAfter == req1OtherBefore, "withdraw did not keep unchanged the rest of configs[x][y][z][a][b].req1";
+    assert hopOtherAfter == hopOtherBefore, "withdraw did not keep unchanged the rest of configs[x][y][z][a][b].hop";
+}
+
+// Verify correct storage changes for non reverting collect
+rule collect(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tickUpper) {
+    env e;
+
+    address anyAddr;
+    address otherAddr;
+    address otherAddr2;
+    uint24 otherUint24;
+    int24 otherInt24;
+    int24 otherInt242;
+    require otherAddr != gem0 || otherAddr2 != gem1 || fee != otherUint24 || tickLower != otherInt24 || tickUpper != otherInt242;
+
+    require e.block.timestamp <= max_uint32;
+
+    mathint wardsBefore = wards(anyAddr);
+    mathint budsBefore = buds(anyAddr);
+    mathint numBefore; mathint zzzBefore; mathint amt0Before; mathint amt1Before; mathint req0Before; mathint req1Before; mathint hopBefore;
+    numBefore, zzzBefore, amt0Before, amt1Before, req0Before, req1Before, hopBefore = configs(otherAddr, otherAddr2, otherUint24, otherInt24, otherInt242);
+
+    collect(e, gem0, gem1, fee, tickLower, tickUpper);
+
+    mathint wardsAfter = wards(anyAddr);
+    mathint budsAfter = buds(anyAddr);
+    mathint numAfter; mathint zzzAfter; mathint amt0After; mathint amt1After; mathint req0After; mathint req1After; mathint hopAfter;
+    numAfter, zzzAfter, amt0After, amt1After, req0After, req1After, hopAfter = configs(otherAddr, otherAddr2, otherUint24, otherInt24, otherInt242);
+
+    assert wardsAfter == wardsBefore, "collect did not keep unchanged every wards[x]";
+    assert budsAfter == budsBefore, "collect did not keep unchanged every buds[x]";
+    assert numAfter == numBefore, "collect did not keep unchanged every configs[x][y][z][a][b].num";
+    assert zzzAfter == zzzBefore, "collect did not keep unchanged every configs[x][y][z][a][b].zzz";
+    assert amt0After == amt0Before, "collect did not keep unchanged every configs[x][y][z][a][b].amt0";
+    assert amt1After == amt1Before, "collect did not keep unchanged every configs[x][y][z][a][b].amt1";
+    assert req0After == req0Before, "collect did not keep unchanged every configs[x][y][z][a][b].req0";
+    assert req1After == req1Before, "collect did not keep unchanged every configs[x][y][z][a][b].req1";
+    assert hopAfter == hopBefore, "collect did not keep unchanged every configs[x][y][z][a][b].hop";
+}
