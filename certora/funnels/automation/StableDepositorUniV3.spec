@@ -4,6 +4,27 @@ methods {
     function wards(address) external returns (uint256) envfree;
     function buds(address) external returns (uint256) envfree;
     function configs(address, address, uint24, int24, int24) external returns (int32, uint32, uint96, uint96, uint96, uint96, uint32) envfree;
+    function _.deposit(DepositorUniV3Like.LiquidityParams) external => depositSummary() expect uint128, uint256, uint256;
+    function _.withdraw(DepositorUniV3Like.LiquidityParams, bool) external => withdrawSummary() expect uint128, uint256, uint256, uint256, uint256;
+    function _.collect(DepositorUniV3Like.CollectParams) external => collectSummary() expect uint256, uint256;
+}
+
+ghost uint128 retValue;
+ghost uint256 retValue2;
+ghost uint256 retValue3;
+ghost uint256 retValue4;
+ghost uint256 retValue5;
+
+function depositSummary() returns (uint128, uint256, uint256) {
+    return (retValue, retValue2, retValue3);
+}
+
+function withdrawSummary() returns (uint128, uint256, uint256, uint256, uint256) {
+    return (retValue, retValue2, retValue3, retValue4, retValue5);
+}
+
+function collectSummary() returns (uint256, uint256) {
+    return (retValue2, retValue3);
 }
 
 // Verify correct storage changes for non reverting rely
@@ -328,6 +349,35 @@ rule deposit(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tick
     assert hopOtherAfter == hopOtherBefore, "deposit did not keep unchanged the rest of configs[x][y][z][a][b].hop";
 }
 
+// Verify revert rules on deposit
+rule deposit_revert(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tickUpper, uint128 amt0Min, uint128 amt1Min) {
+    env e;
+
+    require e.block.timestamp <= max_uint32;
+
+    mathint budsSender = buds(e.msg.sender);
+    mathint numGem0Gem1; mathint zzzGem0Gem1; mathint amt0Gem0Gem1; mathint amt1Gem0Gem1; mathint req0Gem0Gem1; mathint req1Gem0Gem1; mathint hopGem0Gem1;
+    numGem0Gem1, zzzGem0Gem1, amt0Gem0Gem1, amt1Gem0Gem1, req0Gem0Gem1, req1Gem0Gem1, hopGem0Gem1 = configs(gem0, gem1, fee, tickLower, tickUpper);
+
+    deposit@withrevert(e, gem0, gem1, fee, tickLower, tickUpper, amt0Min, amt1Min);
+
+    bool revert1 = e.msg.value > 0;
+    bool revert2 = budsSender != 1;
+    bool revert3 = numGem0Gem1 <= 0;
+    bool revert4 = to_mathint(e.block.timestamp) < zzzGem0Gem1 + hopGem0Gem1;
+    bool revert5 = to_mathint(amt0Min) > 0 && to_mathint(amt0Min) < req0Gem0Gem1;
+    bool revert6 = to_mathint(amt1Min) > 0 && to_mathint(amt1Min) < req1Gem0Gem1;
+
+    assert revert1 => lastReverted, "revert1 failed";
+    assert revert2 => lastReverted, "revert2 failed";
+    assert revert3 => lastReverted, "revert3 failed";
+    assert revert4 => lastReverted, "revert4 failed";
+    assert revert5 => lastReverted, "revert5 failed";
+    assert revert6 => lastReverted, "revert6 failed";
+    assert lastReverted => revert1 || revert2 || revert3 ||
+                           revert4 || revert5 || revert6, "Revert rules are not covering all the cases";
+}
+
 // Verify correct storage changes for non reverting withdraw
 rule withdraw(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tickUpper, uint128 amt0Min, uint128 amt1Min) {
     env e;
@@ -376,6 +426,35 @@ rule withdraw(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tic
     assert hopOtherAfter == hopOtherBefore, "withdraw did not keep unchanged the rest of configs[x][y][z][a][b].hop";
 }
 
+// Verify revert rules on withdraw
+rule withdraw_revert(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tickUpper, uint128 amt0Min, uint128 amt1Min) {
+    env e;
+
+    require e.block.timestamp <= max_uint32;
+
+    mathint budsSender = buds(e.msg.sender);
+    mathint numGem0Gem1; mathint zzzGem0Gem1; mathint amt0Gem0Gem1; mathint amt1Gem0Gem1; mathint req0Gem0Gem1; mathint req1Gem0Gem1; mathint hopGem0Gem1;
+    numGem0Gem1, zzzGem0Gem1, amt0Gem0Gem1, amt1Gem0Gem1, req0Gem0Gem1, req1Gem0Gem1, hopGem0Gem1 = configs(gem0, gem1, fee, tickLower, tickUpper);
+
+    withdraw@withrevert(e, gem0, gem1, fee, tickLower, tickUpper, amt0Min, amt1Min);
+
+    bool revert1 = e.msg.value > 0;
+    bool revert2 = budsSender != 1;
+    bool revert3 = numGem0Gem1 >= 0;
+    bool revert4 = to_mathint(e.block.timestamp) < zzzGem0Gem1 + hopGem0Gem1;
+    bool revert5 = to_mathint(amt0Min) > 0 && to_mathint(amt0Min) < req0Gem0Gem1;
+    bool revert6 = to_mathint(amt1Min) > 0 && to_mathint(amt1Min) < req1Gem0Gem1;
+
+    assert revert1 => lastReverted, "revert1 failed";
+    assert revert2 => lastReverted, "revert2 failed";
+    assert revert3 => lastReverted, "revert3 failed";
+    assert revert4 => lastReverted, "revert4 failed";
+    assert revert5 => lastReverted, "revert5 failed";
+    assert revert6 => lastReverted, "revert6 failed";
+    assert lastReverted => revert1 || revert2 || revert3 ||
+                           revert4 || revert5 || revert6, "Revert rules are not covering all the cases";
+}
+
 // Verify correct storage changes for non reverting collect
 rule collect(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tickUpper) {
     env e;
@@ -411,4 +490,20 @@ rule collect(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tick
     assert req0After == req0Before, "collect did not keep unchanged every configs[x][y][z][a][b].req0";
     assert req1After == req1Before, "collect did not keep unchanged every configs[x][y][z][a][b].req1";
     assert hopAfter == hopBefore, "collect did not keep unchanged every configs[x][y][z][a][b].hop";
+}
+
+// Verify revert rules on collect
+rule collect_revert(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tickUpper) {
+    env e;
+
+    mathint budsSender = buds(e.msg.sender);
+
+    collect@withrevert(e, gem0, gem1, fee, tickLower, tickUpper);
+
+    bool revert1 = e.msg.value > 0;
+    bool revert2 = budsSender != 1;
+
+    assert revert1 => lastReverted, "revert1 failed";
+    assert revert2 => lastReverted, "revert2 failed";
+    assert lastReverted => revert1 || revert2, "Revert rules are not covering all the cases";
 }
