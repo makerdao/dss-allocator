@@ -17,6 +17,8 @@ jobs:
           - registry
           - swapper
           - depositoruniv3
+          - stable-swapper
+          - stable-depositoruniv3
 
     steps:
       - name: Checkout
