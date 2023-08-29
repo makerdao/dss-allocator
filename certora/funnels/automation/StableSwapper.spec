@@ -288,10 +288,10 @@ rule swap(address src, address dst, uint256 minOut, address callee, bytes data) 
     assert wardsAfter == wardsBefore, "swap did not keep unchanged every wards[x]";
     assert budsAfter == budsBefore, "swap did not keep unchanged every buds[x]";
     assert numSrcDstAfter == numSrcDstBefore - 1, "swap did not decrease configs[src][dst].num by 1";
-    assert hopSrcDstAfter == hopSrcDstBefore, "swap did not set configs[src][dst].hop to hop";
+    assert hopSrcDstAfter == hopSrcDstBefore, "swap did not keep unchanged configs[src][dst].hop";
     assert zzzSrcDstAfter == to_mathint(e.block.timestamp), "swap did not set configs[src][dst].zzz to block.timestamp";
-    assert lotSrcDstAfter == lotSrcDstBefore, "swap did not set configs[src][dst].lot to lot";
-    assert reqSrcDstAfter == reqSrcDstBefore, "swap did not set configs[src][dst].req to req";
+    assert lotSrcDstAfter == lotSrcDstBefore, "swap did not keep unchanged configs[src][dst].lot";
+    assert reqSrcDstAfter == reqSrcDstBefore, "swap did not keep unchanged configs[src][dst].req";
     assert numOtherAfter == numOtherBefore, "swap did not keep unchanged the rest of configs[x][y].num";
     assert hopOtherAfter == hopOtherBefore, "swap did not keep unchanged the rest of configs[x][y].hop";
     assert zzzOtherAfter == zzzOtherBefore, "swap did not keep unchanged the rest of configs[x][y].zzz";
