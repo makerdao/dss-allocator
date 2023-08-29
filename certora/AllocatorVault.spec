@@ -28,56 +28,6 @@ definition RAY() returns mathint = 10^27;
 definition max_int256() returns mathint = 2^255 - 1;
 definition divUp(mathint x, mathint y) returns mathint = x != 0 ? ((x - 1) / y) + 1 : 0;
 
-// Verify correct storage changes for non reverting init
-rule init() {
-    env e;
-
-    address any;
-
-    mathint wardsBefore = wards(any);
-    address jugBefore = jug();
-    mathint vatInkVaultBefore; mathint vatArtVaultBefore;
-    vatInkVaultBefore, vatArtVaultBefore = vat.urns(ilk(), currentContract);
-    require vatInkVaultBefore == 0;
-    require vatArtVaultBefore == 0;
-
-    init(e);
-
-    mathint wardsAfter = wards(any);
-    address jugAfter = jug();
-    mathint vatInkVaultAfter; mathint vatArtVaultAfter;
-    vatInkVaultAfter, vatArtVaultAfter = vat.urns(ilk(), currentContract);
-
-    assert wardsAfter == wardsBefore, "init did not keep unchanged every wards[x]";
-    assert jugAfter == jugBefore, "init did not keep unchanged jug";
-    assert vatInkVaultAfter == 10^6 * WAD(), "init did not set all gem supply to vat.urns(ilk,vault).ink";
-    assert vatArtVaultAfter == 0, "init did not keep vat.urns(ilk,vault).art set to 0";
-}
-
-// Verify revert rules on init
-rule init_revert() {
-    env e;
-
-    bool canCall = roles.canCall(ilk(), e.msg.sender, currentContract, to_bytes4(0xe1c7392a));
-    mathint wardsSender = wards(e.msg.sender);
-    mathint vatGemVault = vat.gem(ilk(), currentContract);
-    mathint vatInkVault; mathint vatArtVault;
-    vatInkVault, vatArtVault = vat.urns(ilk(), currentContract);
-    require vatInkVault == 0;
-    require vatArtVault == 0;
-
-    init@withrevert(e);
-
-    bool revert1 = e.msg.value > 0;
-    bool revert2 = !canCall && wardsSender != 1;
-    bool revert3 = vatGemVault < 10^6 * WAD();
-
-    assert revert1 => lastReverted, "revert1 failed";
-    assert revert2 => lastReverted, "revert2 failed";
-    assert revert3 => lastReverted, "revert3 failed";
-    assert lastReverted => revert1 || revert2 || revert3, "Revert rules are not covering all the cases";
-}
-
 // Verify correct storage changes for non reverting rely
 rule rely(address usr) {
     env e;
