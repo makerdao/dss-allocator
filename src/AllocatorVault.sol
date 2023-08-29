@@ -176,7 +176,7 @@ contract AllocatorVault {
         uint256 rate = jug.drip(ilk);
         uint256 dart = wad * RAY / rate;
         require(dart <= uint256(type(int256).max), "AllocatorVault/overflow");
-        vat.frob(ilk, address(this), address(this), address(this), 0, -int256(dart));
+        vat.frob(ilk, address(this), address(0), address(this), 0, -int256(dart));
         emit Wipe(msg.sender, wad);
     }
 }
