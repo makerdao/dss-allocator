@@ -42,20 +42,10 @@ contract SwapperCalleeUniV3 {
         uniV3Router = _uniV3Router;
     }
 
-    function swapCallback(address src, address dst, uint256 amt, uint256 minOut, address to, bytes calldata data) external {
-        bytes memory path = data;
-
-        address firstToken;
-        address lastToken;
-        assembly {
-            firstToken := div(mload(add(path, 0x20)), 0x1000000000000000000000000)
-            lastToken := div(mload(sub(add(add(path, 0x20), mload(path)), 0x14)), 0x1000000000000000000000000)
-        }
-        require(src == firstToken && dst == lastToken, "SwapperCalleeUniV3/invalid-path");
-
+    function swapCallback(address src, address /* dst */, uint256 amt, uint256 minOut, address to, bytes calldata data) external {
         ApproveLike(src).approve(uniV3Router, amt);
         SwapRouterLike.ExactInputParams memory params = SwapRouterLike.ExactInputParams({
-            path:             path,
+            path:             data,
             recipient:        to,
             deadline:         block.timestamp,
             amountIn:         amt,

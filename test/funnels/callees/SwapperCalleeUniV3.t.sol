@@ -57,11 +57,4 @@ contract SwapperCalleeUniV3Test is DssTest {
         bytes memory USDC_USDT_DAI_PATH = abi.encodePacked(USDC, uint24(100), USDT, uint24(100), DAI);
         checkStableSwap(USDC, DAI, USDC_USDT_DAI_PATH);
     }
-
-    function testSwapInvalidPath() public {
-        bytes memory USDC_USDT_DAI_PATH = abi.encodePacked(USDC, uint24(100), USDT, uint24(100), DAI);
-
-        vm.expectRevert("SwapperCalleeUniV3/invalid-path");
-        this.checkStableSwap(DAI, USDC, USDC_USDT_DAI_PATH);
-    }
 }
