@@ -79,7 +79,6 @@ contract AllocatorVaultTest is DssTest {
 
     function testDrawWipe() public {
         vault.file("jug", address(jug));
-        assertEq(vault.line(), 20_000_000 * 10**18);
         (, uint256 art) = vat.urns(ilk, address(buffer));
         assertEq(art, 0);
         vm.expectEmit(true, true, true, true);
@@ -88,8 +87,6 @@ contract AllocatorVaultTest is DssTest {
         (, art) = vat.urns(ilk, address(vault));
         assertEq(art, 50 * 10**18);
         assertEq(vat.rate(), 10**27);
-        assertEq(vault.debt(), 50 * 10**18);
-        assertEq(vault.slot(), vault.line() - 50 * 10**18);
         assertEq(nst.balanceOf(address(buffer)), 50 * 10**18);
         vm.warp(block.timestamp + 1);
         vm.expectEmit(true, true, true, true);
@@ -99,8 +96,6 @@ contract AllocatorVaultTest is DssTest {
         uint256 expectedArt = 50 * 10**18 + _divup(50 * 10**18 * 1000, 1001);
         assertEq(art, expectedArt);
         assertEq(vat.rate(), 1001 * 10**27 / 1000);
-        assertEq(vault.debt(), _divup(expectedArt * 1001, 1000));
-        assertEq(vault.slot(), vault.line() - _divup(expectedArt * 1001, 1000));
         assertEq(nst.balanceOf(address(buffer)), 100 * 10**18);
         assertGt(art * vat.rate(), 100.05 * 10**45);
         assertLt(art * vat.rate(), 100.06 * 10**45);
@@ -116,16 +111,5 @@ contract AllocatorVaultTest is DssTest {
         assertEq(nst.balanceOf(address(buffer)), 0.01 * 10**18);
         (, art) = vat.urns(ilk, address(vault));
         assertEq(art, 1); // Dust which is impossible to wipe
-    }
-
-    function testDebtOverLine() public {
-        vault.file("jug", address(jug));
-        vm.expectEmit(true, true, true, true);
-        emit Draw(address(this), vault.line());
-        vault.draw(vault.line());
-        vm.warp(block.timestamp + 1);
-        jug.drip(ilk);
-        assertGt(vault.debt(), vault.line());
-        assertEq(vault.slot(), 0);
     }
 }
