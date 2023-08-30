@@ -195,10 +195,6 @@ rule draw_revert(uint256 wad) {
     mathint vatDaiVault = vat.dai(currentContract);
     mathint vatCanVaultNstJoin = vat.can(currentContract, nstJoin);
     mathint vatDaiNstJoin = vat.dai(nstJoin);
-    // require vatArtVault + dart <= max_uint256;
-    // require rate * dart <= max_int256();
-    // require vatDaiVault + rate * dart <= max_uint256;
-    // require vatDaiNstJoin + wad * RAY() <= max_uint256;
 
     draw@withrevert(e, wad);
 
