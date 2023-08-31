@@ -212,12 +212,12 @@ contract DeploymentTest is DssTest {
         vm.startPrank(PAUSE_PROXY);
         AllocatorInit.initShared(dss, shared);
 
-        address[] memory swapGems = new address[](1);
-        swapGems[0] = DAI;
+        address[] memory swapTokens = new address[](1);
+        swapTokens[0] = DAI;
 
-        address[] memory depositGems = new address[](2);
-        depositGems[0] = DAI;
-        depositGems[1] = USDC;
+        address[] memory depositTokens = new address[](2);
+        depositTokens[0] = DAI;
+        depositTokens[1] = USDC;
 
         AllocatorConfig memory cfg = AllocatorConfig({
             debtCeiling                : 100_000_000,
@@ -228,8 +228,8 @@ contract DeploymentTest is DssTest {
             stableSwapperKeeper        : stableSwapperKeeper,
             stableDepositorUniV3Keeper : stableDepositorUniV3Keeper,
             conduitMoverKeeper         : conduitMoverKeeper,
-            swapGems                   : swapGems,
-            depositGems                : depositGems,
+            swapTokens                 : swapTokens,
+            depositTokens              : depositTokens,
             vaultClKey                 : bytes32("VAULT_CL_KEY"),
             bufferClKey                : bytes32("BUFFER_CL_KEY"),
             ilkRegistry                : ILK_REGISTRY,

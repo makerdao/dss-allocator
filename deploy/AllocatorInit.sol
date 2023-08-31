@@ -127,8 +127,8 @@ struct AllocatorConfig {
     address stableSwapperKeeper;
     address stableDepositorUniV3Keeper;
     address conduitMoverKeeper;
-    address[] swapGems;
-    address[] depositGems;
+    address[] swapTokens;
+    address[] depositTokens;
     bytes32 vaultClKey;
     bytes32 bufferClKey;
     address ilkRegistry;
@@ -207,11 +207,11 @@ library AllocatorInit {
 
         // Allow vault and funnels to pull funds from the buffer
         BufferLike(networkInstance.buffer).approve(VaultLike(networkInstance.vault).nst(), networkInstance.vault, type(uint256).max);
-        for(uint256 i = 0; i < cfg.swapGems.length; i++) {
-            BufferLike(networkInstance.buffer).approve(cfg.swapGems[i], networkInstance.swapper, type(uint256).max);
+        for(uint256 i = 0; i < cfg.swapTokens.length; i++) {
+            BufferLike(networkInstance.buffer).approve(cfg.swapTokens[i], networkInstance.swapper, type(uint256).max);
         }
-        for(uint256 i = 0; i < cfg.depositGems.length; i++) {
-            BufferLike(networkInstance.buffer).approve(cfg.depositGems[i], networkInstance.depositorUniV3, type(uint256).max);
+        for(uint256 i = 0; i < cfg.depositTokens.length; i++) {
+            BufferLike(networkInstance.buffer).approve(cfg.depositTokens[i], networkInstance.depositorUniV3, type(uint256).max);
         }
 
         // Set the pause proxy temporarily as ilk admin so we can set all the roles below
