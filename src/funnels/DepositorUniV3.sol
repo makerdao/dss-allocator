@@ -229,8 +229,7 @@ contract DepositorUniV3 {
             // Reset batch
             limit.due0 = limits[p.gem0][p.gem1][p.fee].cap0;
             limit.due1 = limits[p.gem0][p.gem1][p.fee].cap1;
-            limit.era  = limits[p.gem0][p.gem1][p.fee].era;
-            limit.end  = uint32(block.timestamp) + limit.era;
+            limit.end  = uint32(block.timestamp) + limits[p.gem0][p.gem1][p.fee].era;
         }
 
         UniV3PoolLike pool = _getPool(p.gem0, p.gem1, p.fee);
@@ -271,8 +270,7 @@ contract DepositorUniV3 {
             // Reset batch
             limit.due0 = limits[p.gem0][p.gem1][p.fee].cap0;
             limit.due1 = limits[p.gem0][p.gem1][p.fee].cap1;
-            limit.era  = limits[p.gem0][p.gem1][p.fee].era;
-            limit.end  = uint32(block.timestamp) + limit.era;
+            limit.end  = uint32(block.timestamp) + limits[p.gem0][p.gem1][p.fee].era;
         }
 
         UniV3PoolLike pool = _getPool(p.gem0, p.gem1, p.fee);

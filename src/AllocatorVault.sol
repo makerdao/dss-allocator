@@ -22,9 +22,6 @@ interface RolesLike {
 }
 
 interface VatLike {
-    function ilks(bytes32) external view returns (uint256, uint256, uint256, uint256, uint256);
-    function live() external view returns (uint256);
-    function urns(bytes32, address) external view returns (uint256, uint256);
     function frob(bytes32, address, address, address, int256, int256) external;
     function hope(address) external;
 }
@@ -34,16 +31,8 @@ interface JugLike {
 }
 
 interface GemLike {
-    function totalSupply() external view returns (uint256);
     function approve(address, uint256) external;
     function transferFrom(address, address, uint256) external;
-}
-
-interface GemJoinLike {
-    function gem() external view returns (GemLike);
-    function ilk() external view returns (bytes32);
-    function vat() external view returns (address);
-    function join(address, uint256) external;
 }
 
 interface NstJoinLike {
@@ -102,7 +91,7 @@ contract AllocatorVault {
 
         require(vat_ == nstJoin.vat(), "AllocatorVault/vat-not-match");
 
-        nst = NstJoinLike(nstJoin_).nst();
+        nst = nstJoin.nst();
 
         VatLike(vat_).hope(nstJoin_);
         nst.approve(nstJoin_, type(uint256).max);
@@ -117,27 +106,6 @@ contract AllocatorVault {
         unchecked {
             z = x != 0 ? ((x - 1) / y) + 1 : 0;
         }
-    }
-
-    // --- getters ---
-    // In theory, `ilk.Art` should be equal to `urn.art` for this type of collateral, as there should only be one position per `ilk`.
-    // However to stick with the correct usage, `ilk.Art` is used for calculating `slot()` and `urn.art` for the `debt()` of this position.
-
-    function debt() external view returns (uint256) {
-        (, uint256 art) = vat.urns(ilk, address(this));
-        (, uint256 rate,,,) = vat.ilks(ilk);
-        return _divup(art * rate, RAY);
-    }
-
-    function line() external view returns (uint256) {
-        (,,, uint256 line_,) = vat.ilks(ilk);
-        return line_ / RAY;
-    }
-
-    function slot() external view returns (uint256) {
-        (uint256 Art, uint256 rate,, uint256 line_,) = vat.ilks(ilk);
-        uint256 debt_ = Art * rate;
-        return line_ > debt_ ? (line_ - debt_) / RAY : 0;
     }
 
     // --- administration ---
@@ -176,7 +144,7 @@ contract AllocatorVault {
         uint256 rate = jug.drip(ilk);
         uint256 dart = wad * RAY / rate;
         require(dart <= uint256(type(int256).max), "AllocatorVault/overflow");
-        vat.frob(ilk, address(this), address(this), address(this), 0, -int256(dart));
+        vat.frob(ilk, address(this), address(0), address(this), 0, -int256(dart));
         emit Wipe(msg.sender, wad);
     }
 }
