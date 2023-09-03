@@ -80,11 +80,15 @@ contract DeploymentTest is DssTest {
     address USDC;
 
     // actors
-    address constant allocatorProxy             = address(0x1);
-    address constant facilitator                = address(0x2);
-    address constant stableSwapperKeeper        = address(0x3);
-    address constant stableDepositorUniV3Keeper = address(0x4);
-    address constant conduitMoverKeeper         = address(0x5);
+    address constant allocatorProxy              = address(0x1);
+    address constant facilitator1                = address(0x2);
+    address constant facilitator2                = address(0x3);
+    address constant stableSwapperKeeper1        = address(0x4);
+    address constant stableSwapperKeeper2        = address(0x5);
+    address constant stableDepositorUniV3Keeper1 = address(0x6);
+    address constant stableDepositorUniV3Keeper2 = address(0x7);
+    address constant conduitMoverKeeper1         = address(0x8);
+    address constant conduitMoverKeeper2         = address(0x9);
 
     // roles
     uint8 constant facilitatorRole = uint8(1);
@@ -152,23 +156,39 @@ contract DeploymentTest is DssTest {
         depositTokens[0] = DAI;
         depositTokens[1] = USDC;
 
+        address[] memory facilitators = new address[](2);
+        facilitators[0] = facilitator1;
+        facilitators[1] = facilitator2;
+
+        address[] memory stableSwapperKeepers = new address[](2);
+        stableSwapperKeepers[0] = stableSwapperKeeper1;
+        stableSwapperKeepers[1] = stableSwapperKeeper2;
+
+        address[] memory stableDepositorUniV3Keepers = new address[](2);
+        stableDepositorUniV3Keepers[0] = stableDepositorUniV3Keeper1;
+        stableDepositorUniV3Keepers[1] = stableDepositorUniV3Keeper2;
+
+        address[] memory conduitMoverKeepers = new address[](2);
+        conduitMoverKeepers[0] = conduitMoverKeeper1;
+        conduitMoverKeepers[1] = conduitMoverKeeper2;
+
         AllocatorConfig memory cfg = AllocatorConfig({
-            duty                       : 1000000001243680656318820312,
-            debtCeiling                : 100_000_000,
-            allocatorProxy             : allocatorProxy,
-            facilitatorRole            : facilitatorRole,
-            automationRole             : automationRole,
-            facilitator                : facilitator,
-            stableSwapperKeeper        : stableSwapperKeeper,
-            stableDepositorUniV3Keeper : stableDepositorUniV3Keeper,
-            conduitMoverKeeper         : conduitMoverKeeper,
-            swapTokens                 : swapTokens,
-            depositTokens              : depositTokens,
-            vaultClKey                 : bytes32("VAULT_CL_KEY"),
-            bufferClKey                : bytes32("BUFFER_CL_KEY"),
-            ilkRegistry                : ILK_REGISTRY,
-            ilkRegistryName            : "ILK_REGISTRY_NAME",
-            ilkRegistrySymbol          : "ILK_REGISTRY_SYMBOL"
+            duty                        : 1000000001243680656318820312,
+            debtCeiling                 : 100_000_000,
+            allocatorProxy              : allocatorProxy,
+            facilitatorRole             : facilitatorRole,
+            automationRole              : automationRole,
+            facilitators                : facilitators,
+            stableSwapperKeepers        : stableSwapperKeepers,
+            stableDepositorUniV3Keepers : stableDepositorUniV3Keepers,
+            conduitMoverKeepers         : conduitMoverKeepers,
+            swapTokens                  : swapTokens,
+            depositTokens               : depositTokens,
+            vaultClKey                  : bytes32("VAULT_CL_KEY"),
+            bufferClKey                 : bytes32("BUFFER_CL_KEY"),
+            ilkRegistry                 : ILK_REGISTRY,
+            ilkRegistryName             : "ILK_REGISTRY_NAME",
+            ilkRegistrySymbol           : "ILK_REGISTRY_SYMBOL"
         });
 
         AllocatorInit.initIlk(dss, sharedInst, ilkInst, cfg);
@@ -235,7 +255,8 @@ contract DeploymentTest is DssTest {
 
         assertEq(AllocatorRoles(sharedInst.roles).ilkAdmins(ILK), allocatorProxy);
 
-        assertEq(AllocatorRoles(sharedInst.roles).hasUserRole(ILK, facilitator, facilitatorRole), true);
+        assertEq(AllocatorRoles(sharedInst.roles).hasUserRole(ILK, facilitator1, facilitatorRole), true);
+        assertEq(AllocatorRoles(sharedInst.roles).hasUserRole(ILK, facilitator2, facilitatorRole), true);
 
         assertEq(AllocatorRoles(sharedInst.roles).hasActionRole(ILK, ilkInst.vault,          AllocatorVault.draw.selector,     facilitatorRole), true);
         assertEq(AllocatorRoles(sharedInst.roles).hasActionRole(ILK, ilkInst.vault,          AllocatorVault.wipe.selector,     facilitatorRole), true);
@@ -252,13 +273,19 @@ contract DeploymentTest is DssTest {
         assertEq(AllocatorRoles(sharedInst.roles).hasActionRole(ILK, ilkInst.depositorUniV3, DepositorUniV3.withdraw.selector, automationRole), true);
         assertEq(AllocatorRoles(sharedInst.roles).hasActionRole(ILK, ilkInst.depositorUniV3, DepositorUniV3.collect.selector,  automationRole), true);
 
-        assertEq(WardsLike(ilkInst.stableSwapper).wards(facilitator), 1);
-        assertEq(WardsLike(ilkInst.stableDepositorUniV3).wards(facilitator), 1);
-        assertEq(WardsLike(ilkInst.conduitMover).wards(facilitator), 1);
+        assertEq(WardsLike(ilkInst.stableSwapper).wards(facilitator1), 1);
+        assertEq(WardsLike(ilkInst.stableSwapper).wards(facilitator2), 1);
+        assertEq(WardsLike(ilkInst.stableDepositorUniV3).wards(facilitator1), 1);
+        assertEq(WardsLike(ilkInst.stableDepositorUniV3).wards(facilitator2), 1);
+        assertEq(WardsLike(ilkInst.conduitMover).wards(facilitator1), 1);
+        assertEq(WardsLike(ilkInst.conduitMover).wards(facilitator2), 1);
 
-        assertEq(StableSwapper(ilkInst.stableSwapper).buds(stableSwapperKeeper), 1);
-        assertEq(StableDepositorUniV3(ilkInst.stableDepositorUniV3).buds(stableDepositorUniV3Keeper), 1);
-        assertEq(ConduitMover(ilkInst.conduitMover).buds(conduitMoverKeeper), 1);
+        assertEq(StableSwapper(ilkInst.stableSwapper).buds(stableSwapperKeeper1), 1);
+        assertEq(StableSwapper(ilkInst.stableSwapper).buds(stableSwapperKeeper2), 1);
+        assertEq(StableDepositorUniV3(ilkInst.stableDepositorUniV3).buds(stableDepositorUniV3Keeper1), 1);
+        assertEq(StableDepositorUniV3(ilkInst.stableDepositorUniV3).buds(stableDepositorUniV3Keeper2), 1);
+        assertEq(ConduitMover(ilkInst.conduitMover).buds(conduitMoverKeeper1), 1);
+        assertEq(ConduitMover(ilkInst.conduitMover).buds(conduitMoverKeeper2), 1);
 
         assertEq(WardsLike(ilkInst.vault).wards(address(this)), 0);
         assertEq(WardsLike(ilkInst.vault).wards(allocatorProxy), 1);
@@ -299,8 +326,8 @@ contract DeploymentTest is DssTest {
     function testVaultDrawWipe() public {
         emulateSpell();
 
-        vm.prank(facilitator); AllocatorVault(ilkInst.vault).draw(1_000 * WAD);
-        vm.prank(facilitator); AllocatorVault(ilkInst.vault).wipe(1_000 * WAD);
+        vm.prank(facilitator1); AllocatorVault(ilkInst.vault).draw(1_000 * WAD);
+        vm.prank(facilitator1); AllocatorVault(ilkInst.vault).wipe(1_000 * WAD);
     }
 
     function testSwapFromFacilitator() public {
@@ -309,7 +336,7 @@ contract DeploymentTest is DssTest {
         deal(DAI, ilkInst.buffer, 1_000 * WAD);
 
         vm.prank(allocatorProxy); Swapper(ilkInst.swapper).setLimits(DAI, USDC, uint96(1_000 * WAD), 1 hours);
-        vm.prank(facilitator); Swapper(ilkInst.swapper).swap(DAI, USDC, 1_000 * WAD, 990 * 10**6 , uniV3Callee, daiUsdcPath);
+        vm.prank(facilitator1); Swapper(ilkInst.swapper).swap(DAI, USDC, 1_000 * WAD, 990 * 10**6 , uniV3Callee, daiUsdcPath);
     }
 
     function testSwapFromKeeper() public {
@@ -318,8 +345,8 @@ contract DeploymentTest is DssTest {
         deal(DAI, ilkInst.buffer, 1_000 * WAD);
 
         vm.prank(allocatorProxy); Swapper(ilkInst.swapper).setLimits(DAI, USDC, uint96(1_000 * WAD), 1 hours);
-        vm.prank(facilitator); StableSwapper(ilkInst.stableSwapper).setConfig(DAI, USDC, 1, 1 hours, uint96(1_000 * WAD), uint96(990 * 10**6));
-        vm.prank(stableSwapperKeeper); StableSwapper(ilkInst.stableSwapper).swap(DAI, USDC, 990 * 10**6, uniV3Callee, daiUsdcPath);
+        vm.prank(facilitator1); StableSwapper(ilkInst.stableSwapper).setConfig(DAI, USDC, 1, 1 hours, uint96(1_000 * WAD), uint96(990 * 10**6));
+        vm.prank(stableSwapperKeeper1); StableSwapper(ilkInst.stableSwapper).swap(DAI, USDC, 990 * 10**6, uniV3Callee, daiUsdcPath);
     }
 
     function testDepositWithdrawCollectFromFacilitator() public {
@@ -342,8 +369,8 @@ contract DeploymentTest is DssTest {
             amt1Min    : 900 * 10**6
         });
 
-        vm.prank(facilitator); DepositorUniV3(ilkInst.depositorUniV3).deposit(dp);
-        vm.prank(facilitator); DepositorUniV3(ilkInst.depositorUniV3).withdraw(dp, false);
+        vm.prank(facilitator1); DepositorUniV3(ilkInst.depositorUniV3).deposit(dp);
+        vm.prank(facilitator1); DepositorUniV3(ilkInst.depositorUniV3).withdraw(dp, false);
 
         DepositorUniV3.CollectParams memory cp = DepositorUniV3.CollectParams({
             gem0     : DAI,
@@ -354,7 +381,7 @@ contract DeploymentTest is DssTest {
         });
 
         vm.expectRevert(bytes("NP")); // we make sure it reverts since no fees to collect and not because the call is unauthorized
-        vm.prank(facilitator); DepositorUniV3(ilkInst.depositorUniV3).collect(cp);
+        vm.prank(facilitator1); DepositorUniV3(ilkInst.depositorUniV3).collect(cp);
     }
 
     function testDepositWithdrawCollectFromKeeper() public {
@@ -365,27 +392,27 @@ contract DeploymentTest is DssTest {
 
         vm.prank(allocatorProxy); DepositorUniV3(ilkInst.depositorUniV3).setLimits(DAI, USDC, uint24(100), uint96(2_000 * WAD), uint96(2_000 * 10**6), 1 hours);
 
-        vm.prank(facilitator); StableDepositorUniV3(ilkInst.stableDepositorUniV3).setConfig(DAI, USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, 1, 1 hours, uint96(1_000 * WAD), uint96(1000 * 10**6), 0, 0);
-        vm.prank(stableDepositorUniV3Keeper); StableDepositorUniV3(ilkInst.stableDepositorUniV3).deposit(DAI, USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, 0, 0);
+        vm.prank(facilitator1); StableDepositorUniV3(ilkInst.stableDepositorUniV3).setConfig(DAI, USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, 1, 1 hours, uint96(1_000 * WAD), uint96(1000 * 10**6), 0, 0);
+        vm.prank(stableDepositorUniV3Keeper1); StableDepositorUniV3(ilkInst.stableDepositorUniV3).deposit(DAI, USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, 0, 0);
 
-        vm.prank(facilitator); StableDepositorUniV3(ilkInst.stableDepositorUniV3).setConfig(DAI, USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, -1, 1 hours, uint96(1_000 * WAD), uint96(1000 * 10**6), 0, 0);
-        vm.prank(stableDepositorUniV3Keeper); StableDepositorUniV3(ilkInst.stableDepositorUniV3).withdraw(DAI, USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, 0, 0);
+        vm.prank(facilitator1); StableDepositorUniV3(ilkInst.stableDepositorUniV3).setConfig(DAI, USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, -1, 1 hours, uint96(1_000 * WAD), uint96(1000 * 10**6), 0, 0);
+        vm.prank(stableDepositorUniV3Keeper1); StableDepositorUniV3(ilkInst.stableDepositorUniV3).withdraw(DAI, USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, 0, 0);
 
         vm.expectRevert(bytes("NP")); // Reverts since no fees to collect and not because the call is unauthorized
-        vm.prank(stableDepositorUniV3Keeper); StableDepositorUniV3(ilkInst.stableDepositorUniV3).collect(DAI, USDC, uint24(100), REF_TICK - 100, REF_TICK + 100);
+        vm.prank(stableDepositorUniV3Keeper1); StableDepositorUniV3(ilkInst.stableDepositorUniV3).collect(DAI, USDC, uint24(100), REF_TICK - 100, REF_TICK + 100);
     }
 
     function testMoveFromKeeper() public {
         emulateSpell();
 
         // Note that although the Conduits setup and init were not done by the tested contracts, we are testing the
-        // ConduitMover deployment, the facilitator ward on it and the keeper addition to it.
+        // ConduitMover deployment, the facilitators ward on it and the keeper addition to it.
 
         // Give conduit1 some funds
         deal(USDC, ilkInst.buffer, 3_000 * 10**6, true);
         vm.prank(ilkInst.conduitMover); AllocatorConduitMock(conduit1).deposit(ILK, USDC, 3_000 * 10**6);
 
-        vm.prank(facilitator); ConduitMover(ilkInst.conduitMover).setConfig(conduit1, conduit2, USDC, 1, 1 hours, 3_000 * 10**6);
-        vm.prank(conduitMoverKeeper); ConduitMover(ilkInst.conduitMover).move(conduit1, conduit2, USDC);
+        vm.prank(facilitator1); ConduitMover(ilkInst.conduitMover).setConfig(conduit1, conduit2, USDC, 1, 1 hours, 3_000 * 10**6);
+        vm.prank(conduitMoverKeeper1); ConduitMover(ilkInst.conduitMover).move(conduit1, conduit2, USDC);
     }
 }

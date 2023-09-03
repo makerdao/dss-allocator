@@ -124,10 +124,10 @@ struct AllocatorConfig {
     address allocatorProxy;
     uint8 facilitatorRole;
     uint8 automationRole;
-    address facilitator;
-    address stableSwapperKeeper;
-    address stableDepositorUniV3Keeper;
-    address conduitMoverKeeper;
+    address[] facilitators;
+    address[] stableSwapperKeepers;
+    address[] stableDepositorUniV3Keepers;
+    address[] conduitMoverKeepers;
     address[] swapTokens;
     address[] depositTokens;
     bytes32 vaultClKey;
@@ -224,8 +224,10 @@ library AllocatorInit {
         // Set the pause proxy temporarily as ilk admin so we can set all the roles below
         RolesLike(sharedInstance.roles).setIlkAdmin(ilk, ilkInstance.owner);
 
-        // Allow the facilitator to operate on the vault and funnels directly
-        RolesLike(sharedInstance.roles).setUserRole(ilk, cfg.facilitator, cfg.facilitatorRole, true);
+        // Allow the facilitators to operate on the vault and funnels directly
+        for(uint256 i = 0; i < cfg.facilitators.length; i++) {
+            RolesLike(sharedInstance.roles).setUserRole(ilk, cfg.facilitators[i], cfg.facilitatorRole, true);
+        }
 
         RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, ilkInstance.vault,          VaultLike.draw.selector,              true);
         RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, ilkInstance.vault,          VaultLike.wipe.selector,              true);
@@ -247,14 +249,22 @@ library AllocatorInit {
         RolesLike(sharedInstance.roles).setIlkAdmin(ilk, cfg.allocatorProxy);
 
         // Allow facilitator to set configurations in the automation contracts
-        WardsLike(ilkInstance.stableSwapper).rely(cfg.facilitator);
-        WardsLike(ilkInstance.stableDepositorUniV3).rely(cfg.facilitator);
-        WardsLike(ilkInstance.conduitMover).rely(cfg.facilitator);
+        for(uint256 i = 0; i < cfg.facilitators.length; i++) {
+            WardsLike(ilkInstance.stableSwapper).rely(cfg.facilitators[i]);
+            WardsLike(ilkInstance.stableDepositorUniV3).rely(cfg.facilitators[i]);
+            WardsLike(ilkInstance.conduitMover).rely(cfg.facilitators[i]);
+        }
 
         // Add keepers to the automation contracts
-        KissLike(ilkInstance.stableSwapper).kiss(cfg.stableSwapperKeeper);
-        KissLike(ilkInstance.stableDepositorUniV3).kiss(cfg.stableDepositorUniV3Keeper);
-        KissLike(ilkInstance.conduitMover).kiss(cfg.conduitMoverKeeper);
+        for(uint256 i = 0; i < cfg.stableSwapperKeepers.length; i++) {
+            KissLike(ilkInstance.stableSwapper).kiss(cfg.stableSwapperKeepers[i]);
+        }
+        for(uint256 i = 0; i < cfg.stableDepositorUniV3Keepers.length; i++) {
+            KissLike(ilkInstance.stableDepositorUniV3).kiss(cfg.stableDepositorUniV3Keepers[i]);
+        }
+        for(uint256 i = 0; i < cfg.conduitMoverKeepers.length; i++) {
+            KissLike(ilkInstance.conduitMover).kiss(cfg.conduitMoverKeepers[i]);
+        }
 
         // Move ownership of the ilk contracts to the allocator proxy
         switchOwner(ilkInstance.vault,                ilkInstance.owner, cfg.allocatorProxy);
