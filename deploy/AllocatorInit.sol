@@ -118,7 +118,7 @@ interface KissLike {
     function kiss(address) external;
 }
 
-struct AllocatorConfig {
+struct AllocatorIlkConfig {
     uint256 duty;
     uint256 debtCeiling;
     address allocatorProxy;
@@ -164,7 +164,7 @@ library AllocatorInit {
         DssInstance memory dss,
         AllocatorSharedInstance memory sharedInstance,
         AllocatorIlkInstance memory ilkInstance,
-        AllocatorConfig memory cfg
+        AllocatorIlkConfig memory cfg
     ) internal {
         bytes32 ilk = VaultLike(ilkInstance.vault).ilk();
 
