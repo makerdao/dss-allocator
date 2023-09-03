@@ -236,7 +236,7 @@ contract DeploymentTest is DssTest {
             ilkRegistrySymbol          : "ILK_REGISTRY_SYMBOL"
         });
 
-        AllocatorInit.initAllocator(dss, shared, network, cfg);
+        AllocatorInit.initIlk(dss, shared, network, cfg);
         vm.stopPrank();
 
         // Init conduits (assumed to be done separately than the current allocator network init)
@@ -261,7 +261,7 @@ contract DeploymentTest is DssTest {
         assertEq(ChainlogLike(LOG).getAddress("ALLOCATOR_REGISTRY"), shared.registry);
     }
 
-    function testInitAllocatorValues() public {
+    function testInitIlkValues() public {
         DssInstance memory dss = MCD.loadFromChainlog(LOG);
 
         uint256 previousLine = dss.vat.Line();

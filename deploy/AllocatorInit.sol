@@ -157,7 +157,7 @@ library AllocatorInit {
         dss.chainlog.setAddress("ALLOCATOR_REGISTRY", sharedInstance.registry);
     }
 
-    function initAllocator(
+    function initIlk(
         DssInstance memory dss,
         AllocatorSharedInstance memory sharedInstance,
         AllocatorNetworkInstance memory networkInstance,
