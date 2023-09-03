@@ -275,7 +275,7 @@ library AllocatorInit {
             _join   : address(0),
             _gem    : address(0),
             _dec    : 0,
-            _class  : 3,
+            _class  : 5, // RWAs are class 3, D3Ms and Teleport are class 4
             _pip    : sharedInstance.oracle,
             _xlip   : address(0),
             _name   : cfg.ilkRegistryName,

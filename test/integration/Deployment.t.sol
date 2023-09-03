@@ -352,7 +352,7 @@ contract DeploymentTest is DssTest {
         assertEq(IlkRegistryLike(ILK_REGISTRY).join(ILK),   address(0));
         assertEq(IlkRegistryLike(ILK_REGISTRY).gem(ILK),    address(0));
         assertEq(IlkRegistryLike(ILK_REGISTRY).dec(ILK),    0);
-        assertEq(IlkRegistryLike(ILK_REGISTRY).class(ILK),  3);
+        assertEq(IlkRegistryLike(ILK_REGISTRY).class(ILK),  5);
         assertEq(IlkRegistryLike(ILK_REGISTRY).pip(ILK),    sharedInst.oracle);
         assertEq(IlkRegistryLike(ILK_REGISTRY).xlip(ILK),   address(0));
         assertEq(IlkRegistryLike(ILK_REGISTRY).name(ILK),   "ILK_REGISTRY_NAME");
