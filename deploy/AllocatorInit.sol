@@ -133,8 +133,6 @@ struct AllocatorIlkConfig {
     address[] swapTokens;
     address[] depositTokens;
     address ilkRegistry;
-    string ilkRegistryName;
-    string ilkRegistrySymbol;
 }
 
 library AllocatorInit {
@@ -277,9 +275,9 @@ library AllocatorInit {
         switchOwner(ilkInstance.conduitMover,         ilkInstance.owner, cfg.allocatorProxy);
 
         // Add allocator-specific contracts to changelog
-        string memory clPrefix = ScriptTools.ilkToChainlogFormat(ilk);
-        dss.chainlog.setAddress(ScriptTools.stringToBytes32(string(abi.encodePacked(clPrefix, "_ALLOCATOR_VAULT"))),  ilkInstance.vault);
-        dss.chainlog.setAddress(ScriptTools.stringToBytes32(string(abi.encodePacked(clPrefix, "_ALLOCATOR_BUFFER"))), ilkInstance.buffer);
+        string memory ilkString = ScriptTools.ilkToChainlogFormat(ilk);
+        dss.chainlog.setAddress(ScriptTools.stringToBytes32(string(abi.encodePacked(ilkString, "_ALLOCATOR_VAULT"))),  ilkInstance.vault);
+        dss.chainlog.setAddress(ScriptTools.stringToBytes32(string(abi.encodePacked(ilkString, "_ALLOCATOR_BUFFER"))), ilkInstance.buffer);
 
         // Add to ilk registry
         IlkRegistryLike(cfg.ilkRegistry).put({
@@ -290,8 +288,8 @@ library AllocatorInit {
             _class  : 5, // RWAs are class 3, D3Ms and Teleport are class 4
             _pip    : sharedInstance.oracle,
             _xlip   : address(0),
-            _name   : cfg.ilkRegistryName,
-            _symbol : cfg.ilkRegistrySymbol
+            _name   : ilkString,
+            _symbol : ilkString
         });
     }
 }

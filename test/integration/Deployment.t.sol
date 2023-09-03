@@ -185,9 +185,7 @@ contract DeploymentTest is DssTest {
             conduitMoverKeepers         : conduitMoverKeepers,
             swapTokens                  : swapTokens,
             depositTokens               : depositTokens,
-            ilkRegistry                 : ILK_REGISTRY,
-            ilkRegistryName             : "ILK_REGISTRY_NAME",
-            ilkRegistrySymbol           : "ILK_REGISTRY_SYMBOL"
+            ilkRegistry                 : ILK_REGISTRY
         });
 
         AllocatorInit.initIlk(dss, sharedInst, ilkInst, cfg);
@@ -316,8 +314,8 @@ contract DeploymentTest is DssTest {
         assertEq(IlkRegistryLike(ILK_REGISTRY).class(ILK),  5);
         assertEq(IlkRegistryLike(ILK_REGISTRY).pip(ILK),    sharedInst.oracle);
         assertEq(IlkRegistryLike(ILK_REGISTRY).xlip(ILK),   address(0));
-        assertEq(IlkRegistryLike(ILK_REGISTRY).name(ILK),   "ILK_REGISTRY_NAME");
-        assertEq(IlkRegistryLike(ILK_REGISTRY).symbol(ILK), "ILK_REGISTRY_SYMBOL");
+        assertEq(IlkRegistryLike(ILK_REGISTRY).name(ILK),   "ILK");
+        assertEq(IlkRegistryLike(ILK_REGISTRY).symbol(ILK), "ILK");
     }
 
     function testVaultDrawWipe() public {
