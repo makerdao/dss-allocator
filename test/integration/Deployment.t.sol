@@ -191,7 +191,7 @@ contract DeploymentTest is DssTest {
         daiUsdcPath = abi.encodePacked(DAI,  uint24(100), USDC);
 
         shared = AllocatorDeploy.deployShared(address(this), PAUSE_PROXY);
-        network = AllocatorDeploy.deployNetwork({
+        network = AllocatorDeploy.deployIlk({
             deployer     : address(this),
             owner        : PAUSE_PROXY,
             roles        : shared.roles,

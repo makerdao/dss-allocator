@@ -56,7 +56,7 @@ library AllocatorDeploy {
     }
 
     // Note: owner is assumed to be the pause proxy, allocator proxy will receive ownerships on init
-    function deployNetwork(
+    function deployIlk(
         address deployer,
         address owner,
         address roles,
