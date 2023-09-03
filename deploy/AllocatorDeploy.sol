@@ -55,7 +55,7 @@ library AllocatorDeploy {
         sharedInstance.registry = _registry;
     }
 
-    // Note: owner is assumed to be the pause proxy, allocatorProxy will receive ownerships on init
+    // Note: owner is assumed to be the pause proxy, allocator proxy will receive ownerships on init
     function deployNetwork(
         address deployer,
         address owner,

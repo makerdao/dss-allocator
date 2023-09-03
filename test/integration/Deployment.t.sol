@@ -30,7 +30,6 @@ import { VatMock } from "test/mocks/VatMock.sol";
 import { AllocatorConduitMock } from "test/mocks/AllocatorConduitMock.sol";
 
 interface GemLike {
-    function balanceOf(address) external view returns (uint256);
     function allowance(address, address) external view returns (uint256);
 }
 
