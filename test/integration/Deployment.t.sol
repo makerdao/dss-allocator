@@ -185,8 +185,6 @@ contract DeploymentTest is DssTest {
             conduitMoverKeepers         : conduitMoverKeepers,
             swapTokens                  : swapTokens,
             depositTokens               : depositTokens,
-            vaultClKey                  : bytes32("VAULT_CL_KEY"),
-            bufferClKey                 : bytes32("BUFFER_CL_KEY"),
             ilkRegistry                 : ILK_REGISTRY,
             ilkRegistryName             : "ILK_REGISTRY_NAME",
             ilkRegistrySymbol           : "ILK_REGISTRY_SYMBOL"
@@ -307,8 +305,8 @@ contract DeploymentTest is DssTest {
         assertEq(WardsLike(ilkInst.conduitMover).wards(address(this)), 0);
         assertEq(WardsLike(ilkInst.conduitMover).wards(allocatorProxy), 1);
 
-        assertEq(ChainlogLike(LOG).getAddress("VAULT_CL_KEY"),  ilkInst.vault);
-        assertEq(ChainlogLike(LOG).getAddress("BUFFER_CL_KEY"), ilkInst.buffer);
+        assertEq(ChainlogLike(LOG).getAddress("ILK_ALLOCATOR_VAULT"),  ilkInst.vault);
+        assertEq(ChainlogLike(LOG).getAddress("ILK_ALLOCATOR_BUFFER"), ilkInst.buffer);
 
         assertEq(IlkRegistryLike(ILK_REGISTRY).count(),     previousIlkRegistryCount + 1);
         assertEq(IlkRegistryLike(ILK_REGISTRY).pos(ILK),    previousIlkRegistryCount);

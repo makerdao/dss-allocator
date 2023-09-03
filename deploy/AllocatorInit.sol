@@ -16,6 +16,7 @@
 
 pragma solidity >=0.8.0;
 
+import { ScriptTools } from "dss-test/ScriptTools.sol";
 import { DssInstance } from "dss-test/MCD.sol";
 import { AllocatorSharedInstance, AllocatorIlkInstance } from "./AllocatorInstances.sol";
 
@@ -131,8 +132,6 @@ struct AllocatorIlkConfig {
     address[] conduitMoverKeepers;
     address[] swapTokens;
     address[] depositTokens;
-    bytes32 vaultClKey;
-    bytes32 bufferClKey;
     address ilkRegistry;
     string ilkRegistryName;
     string ilkRegistrySymbol;
@@ -278,8 +277,9 @@ library AllocatorInit {
         switchOwner(ilkInstance.conduitMover,         ilkInstance.owner, cfg.allocatorProxy);
 
         // Add allocator-specific contracts to changelog
-        dss.chainlog.setAddress(cfg.vaultClKey,  ilkInstance.vault);
-        dss.chainlog.setAddress(cfg.bufferClKey, ilkInstance.buffer);
+        string memory clPrefix = ScriptTools.ilkToChainlogFormat(ilk);
+        dss.chainlog.setAddress(ScriptTools.stringToBytes32(string(abi.encodePacked(clPrefix, "_ALLOCATOR_VAULT"))),  ilkInstance.vault);
+        dss.chainlog.setAddress(ScriptTools.stringToBytes32(string(abi.encodePacked(clPrefix, "_ALLOCATOR_BUFFER"))), ilkInstance.buffer);
 
         // Add to ilk registry
         IlkRegistryLike(cfg.ilkRegistry).put({
