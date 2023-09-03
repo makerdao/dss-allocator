@@ -219,6 +219,7 @@ contract DeploymentTest is DssTest {
         depositTokens[1] = USDC;
 
         AllocatorConfig memory cfg = AllocatorConfig({
+            duty                       : 1000000001243680656318820312,
             debtCeiling                : 100_000_000,
             allocatorProxy             : allocatorProxy,
             facilitatorRole            : facilitatorRole,
@@ -276,6 +277,10 @@ contract DeploymentTest is DssTest {
         assertEq(spot, 10**6 * 10**18 * RAY * 10**9 / dss.spotter.par());
         assertEq(line, 100_000_000 * RAD);
         assertEq(dss.vat.Line(), previousLine + 100_000_000 * RAD);
+
+        (uint256 duty, uint256 rho) = dss.jug.ilks(ILK);
+        assertEq(duty, 1000000001243680656318820312);
+        assertEq(rho, block.timestamp);
 
         (address pip, uint256 mat) = dss.spotter.ilks(ILK);
         assertEq(pip, sharedInst.oracle);

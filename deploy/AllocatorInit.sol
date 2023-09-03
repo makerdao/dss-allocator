@@ -119,6 +119,7 @@ interface KissLike {
 }
 
 struct AllocatorConfig {
+    uint256 duty;
     uint256 debtCeiling;
     address allocatorProxy;
     uint8 facilitatorRole;
@@ -140,6 +141,8 @@ library AllocatorInit {
     uint256 constant WAD = 10 ** 18;
     uint256 constant RAY = 10 ** 27;
     uint256 constant RAD = 10 ** 45;
+
+    uint256 constant RATES_ONE_HUNDRED_PCT = 1000000021979553151239153027;
 
     function switchOwner(address base, address currentOwner, address newOwner) internal {
         if (currentOwner == newOwner) return;
@@ -188,6 +191,9 @@ library AllocatorInit {
         // Onboard the ilk
         dss.vat.init(ilk);
         dss.jug.init(ilk);
+
+        require((cfg.duty >= RAY) && (cfg.duty <= RATES_ONE_HUNDRED_PCT), "AllocatorInit/ilk-duty-out-of-bounds");
+        dss.jug.file(ilk, "duty", cfg.duty);
 
         require(cfg.debtCeiling < WAD, "AllocatorInit/incorrect-ilk-line-precision");
         dss.vat.file(ilk, "line", cfg.debtCeiling * RAD);
