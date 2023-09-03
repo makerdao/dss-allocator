@@ -169,6 +169,7 @@ library AllocatorInit {
         require(VaultLike(ilkInstance.vault).roles()  == sharedInstance.roles, "AllocatorInit/vault-roles-mismatch");
         require(VaultLike(ilkInstance.vault).buffer() == ilkInstance.buffer,   "AllocatorInit/vault-buffer-mismatch");
         require(VaultLike(ilkInstance.vault).vat()    == address(dss.vat),     "AllocatorInit/vault-vat-mismatch");
+        // Once nstJoin is in the chainlog and adapted to dss-test should also check against it
 
         require(SwapperLike(ilkInstance.swapper).roles()  == sharedInstance.roles, "AllocatorInit/swapper-roles-mismatch");
         require(SwapperLike(ilkInstance.swapper).ilk()    == ilk,                  "AllocatorInit/swapper-ilk-mismatch");
