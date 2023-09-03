@@ -242,6 +242,7 @@ contract DeploymentTest is DssTest {
         assertEq(AllocatorRoles(sharedInst.roles).hasActionRole(ILK, ilkInst.swapper,        Swapper.swap.selector,            facilitatorRole), true);
         assertEq(AllocatorRoles(sharedInst.roles).hasActionRole(ILK, ilkInst.depositorUniV3, DepositorUniV3.deposit.selector,  facilitatorRole), true);
         assertEq(AllocatorRoles(sharedInst.roles).hasActionRole(ILK, ilkInst.depositorUniV3, DepositorUniV3.withdraw.selector, facilitatorRole), true);
+        assertEq(AllocatorRoles(sharedInst.roles).hasActionRole(ILK, ilkInst.depositorUniV3, DepositorUniV3.collect.selector,  facilitatorRole), true);
 
         assertEq(AllocatorRoles(sharedInst.roles).hasUserRole(ILK, ilkInst.stableSwapper,        automationRole), true);
         assertEq(AllocatorRoles(sharedInst.roles).hasUserRole(ILK, ilkInst.stableDepositorUniV3, automationRole), true);
