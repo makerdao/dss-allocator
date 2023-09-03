@@ -17,7 +17,7 @@
 pragma solidity >=0.8.0;
 
 import { DssInstance } from "dss-test/MCD.sol";
-import { AllocatorSharedInstance, AllocatorNetworkInstance } from "./AllocatorInstances.sol";
+import { AllocatorSharedInstance, AllocatorIlkInstance } from "./AllocatorInstances.sol";
 
 interface WardsLike {
     function wards(address) external view returns (uint256);
@@ -160,29 +160,29 @@ library AllocatorInit {
     function initIlk(
         DssInstance memory dss,
         AllocatorSharedInstance memory sharedInstance,
-        AllocatorNetworkInstance memory networkInstance,
+        AllocatorIlkInstance memory ilkInstance,
         AllocatorConfig memory cfg
     ) internal {
-        bytes32 ilk = VaultLike(networkInstance.vault).ilk();
+        bytes32 ilk = VaultLike(ilkInstance.vault).ilk();
 
         // Sanity checks
-        require(VaultLike(networkInstance.vault).roles()  == sharedInstance.roles,   "AllocatorInit/vault-roles-mismatch");
-        require(VaultLike(networkInstance.vault).buffer() == networkInstance.buffer, "AllocatorInit/vault-buffer-mismatch");
-        require(VaultLike(networkInstance.vault).vat()    == address(dss.vat),       "AllocatorInit/vault-vat-mismatch");
+        require(VaultLike(ilkInstance.vault).roles()  == sharedInstance.roles,   "AllocatorInit/vault-roles-mismatch");
+        require(VaultLike(ilkInstance.vault).buffer() == ilkInstance.buffer, "AllocatorInit/vault-buffer-mismatch");
+        require(VaultLike(ilkInstance.vault).vat()    == address(dss.vat),       "AllocatorInit/vault-vat-mismatch");
 
-        require(SwapperLike(networkInstance.swapper).roles()  == sharedInstance.roles,   "AllocatorInit/swapper-roles-mismatch");
-        require(SwapperLike(networkInstance.swapper).ilk()    == ilk,                    "AllocatorInit/swapper-ilk-mismatch");
-        require(SwapperLike(networkInstance.swapper).buffer() == networkInstance.buffer, "AllocatorInit/swapper-buffer-mismatch");
+        require(SwapperLike(ilkInstance.swapper).roles()  == sharedInstance.roles,   "AllocatorInit/swapper-roles-mismatch");
+        require(SwapperLike(ilkInstance.swapper).ilk()    == ilk,                    "AllocatorInit/swapper-ilk-mismatch");
+        require(SwapperLike(ilkInstance.swapper).buffer() == ilkInstance.buffer, "AllocatorInit/swapper-buffer-mismatch");
 
-        require(DepositorUniV3Like(networkInstance.depositorUniV3).roles()  == sharedInstance.roles,   "AllocatorInit/depositorUniV3-roles-mismatch");
-        require(DepositorUniV3Like(networkInstance.depositorUniV3).ilk()    == ilk,                    "AllocatorInit/depositorUniV3-ilk-mismatch");
-        require(DepositorUniV3Like(networkInstance.depositorUniV3).buffer() == networkInstance.buffer, "AllocatorInit/depositorUniV3-buffer-mismatch");
+        require(DepositorUniV3Like(ilkInstance.depositorUniV3).roles()  == sharedInstance.roles,   "AllocatorInit/depositorUniV3-roles-mismatch");
+        require(DepositorUniV3Like(ilkInstance.depositorUniV3).ilk()    == ilk,                    "AllocatorInit/depositorUniV3-ilk-mismatch");
+        require(DepositorUniV3Like(ilkInstance.depositorUniV3).buffer() == ilkInstance.buffer, "AllocatorInit/depositorUniV3-buffer-mismatch");
 
-        require(StableSwapperLike(networkInstance.stableSwapper).swapper()                 == networkInstance.swapper,        "AllocatorInit/stableSwapper-swapper-mismatch");
-        require(StableDepositorUniV3Like(networkInstance.stableDepositorUniV3).depositor() == networkInstance.depositorUniV3, "AllocatorInit/stableDepositorUniV3-depositorUniV3-mismatch");
+        require(StableSwapperLike(ilkInstance.stableSwapper).swapper()                 == ilkInstance.swapper,        "AllocatorInit/stableSwapper-swapper-mismatch");
+        require(StableDepositorUniV3Like(ilkInstance.stableDepositorUniV3).depositor() == ilkInstance.depositorUniV3, "AllocatorInit/stableDepositorUniV3-depositorUniV3-mismatch");
 
-        require(ConduitMoverLike(networkInstance.conduitMover).ilk()    == ilk,                    "AllocatorInit/conduitMover-ilk-mismatch");
-        require(ConduitMoverLike(networkInstance.conduitMover).buffer() == networkInstance.buffer, "AllocatorInit/conduitMover-buffer-mismatch");
+        require(ConduitMoverLike(ilkInstance.conduitMover).ilk()    == ilk,                    "AllocatorInit/conduitMover-ilk-mismatch");
+        require(ConduitMoverLike(ilkInstance.conduitMover).buffer() == ilkInstance.buffer, "AllocatorInit/conduitMover-buffer-mismatch");
 
         // Onboard the ilk
         dss.vat.init(ilk);
@@ -197,70 +197,70 @@ library AllocatorInit {
         dss.spotter.poke(ilk);
 
         // Add buffer to registry
-        RegistryLike(sharedInstance.registry).file(ilk, "buffer", networkInstance.buffer);
+        RegistryLike(sharedInstance.registry).file(ilk, "buffer", ilkInstance.buffer);
 
         // Initiate the allocator vault
-        dss.vat.slip(ilk, networkInstance.vault, int256(1_000_000 * WAD));
-        dss.vat.grab(ilk, networkInstance.vault, networkInstance.vault, address(0), int256(1_000_000 * WAD), 0);
+        dss.vat.slip(ilk, ilkInstance.vault, int256(1_000_000 * WAD));
+        dss.vat.grab(ilk, ilkInstance.vault, ilkInstance.vault, address(0), int256(1_000_000 * WAD), 0);
 
-        VaultLike(networkInstance.vault).file("jug", address(dss.jug));
+        VaultLike(ilkInstance.vault).file("jug", address(dss.jug));
 
         // Allow vault and funnels to pull funds from the buffer
-        BufferLike(networkInstance.buffer).approve(VaultLike(networkInstance.vault).nst(), networkInstance.vault, type(uint256).max);
+        BufferLike(ilkInstance.buffer).approve(VaultLike(ilkInstance.vault).nst(), ilkInstance.vault, type(uint256).max);
         for(uint256 i = 0; i < cfg.swapTokens.length; i++) {
-            BufferLike(networkInstance.buffer).approve(cfg.swapTokens[i], networkInstance.swapper, type(uint256).max);
+            BufferLike(ilkInstance.buffer).approve(cfg.swapTokens[i], ilkInstance.swapper, type(uint256).max);
         }
         for(uint256 i = 0; i < cfg.depositTokens.length; i++) {
-            BufferLike(networkInstance.buffer).approve(cfg.depositTokens[i], networkInstance.depositorUniV3, type(uint256).max);
+            BufferLike(ilkInstance.buffer).approve(cfg.depositTokens[i], ilkInstance.depositorUniV3, type(uint256).max);
         }
 
         // Set the pause proxy temporarily as ilk admin so we can set all the roles below
-        RolesLike(sharedInstance.roles).setIlkAdmin(ilk, networkInstance.owner);
+        RolesLike(sharedInstance.roles).setIlkAdmin(ilk, ilkInstance.owner);
 
         // Allow the facilitator to operate on the vault and funnels directly
         RolesLike(sharedInstance.roles).setUserRole(ilk, cfg.facilitator, cfg.facilitatorRole, true);
 
-        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, networkInstance.vault,          VaultLike.draw.selector,              true);
-        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, networkInstance.vault,          VaultLike.wipe.selector,              true);
-        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, networkInstance.swapper,        SwapperLike.swap.selector,            true);
-        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, networkInstance.depositorUniV3, DepositorUniV3Like.deposit.selector,  true);
-        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, networkInstance.depositorUniV3, DepositorUniV3Like.withdraw.selector, true);
-        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, networkInstance.depositorUniV3, DepositorUniV3Like.collect.selector,  true);
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, ilkInstance.vault,          VaultLike.draw.selector,              true);
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, ilkInstance.vault,          VaultLike.wipe.selector,              true);
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, ilkInstance.swapper,        SwapperLike.swap.selector,            true);
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, ilkInstance.depositorUniV3, DepositorUniV3Like.deposit.selector,  true);
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, ilkInstance.depositorUniV3, DepositorUniV3Like.withdraw.selector, true);
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, ilkInstance.depositorUniV3, DepositorUniV3Like.collect.selector,  true);
 
         // Allow the automation contracts to operate on the funnels
-        RolesLike(sharedInstance.roles).setUserRole(ilk, networkInstance.stableSwapper,        cfg.automationRole, true);
-        RolesLike(sharedInstance.roles).setUserRole(ilk, networkInstance.stableDepositorUniV3, cfg.automationRole, true);
+        RolesLike(sharedInstance.roles).setUserRole(ilk, ilkInstance.stableSwapper,        cfg.automationRole, true);
+        RolesLike(sharedInstance.roles).setUserRole(ilk, ilkInstance.stableDepositorUniV3, cfg.automationRole, true);
 
-        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, networkInstance.swapper,        SwapperLike.swap.selector,            true);
-        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, networkInstance.depositorUniV3, DepositorUniV3Like.deposit.selector,  true);
-        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, networkInstance.depositorUniV3, DepositorUniV3Like.withdraw.selector, true);
-        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, networkInstance.depositorUniV3, DepositorUniV3Like.collect.selector,  true);
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, ilkInstance.swapper,        SwapperLike.swap.selector,            true);
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, ilkInstance.depositorUniV3, DepositorUniV3Like.deposit.selector,  true);
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, ilkInstance.depositorUniV3, DepositorUniV3Like.withdraw.selector, true);
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, ilkInstance.depositorUniV3, DepositorUniV3Like.collect.selector,  true);
 
         // Set the allocator proxy as the ilk admin instead of the Pause Proxy
         RolesLike(sharedInstance.roles).setIlkAdmin(ilk, cfg.allocatorProxy);
 
         // Allow facilitator to set configurations in the automation contracts
-        WardsLike(networkInstance.stableSwapper).rely(cfg.facilitator);
-        WardsLike(networkInstance.stableDepositorUniV3).rely(cfg.facilitator);
-        WardsLike(networkInstance.conduitMover).rely(cfg.facilitator);
+        WardsLike(ilkInstance.stableSwapper).rely(cfg.facilitator);
+        WardsLike(ilkInstance.stableDepositorUniV3).rely(cfg.facilitator);
+        WardsLike(ilkInstance.conduitMover).rely(cfg.facilitator);
 
         // Add keepers to the automation contracts
-        KissLike(networkInstance.stableSwapper).kiss(cfg.stableSwapperKeeper);
-        KissLike(networkInstance.stableDepositorUniV3).kiss(cfg.stableDepositorUniV3Keeper);
-        KissLike(networkInstance.conduitMover).kiss(cfg.conduitMoverKeeper);
+        KissLike(ilkInstance.stableSwapper).kiss(cfg.stableSwapperKeeper);
+        KissLike(ilkInstance.stableDepositorUniV3).kiss(cfg.stableDepositorUniV3Keeper);
+        KissLike(ilkInstance.conduitMover).kiss(cfg.conduitMoverKeeper);
 
-        // Move ownership of the network contracts to the allocator proxy
-        switchOwner(networkInstance.vault,                networkInstance.owner, cfg.allocatorProxy);
-        switchOwner(networkInstance.buffer,               networkInstance.owner, cfg.allocatorProxy);
-        switchOwner(networkInstance.swapper,              networkInstance.owner, cfg.allocatorProxy);
-        switchOwner(networkInstance.depositorUniV3,       networkInstance.owner, cfg.allocatorProxy);
-        switchOwner(networkInstance.stableSwapper,        networkInstance.owner, cfg.allocatorProxy);
-        switchOwner(networkInstance.stableDepositorUniV3, networkInstance.owner, cfg.allocatorProxy);
-        switchOwner(networkInstance.conduitMover,         networkInstance.owner, cfg.allocatorProxy);
+        // Move ownership of the ilk contracts to the allocator proxy
+        switchOwner(ilkInstance.vault,                ilkInstance.owner, cfg.allocatorProxy);
+        switchOwner(ilkInstance.buffer,               ilkInstance.owner, cfg.allocatorProxy);
+        switchOwner(ilkInstance.swapper,              ilkInstance.owner, cfg.allocatorProxy);
+        switchOwner(ilkInstance.depositorUniV3,       ilkInstance.owner, cfg.allocatorProxy);
+        switchOwner(ilkInstance.stableSwapper,        ilkInstance.owner, cfg.allocatorProxy);
+        switchOwner(ilkInstance.stableDepositorUniV3, ilkInstance.owner, cfg.allocatorProxy);
+        switchOwner(ilkInstance.conduitMover,         ilkInstance.owner, cfg.allocatorProxy);
 
         // Add allocator-specific contracts to changelog
-        dss.chainlog.setAddress(cfg.vaultClKey,  networkInstance.vault);
-        dss.chainlog.setAddress(cfg.bufferClKey, networkInstance.buffer);
+        dss.chainlog.setAddress(cfg.vaultClKey,  ilkInstance.vault);
+        dss.chainlog.setAddress(cfg.bufferClKey, ilkInstance.buffer);
 
         // Add to ilk registry
         IlkRegistryLike(cfg.ilkRegistry).put({

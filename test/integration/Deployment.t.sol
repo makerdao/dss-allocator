@@ -18,7 +18,7 @@ pragma solidity ^0.8.16;
 
 import "dss-test/DssTest.sol";
 
-import { AllocatorSharedInstance, AllocatorNetworkInstance } from "deploy/AllocatorInstances.sol";
+import { AllocatorSharedInstance, AllocatorIlkInstance } from "deploy/AllocatorInstances.sol";
 import { AllocatorDeploy } from "deploy/AllocatorDeploy.sol";
 import { AllocatorInit, AllocatorConfig } from "deploy/AllocatorInit.sol";
 
@@ -164,8 +164,8 @@ contract DeploymentTest is DssTest {
     address conduit2;
 
     // storage to be initiated on setup
-    AllocatorSharedInstance shared;
-    AllocatorNetworkInstance network;
+    AllocatorSharedInstance sharedInst;
+    AllocatorIlkInstance ilkInst;
     bytes usdcDaiPath;
     bytes daiUsdcPath;
 
@@ -190,26 +190,26 @@ contract DeploymentTest is DssTest {
         usdcDaiPath = abi.encodePacked(USDC, uint24(100), DAI);
         daiUsdcPath = abi.encodePacked(DAI,  uint24(100), USDC);
 
-        shared = AllocatorDeploy.deployShared(address(this), PAUSE_PROXY);
-        network = AllocatorDeploy.deployIlk({
+        sharedInst = AllocatorDeploy.deployShared(address(this), PAUSE_PROXY);
+        ilkInst = AllocatorDeploy.deployIlk({
             deployer     : address(this),
             owner        : PAUSE_PROXY,
-            roles        : shared.roles,
+            roles        : sharedInst.roles,
             ilk          : ILK,
             nstJoin      : nstJoin,
             uniV3Factory : UNIV3_FACTORY
         });
 
-        // Deploy conduits (assumed to be done separately than the current allocator network deploy)
-        conduit1 = address(new AllocatorConduitMock(shared.roles, shared.registry));
-        conduit2 = address(new AllocatorConduitMock(shared.roles, shared.registry));
+        // Deploy conduits (assumed to be done separately than the current allocator ilkInst deploy)
+        conduit1 = address(new AllocatorConduitMock(sharedInst.roles, sharedInst.registry));
+        conduit2 = address(new AllocatorConduitMock(sharedInst.roles, sharedInst.registry));
     }
 
     function emulateSpell() internal {
         DssInstance memory dss = MCD.loadFromChainlog(LOG);
 
         vm.startPrank(PAUSE_PROXY);
-        AllocatorInit.initShared(dss, shared);
+        AllocatorInit.initShared(dss, sharedInst);
 
         address[] memory swapTokens = new address[](1);
         swapTokens[0] = DAI;
@@ -236,29 +236,29 @@ contract DeploymentTest is DssTest {
             ilkRegistrySymbol          : "ILK_REGISTRY_SYMBOL"
         });
 
-        AllocatorInit.initIlk(dss, shared, network, cfg);
+        AllocatorInit.initIlk(dss, sharedInst, ilkInst, cfg);
         vm.stopPrank();
 
-        // Init conduits (assumed to be done separately than the current allocator network init)
+        // Init conduits (assumed to be done separately than the current allocator ilkInst init)
         vm.startPrank(allocatorProxy);
-        RolesLike(shared.roles).setUserRole(ILK, address(network.conduitMover), automationRole, true);
+        RolesLike(sharedInst.roles).setUserRole(ILK, address(ilkInst.conduitMover), automationRole, true);
 
-        RolesLike(shared.roles).setRoleAction(ILK, automationRole, conduit1, AllocatorConduitMock.deposit.selector,  true);
-        RolesLike(shared.roles).setRoleAction(ILK, automationRole, conduit1, AllocatorConduitMock.withdraw.selector, true);
-        RolesLike(shared.roles).setRoleAction(ILK, automationRole, conduit2, AllocatorConduitMock.deposit.selector,  true);
-        RolesLike(shared.roles).setRoleAction(ILK, automationRole, conduit2, AllocatorConduitMock.withdraw.selector, true);
+        RolesLike(sharedInst.roles).setRoleAction(ILK, automationRole, conduit1, AllocatorConduitMock.deposit.selector,  true);
+        RolesLike(sharedInst.roles).setRoleAction(ILK, automationRole, conduit1, AllocatorConduitMock.withdraw.selector, true);
+        RolesLike(sharedInst.roles).setRoleAction(ILK, automationRole, conduit2, AllocatorConduitMock.deposit.selector,  true);
+        RolesLike(sharedInst.roles).setRoleAction(ILK, automationRole, conduit2, AllocatorConduitMock.withdraw.selector, true);
 
-        BufferLike(network.buffer).approve(USDC, conduit1, type(uint256).max);
-        BufferLike(network.buffer).approve(USDC, conduit2, type(uint256).max);
+        BufferLike(ilkInst.buffer).approve(USDC, conduit1, type(uint256).max);
+        BufferLike(ilkInst.buffer).approve(USDC, conduit2, type(uint256).max);
         vm.stopPrank();
     }
 
     function testInitSharedValues() public {
         emulateSpell();
 
-        assertEq(ChainlogLike(LOG).getAddress("ALLOCATOR_ORACLE"),   shared.oracle);
-        assertEq(ChainlogLike(LOG).getAddress("ALLOCATOR_ROLES"),    shared.roles);
-        assertEq(ChainlogLike(LOG).getAddress("ALLOCATOR_REGISTRY"), shared.registry);
+        assertEq(ChainlogLike(LOG).getAddress("ALLOCATOR_ORACLE"),   sharedInst.oracle);
+        assertEq(ChainlogLike(LOG).getAddress("ALLOCATOR_ROLES"),    sharedInst.roles);
+        assertEq(ChainlogLike(LOG).getAddress("ALLOCATOR_REGISTRY"), sharedInst.registry);
     }
 
     function testInitIlkValues() public {
@@ -269,7 +269,7 @@ contract DeploymentTest is DssTest {
 
         emulateSpell();
 
-        assertEq(VaultLike(network.vault).ilk(), ILK);
+        assertEq(VaultLike(ilkInst.vault).ilk(), ILK);
 
         (, uint256 rate, uint256 spot, uint256 line,) = dss.vat.ilks(ILK);
         assertEq(rate, RAY);
@@ -278,69 +278,69 @@ contract DeploymentTest is DssTest {
         assertEq(dss.vat.Line(), previousLine + 100_000_000 * RAD);
 
         (address pip, uint256 mat) = dss.spotter.ilks(ILK);
-        assertEq(pip, shared.oracle);
+        assertEq(pip, sharedInst.oracle);
         assertEq(mat, RAY);
 
-        assertEq(dss.vat.gem(ILK, network.vault), 0);
-        (uint256 ink, uint256 art) = dss.vat.urns(ILK, network.vault);
+        assertEq(dss.vat.gem(ILK, ilkInst.vault), 0);
+        (uint256 ink, uint256 art) = dss.vat.urns(ILK, ilkInst.vault);
         assertEq(ink, 1_000_000 * WAD);
         assertEq(art, 0);
 
-        assertEq(RegistryLike(shared.registry).buffers(ILK), network.buffer);
-        assertEq(VaultLike(network.vault).jug(), address(dss.jug));
+        assertEq(RegistryLike(sharedInst.registry).buffers(ILK), ilkInst.buffer);
+        assertEq(VaultLike(ilkInst.vault).jug(), address(dss.jug));
 
-        assertEq(GemLike(nst).allowance(network.buffer, network.vault), type(uint256).max);
-        assertEq(GemLike(DAI).allowance(network.buffer, network.swapper), type(uint256).max);
-        assertEq(GemLike(DAI).allowance(network.buffer, network.depositorUniV3), type(uint256).max);
-        assertEq(GemLike(USDC).allowance(network.buffer,network.depositorUniV3), type(uint256).max);
+        assertEq(GemLike(nst).allowance(ilkInst.buffer, ilkInst.vault), type(uint256).max);
+        assertEq(GemLike(DAI).allowance(ilkInst.buffer, ilkInst.swapper), type(uint256).max);
+        assertEq(GemLike(DAI).allowance(ilkInst.buffer, ilkInst.depositorUniV3), type(uint256).max);
+        assertEq(GemLike(USDC).allowance(ilkInst.buffer,ilkInst.depositorUniV3), type(uint256).max);
 
-        assertEq(RolesLike(shared.roles).ilkAdmins(ILK), allocatorProxy);
+        assertEq(RolesLike(sharedInst.roles).ilkAdmins(ILK), allocatorProxy);
 
-        assertEq(RolesLike(shared.roles).hasUserRole(ILK, facilitator, facilitatorRole), true);
-        assertEq(RolesLike(shared.roles).hasActionRole(ILK, network.vault, VaultLike.draw.selector, facilitatorRole) , true);
-        assertEq(RolesLike(shared.roles).hasActionRole(ILK, network.vault, VaultLike.wipe.selector, facilitatorRole) , true);
-        assertEq(RolesLike(shared.roles).hasActionRole(ILK, network.swapper, SwapperLike.swap.selector, facilitatorRole) , true);
-        assertEq(RolesLike(shared.roles).hasActionRole(ILK, network.depositorUniV3, DepositorUniV3Like.deposit.selector, facilitatorRole) , true);
-        assertEq(RolesLike(shared.roles).hasActionRole(ILK, network.depositorUniV3, DepositorUniV3Like.withdraw.selector, facilitatorRole) , true);
+        assertEq(RolesLike(sharedInst.roles).hasUserRole(ILK, facilitator, facilitatorRole), true);
+        assertEq(RolesLike(sharedInst.roles).hasActionRole(ILK, ilkInst.vault, VaultLike.draw.selector, facilitatorRole) , true);
+        assertEq(RolesLike(sharedInst.roles).hasActionRole(ILK, ilkInst.vault, VaultLike.wipe.selector, facilitatorRole) , true);
+        assertEq(RolesLike(sharedInst.roles).hasActionRole(ILK, ilkInst.swapper, SwapperLike.swap.selector, facilitatorRole) , true);
+        assertEq(RolesLike(sharedInst.roles).hasActionRole(ILK, ilkInst.depositorUniV3, DepositorUniV3Like.deposit.selector, facilitatorRole) , true);
+        assertEq(RolesLike(sharedInst.roles).hasActionRole(ILK, ilkInst.depositorUniV3, DepositorUniV3Like.withdraw.selector, facilitatorRole) , true);
 
-        assertEq(RolesLike(shared.roles).hasUserRole(ILK, network.stableSwapper, automationRole), true);
-        assertEq(RolesLike(shared.roles).hasUserRole(ILK, network.stableDepositorUniV3, automationRole), true);
-        assertEq(RolesLike(shared.roles).hasActionRole(ILK, network.swapper, SwapperLike.swap.selector, automationRole) , true);
-        assertEq(RolesLike(shared.roles).hasActionRole(ILK, network.depositorUniV3, DepositorUniV3Like.deposit.selector, automationRole) , true);
-        assertEq(RolesLike(shared.roles).hasActionRole(ILK, network.depositorUniV3, DepositorUniV3Like.withdraw.selector, automationRole) , true);
-        assertEq(RolesLike(shared.roles).hasActionRole(ILK, network.depositorUniV3, DepositorUniV3Like.collect.selector, automationRole) , true);
+        assertEq(RolesLike(sharedInst.roles).hasUserRole(ILK, ilkInst.stableSwapper, automationRole), true);
+        assertEq(RolesLike(sharedInst.roles).hasUserRole(ILK, ilkInst.stableDepositorUniV3, automationRole), true);
+        assertEq(RolesLike(sharedInst.roles).hasActionRole(ILK, ilkInst.swapper, SwapperLike.swap.selector, automationRole) , true);
+        assertEq(RolesLike(sharedInst.roles).hasActionRole(ILK, ilkInst.depositorUniV3, DepositorUniV3Like.deposit.selector, automationRole) , true);
+        assertEq(RolesLike(sharedInst.roles).hasActionRole(ILK, ilkInst.depositorUniV3, DepositorUniV3Like.withdraw.selector, automationRole) , true);
+        assertEq(RolesLike(sharedInst.roles).hasActionRole(ILK, ilkInst.depositorUniV3, DepositorUniV3Like.collect.selector, automationRole) , true);
 
-        assertEq(WardsLike(network.stableSwapper).wards(facilitator), 1);
-        assertEq(WardsLike(network.stableDepositorUniV3).wards(facilitator), 1);
-        assertEq(WardsLike(network.conduitMover).wards(facilitator), 1);
+        assertEq(WardsLike(ilkInst.stableSwapper).wards(facilitator), 1);
+        assertEq(WardsLike(ilkInst.stableDepositorUniV3).wards(facilitator), 1);
+        assertEq(WardsLike(ilkInst.conduitMover).wards(facilitator), 1);
 
-        assertEq(StableSwapperLike(network.stableSwapper).buds(stableSwapperKeeper), 1);
-        assertEq(StableDepositorUniV3Like(network.stableDepositorUniV3).buds(stableDepositorUniV3Keeper), 1);
-        assertEq(ConduitMoverLike(network.conduitMover).buds(conduitMoverKeeper), 1);
+        assertEq(StableSwapperLike(ilkInst.stableSwapper).buds(stableSwapperKeeper), 1);
+        assertEq(StableDepositorUniV3Like(ilkInst.stableDepositorUniV3).buds(stableDepositorUniV3Keeper), 1);
+        assertEq(ConduitMoverLike(ilkInst.conduitMover).buds(conduitMoverKeeper), 1);
 
-        assertEq(WardsLike(network.vault).wards(address(this)), 0);
-        assertEq(WardsLike(network.vault).wards(allocatorProxy), 1);
+        assertEq(WardsLike(ilkInst.vault).wards(address(this)), 0);
+        assertEq(WardsLike(ilkInst.vault).wards(allocatorProxy), 1);
 
-        assertEq(WardsLike(network.buffer).wards(address(this)), 0);
-        assertEq(WardsLike(network.buffer).wards(allocatorProxy), 1);
+        assertEq(WardsLike(ilkInst.buffer).wards(address(this)), 0);
+        assertEq(WardsLike(ilkInst.buffer).wards(allocatorProxy), 1);
 
-        assertEq(WardsLike(network.swapper).wards(address(this)), 0);
-        assertEq(WardsLike(network.swapper).wards(allocatorProxy), 1);
+        assertEq(WardsLike(ilkInst.swapper).wards(address(this)), 0);
+        assertEq(WardsLike(ilkInst.swapper).wards(allocatorProxy), 1);
 
-        assertEq(WardsLike(network.depositorUniV3).wards(address(this)), 0);
-        assertEq(WardsLike(network.depositorUniV3).wards(allocatorProxy), 1);
+        assertEq(WardsLike(ilkInst.depositorUniV3).wards(address(this)), 0);
+        assertEq(WardsLike(ilkInst.depositorUniV3).wards(allocatorProxy), 1);
 
-        assertEq(WardsLike(network.stableSwapper).wards(address(this)), 0);
-        assertEq(WardsLike(network.stableSwapper).wards(allocatorProxy), 1);
+        assertEq(WardsLike(ilkInst.stableSwapper).wards(address(this)), 0);
+        assertEq(WardsLike(ilkInst.stableSwapper).wards(allocatorProxy), 1);
 
-        assertEq(WardsLike(network.stableDepositorUniV3).wards(address(this)), 0);
-        assertEq(WardsLike(network.stableDepositorUniV3).wards(allocatorProxy), 1);
+        assertEq(WardsLike(ilkInst.stableDepositorUniV3).wards(address(this)), 0);
+        assertEq(WardsLike(ilkInst.stableDepositorUniV3).wards(allocatorProxy), 1);
 
-        assertEq(WardsLike(network.conduitMover).wards(address(this)), 0);
-        assertEq(WardsLike(network.conduitMover).wards(allocatorProxy), 1);
+        assertEq(WardsLike(ilkInst.conduitMover).wards(address(this)), 0);
+        assertEq(WardsLike(ilkInst.conduitMover).wards(allocatorProxy), 1);
 
-        assertEq(ChainlogLike(LOG).getAddress("VAULT_CL_KEY"),  network.vault);
-        assertEq(ChainlogLike(LOG).getAddress("BUFFER_CL_KEY"), network.buffer);
+        assertEq(ChainlogLike(LOG).getAddress("VAULT_CL_KEY"),  ilkInst.vault);
+        assertEq(ChainlogLike(LOG).getAddress("BUFFER_CL_KEY"), ilkInst.buffer);
 
         assertEq(IlkRegistryLike(ILK_REGISTRY).count(),     previousIlkRegistryCount + 1);
         assertEq(IlkRegistryLike(ILK_REGISTRY).pos(ILK),    previousIlkRegistryCount);
@@ -348,7 +348,7 @@ contract DeploymentTest is DssTest {
         assertEq(IlkRegistryLike(ILK_REGISTRY).gem(ILK),    address(0));
         assertEq(IlkRegistryLike(ILK_REGISTRY).dec(ILK),    0);
         assertEq(IlkRegistryLike(ILK_REGISTRY).class(ILK),  3);
-        assertEq(IlkRegistryLike(ILK_REGISTRY).pip(ILK),    shared.oracle);
+        assertEq(IlkRegistryLike(ILK_REGISTRY).pip(ILK),    sharedInst.oracle);
         assertEq(IlkRegistryLike(ILK_REGISTRY).xlip(ILK),   address(0));
         assertEq(IlkRegistryLike(ILK_REGISTRY).name(ILK),   "ILK_REGISTRY_NAME");
         assertEq(IlkRegistryLike(ILK_REGISTRY).symbol(ILK), "ILK_REGISTRY_SYMBOL");
@@ -357,36 +357,36 @@ contract DeploymentTest is DssTest {
     function testVaultDrawWipe() public {
         emulateSpell();
 
-        vm.prank(facilitator); VaultLike(network.vault).draw(1_000 * WAD);
-        vm.prank(facilitator); VaultLike(network.vault).wipe(1_000 * WAD);
+        vm.prank(facilitator); VaultLike(ilkInst.vault).draw(1_000 * WAD);
+        vm.prank(facilitator); VaultLike(ilkInst.vault).wipe(1_000 * WAD);
     }
 
     function testSwapFromFacilitator() public {
         emulateSpell();
 
-        deal(DAI, network.buffer, 1_000 * WAD);
+        deal(DAI, ilkInst.buffer, 1_000 * WAD);
 
-        vm.prank(allocatorProxy); SwapperLike(network.swapper).setLimits(DAI, USDC, uint96(1_000 * WAD), 1 hours);
-        vm.prank(facilitator); SwapperLike(network.swapper).swap(DAI, USDC, 1_000 * WAD, 990 * 10**6 , uniV3Callee, daiUsdcPath);
+        vm.prank(allocatorProxy); SwapperLike(ilkInst.swapper).setLimits(DAI, USDC, uint96(1_000 * WAD), 1 hours);
+        vm.prank(facilitator); SwapperLike(ilkInst.swapper).swap(DAI, USDC, 1_000 * WAD, 990 * 10**6 , uniV3Callee, daiUsdcPath);
     }
 
     function testSwapFromKeeper() public {
         emulateSpell();
 
-        deal(DAI, network.buffer, 1_000 * WAD);
+        deal(DAI, ilkInst.buffer, 1_000 * WAD);
 
-        vm.prank(allocatorProxy); SwapperLike(network.swapper).setLimits(DAI, USDC, uint96(1_000 * WAD), 1 hours);
-        vm.prank(facilitator); StableSwapperLike(network.stableSwapper).setConfig(DAI, USDC, 1, 1 hours, uint96(1_000 * WAD), uint96(990 * 10**6));
-        vm.prank(stableSwapperKeeper); StableSwapperLike(network.stableSwapper).swap(DAI, USDC, 990 * 10**6, uniV3Callee, daiUsdcPath);
+        vm.prank(allocatorProxy); SwapperLike(ilkInst.swapper).setLimits(DAI, USDC, uint96(1_000 * WAD), 1 hours);
+        vm.prank(facilitator); StableSwapperLike(ilkInst.stableSwapper).setConfig(DAI, USDC, 1, 1 hours, uint96(1_000 * WAD), uint96(990 * 10**6));
+        vm.prank(stableSwapperKeeper); StableSwapperLike(ilkInst.stableSwapper).swap(DAI, USDC, 990 * 10**6, uniV3Callee, daiUsdcPath);
     }
 
     function testDepositWithdrawCollectFromFacilitator() public {
         emulateSpell();
 
-        deal(DAI,  network.buffer, 1_000 * WAD);
-        deal(USDC, network.buffer, 1_000 * 10**6);
+        deal(DAI,  ilkInst.buffer, 1_000 * WAD);
+        deal(USDC, ilkInst.buffer, 1_000 * 10**6);
 
-        vm.prank(allocatorProxy); DepositorUniV3Like(network.depositorUniV3).setLimits(DAI, USDC, uint24(100), uint96(2_000 * WAD), uint96(2_000 * 10**6), 1 hours);
+        vm.prank(allocatorProxy); DepositorUniV3Like(ilkInst.depositorUniV3).setLimits(DAI, USDC, uint24(100), uint96(2_000 * WAD), uint96(2_000 * 10**6), 1 hours);
         DepositorUniV3Like.LiquidityParams memory dp = DepositorUniV3Like.LiquidityParams({
             gem0       : DAI,
             gem1       : USDC,
@@ -400,8 +400,8 @@ contract DeploymentTest is DssTest {
             amt1Min    : 900 * 10**6
         });
 
-        vm.prank(facilitator); DepositorUniV3Like(network.depositorUniV3).deposit(dp);
-        vm.prank(facilitator); DepositorUniV3Like(network.depositorUniV3).withdraw(dp, false);
+        vm.prank(facilitator); DepositorUniV3Like(ilkInst.depositorUniV3).deposit(dp);
+        vm.prank(facilitator); DepositorUniV3Like(ilkInst.depositorUniV3).withdraw(dp, false);
 
         DepositorUniV3Like.CollectParams memory cp = DepositorUniV3Like.CollectParams({
             gem0     : DAI,
@@ -412,25 +412,25 @@ contract DeploymentTest is DssTest {
         });
 
         vm.expectRevert(bytes("NP")); // we make sure it reverts since no fees to collect and not because the call is unauthorized
-        vm.prank(facilitator); DepositorUniV3Like(network.depositorUniV3).collect(cp);
+        vm.prank(facilitator); DepositorUniV3Like(ilkInst.depositorUniV3).collect(cp);
     }
 
     function testDepositWithdrawCollectFromKeeper() public {
         emulateSpell();
 
-        deal(DAI,  network.buffer, 1_000 * WAD);
-        deal(USDC, network.buffer, 1_000 * 10**6);
+        deal(DAI,  ilkInst.buffer, 1_000 * WAD);
+        deal(USDC, ilkInst.buffer, 1_000 * 10**6);
 
-        vm.prank(allocatorProxy); DepositorUniV3Like(network.depositorUniV3).setLimits(DAI, USDC, uint24(100), uint96(2_000 * WAD), uint96(2_000 * 10**6), 1 hours);
+        vm.prank(allocatorProxy); DepositorUniV3Like(ilkInst.depositorUniV3).setLimits(DAI, USDC, uint24(100), uint96(2_000 * WAD), uint96(2_000 * 10**6), 1 hours);
 
-        vm.prank(facilitator); StableDepositorUniV3Like(network.stableDepositorUniV3).setConfig(DAI, USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, 1, 1 hours, uint96(1_000 * WAD), uint96(1000 * 10**6), 0, 0);
-        vm.prank(stableDepositorUniV3Keeper); StableDepositorUniV3Like(network.stableDepositorUniV3).deposit(DAI, USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, 0, 0);
+        vm.prank(facilitator); StableDepositorUniV3Like(ilkInst.stableDepositorUniV3).setConfig(DAI, USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, 1, 1 hours, uint96(1_000 * WAD), uint96(1000 * 10**6), 0, 0);
+        vm.prank(stableDepositorUniV3Keeper); StableDepositorUniV3Like(ilkInst.stableDepositorUniV3).deposit(DAI, USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, 0, 0);
 
-        vm.prank(facilitator); StableDepositorUniV3Like(network.stableDepositorUniV3).setConfig(DAI, USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, -1, 1 hours, uint96(1_000 * WAD), uint96(1000 * 10**6), 0, 0);
-        vm.prank(stableDepositorUniV3Keeper); StableDepositorUniV3Like(network.stableDepositorUniV3).withdraw(DAI, USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, 0, 0);
+        vm.prank(facilitator); StableDepositorUniV3Like(ilkInst.stableDepositorUniV3).setConfig(DAI, USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, -1, 1 hours, uint96(1_000 * WAD), uint96(1000 * 10**6), 0, 0);
+        vm.prank(stableDepositorUniV3Keeper); StableDepositorUniV3Like(ilkInst.stableDepositorUniV3).withdraw(DAI, USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, 0, 0);
 
         vm.expectRevert(bytes("NP")); // Reverts since no fees to collect and not because the call is unauthorized
-        vm.prank(stableDepositorUniV3Keeper); StableDepositorUniV3Like(network.stableDepositorUniV3).collect(DAI, USDC, uint24(100), REF_TICK - 100, REF_TICK + 100);
+        vm.prank(stableDepositorUniV3Keeper); StableDepositorUniV3Like(ilkInst.stableDepositorUniV3).collect(DAI, USDC, uint24(100), REF_TICK - 100, REF_TICK + 100);
     }
 
     function testMoveFromKeeper() public {
@@ -440,10 +440,10 @@ contract DeploymentTest is DssTest {
         // ConduitMover deployment, the facilitator ward on it and the keeper addition to it.
 
         // Give conduit1 some funds
-        deal(USDC, network.buffer, 3_000 * 10**6, true);
-        vm.prank(network.conduitMover); AllocatorConduitMock(conduit1).deposit(ILK, USDC, 3_000 * 10**6);
+        deal(USDC, ilkInst.buffer, 3_000 * 10**6, true);
+        vm.prank(ilkInst.conduitMover); AllocatorConduitMock(conduit1).deposit(ILK, USDC, 3_000 * 10**6);
 
-        vm.prank(facilitator); ConduitMoverLike(network.conduitMover).setConfig(conduit1, conduit2, USDC, 1, 1 hours, 3_000 * 10**6);
-        vm.prank(conduitMoverKeeper); ConduitMoverLike(network.conduitMover).move(conduit1, conduit2, USDC);
+        vm.prank(facilitator); ConduitMoverLike(ilkInst.conduitMover).setConfig(conduit1, conduit2, USDC, 1, 1 hours, 3_000 * 10**6);
+        vm.prank(conduitMoverKeeper); ConduitMoverLike(ilkInst.conduitMover).move(conduit1, conduit2, USDC);
     }
 }

@@ -22,7 +22,7 @@ struct AllocatorSharedInstance {
     address registry;
 }
 
-struct AllocatorNetworkInstance {
+struct AllocatorIlkInstance {
     address owner;
     address vault;
     address buffer;

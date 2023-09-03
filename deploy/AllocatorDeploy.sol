@@ -29,7 +29,7 @@ import { StableSwapper }        from "src/funnels/automation/StableSwapper.sol";
 import { StableDepositorUniV3 } from "src/funnels/automation/StableDepositorUniV3.sol";
 import { ConduitMover }         from "src/funnels/automation/ConduitMover.sol";
 
-import { AllocatorSharedInstance, AllocatorNetworkInstance } from "./AllocatorInstances.sol";
+import { AllocatorSharedInstance, AllocatorIlkInstance } from "./AllocatorInstances.sol";
 
 interface NstJoinLike {
     function vat() external view returns (address);
@@ -63,35 +63,35 @@ library AllocatorDeploy {
         bytes32 ilk,
         address nstJoin,
         address uniV3Factory
-    ) internal returns (AllocatorNetworkInstance memory networkInstance) {
+    ) internal returns (AllocatorIlkInstance memory ilkInstance) {
         address _buffer = address(new AllocatorBuffer());
         ScriptTools.switchOwner(_buffer, deployer, owner);
-        networkInstance.buffer = _buffer;
+        ilkInstance.buffer = _buffer;
 
         address _vault  = address(new AllocatorVault(roles, _buffer, NstJoinLike(nstJoin).vat(), ilk, nstJoin));
         ScriptTools.switchOwner(_vault, deployer, owner);
-        networkInstance.vault = _vault;
+        ilkInstance.vault = _vault;
 
         address _swapper = address(new Swapper(roles, ilk, _buffer));
         ScriptTools.switchOwner(_swapper, deployer, owner);
-        networkInstance.swapper = _swapper;
+        ilkInstance.swapper = _swapper;
 
         address _depositorUniV3 = address(new DepositorUniV3(roles, ilk, uniV3Factory, _buffer));
         ScriptTools.switchOwner(_depositorUniV3, deployer, owner);
-        networkInstance.depositorUniV3 = _depositorUniV3;
+        ilkInstance.depositorUniV3 = _depositorUniV3;
 
         address _stableSwapper = address(new StableSwapper(_swapper));
         ScriptTools.switchOwner(_stableSwapper, deployer, owner);
-        networkInstance.stableSwapper        = _stableSwapper;
+        ilkInstance.stableSwapper        = _stableSwapper;
 
         address _stableDepositorUniV3 = address(new StableDepositorUniV3(_depositorUniV3));
         ScriptTools.switchOwner(_stableDepositorUniV3, deployer, owner);
-        networkInstance.stableDepositorUniV3 = _stableDepositorUniV3;
+        ilkInstance.stableDepositorUniV3 = _stableDepositorUniV3;
 
         address _conduitMover = address(new ConduitMover(ilk, _buffer));
         ScriptTools.switchOwner(_conduitMover, deployer, owner);
-        networkInstance.conduitMover = _conduitMover;
+        ilkInstance.conduitMover = _conduitMover;
 
-        networkInstance.owner = owner;
+        ilkInstance.owner = owner;
     }
 }
