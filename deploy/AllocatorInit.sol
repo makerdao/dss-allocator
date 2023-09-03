@@ -119,6 +119,7 @@ interface KissLike {
 }
 
 struct AllocatorIlkConfig {
+    bytes32 ilk;
     uint256 duty;
     uint256 debtCeiling;
     address allocatorProxy;
@@ -166,9 +167,10 @@ library AllocatorInit {
         AllocatorIlkInstance memory ilkInstance,
         AllocatorIlkConfig memory cfg
     ) internal {
-        bytes32 ilk = VaultLike(ilkInstance.vault).ilk();
+        bytes32 ilk = cfg.ilk;
 
         // Sanity checks
+        require(VaultLike(ilkInstance.vault).ilk()    == ilk,                  "AllocatorInit/vault-ilk-mismatch");
         require(VaultLike(ilkInstance.vault).roles()  == sharedInstance.roles, "AllocatorInit/vault-roles-mismatch");
         require(VaultLike(ilkInstance.vault).buffer() == ilkInstance.buffer,   "AllocatorInit/vault-buffer-mismatch");
         require(VaultLike(ilkInstance.vault).vat()    == address(dss.vat),     "AllocatorInit/vault-vat-mismatch");

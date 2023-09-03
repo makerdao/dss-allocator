@@ -173,6 +173,7 @@ contract DeploymentTest is DssTest {
         conduitMoverKeepers[1] = conduitMoverKeeper2;
 
         AllocatorIlkConfig memory cfg = AllocatorIlkConfig({
+            ilk                         : ILK,
             duty                        : 1000000001243680656318820312,
             debtCeiling                 : 100_000_000,
             allocatorProxy              : allocatorProxy,
@@ -223,8 +224,6 @@ contract DeploymentTest is DssTest {
         uint256 previousIlkRegistryCount = IlkRegistryLike(ILK_REGISTRY).count();
 
         emulateSpell();
-
-        assertEq(AllocatorVault(ilkInst.vault).ilk(), ILK);
 
         (, uint256 rate, uint256 spot, uint256 line,) = dss.vat.ilks(ILK);
         assertEq(rate, RAY);
