@@ -166,22 +166,22 @@ library AllocatorInit {
         bytes32 ilk = VaultLike(ilkInstance.vault).ilk();
 
         // Sanity checks
-        require(VaultLike(ilkInstance.vault).roles()  == sharedInstance.roles,   "AllocatorInit/vault-roles-mismatch");
-        require(VaultLike(ilkInstance.vault).buffer() == ilkInstance.buffer, "AllocatorInit/vault-buffer-mismatch");
-        require(VaultLike(ilkInstance.vault).vat()    == address(dss.vat),       "AllocatorInit/vault-vat-mismatch");
+        require(VaultLike(ilkInstance.vault).roles()  == sharedInstance.roles, "AllocatorInit/vault-roles-mismatch");
+        require(VaultLike(ilkInstance.vault).buffer() == ilkInstance.buffer,   "AllocatorInit/vault-buffer-mismatch");
+        require(VaultLike(ilkInstance.vault).vat()    == address(dss.vat),     "AllocatorInit/vault-vat-mismatch");
 
-        require(SwapperLike(ilkInstance.swapper).roles()  == sharedInstance.roles,   "AllocatorInit/swapper-roles-mismatch");
-        require(SwapperLike(ilkInstance.swapper).ilk()    == ilk,                    "AllocatorInit/swapper-ilk-mismatch");
-        require(SwapperLike(ilkInstance.swapper).buffer() == ilkInstance.buffer, "AllocatorInit/swapper-buffer-mismatch");
+        require(SwapperLike(ilkInstance.swapper).roles()  == sharedInstance.roles, "AllocatorInit/swapper-roles-mismatch");
+        require(SwapperLike(ilkInstance.swapper).ilk()    == ilk,                  "AllocatorInit/swapper-ilk-mismatch");
+        require(SwapperLike(ilkInstance.swapper).buffer() == ilkInstance.buffer,   "AllocatorInit/swapper-buffer-mismatch");
 
-        require(DepositorUniV3Like(ilkInstance.depositorUniV3).roles()  == sharedInstance.roles,   "AllocatorInit/depositorUniV3-roles-mismatch");
-        require(DepositorUniV3Like(ilkInstance.depositorUniV3).ilk()    == ilk,                    "AllocatorInit/depositorUniV3-ilk-mismatch");
-        require(DepositorUniV3Like(ilkInstance.depositorUniV3).buffer() == ilkInstance.buffer, "AllocatorInit/depositorUniV3-buffer-mismatch");
+        require(DepositorUniV3Like(ilkInstance.depositorUniV3).roles()  == sharedInstance.roles, "AllocatorInit/depositorUniV3-roles-mismatch");
+        require(DepositorUniV3Like(ilkInstance.depositorUniV3).ilk()    == ilk,                  "AllocatorInit/depositorUniV3-ilk-mismatch");
+        require(DepositorUniV3Like(ilkInstance.depositorUniV3).buffer() == ilkInstance.buffer,   "AllocatorInit/depositorUniV3-buffer-mismatch");
 
         require(StableSwapperLike(ilkInstance.stableSwapper).swapper()                 == ilkInstance.swapper,        "AllocatorInit/stableSwapper-swapper-mismatch");
         require(StableDepositorUniV3Like(ilkInstance.stableDepositorUniV3).depositor() == ilkInstance.depositorUniV3, "AllocatorInit/stableDepositorUniV3-depositorUniV3-mismatch");
 
-        require(ConduitMoverLike(ilkInstance.conduitMover).ilk()    == ilk,                    "AllocatorInit/conduitMover-ilk-mismatch");
+        require(ConduitMoverLike(ilkInstance.conduitMover).ilk()    == ilk,                "AllocatorInit/conduitMover-ilk-mismatch");
         require(ConduitMoverLike(ilkInstance.conduitMover).buffer() == ilkInstance.buffer, "AllocatorInit/conduitMover-buffer-mismatch");
 
         // Onboard the ilk
