@@ -20,7 +20,7 @@ import "dss-test/DssTest.sol";
 
 import { AllocatorSharedInstance, AllocatorIlkInstance } from "deploy/AllocatorInstances.sol";
 import { AllocatorDeploy } from "deploy/AllocatorDeploy.sol";
-import { AllocatorInit, AllocatorIlkConfig } from "deploy/AllocatorInit.sol";
+import { AllocatorInit, AllocatorIlkConfig, bytes32ToStr } from "deploy/AllocatorInit.sol";
 
 import { SwapperCalleeUniV3 } from "src/funnels/callees/SwapperCalleeUniV3.sol";
 
@@ -109,7 +109,7 @@ contract DeploymentTest is DssTest {
 
     // constants
     int24 constant REF_TICK = -276324; // tick corresponding to 1 DAI = 1 USDC calculated as ~= math.log(10**(-12))/math.log(1.0001)
-    bytes32 constant ILK = "ILK";
+    bytes32 constant ILK = "ILK-A";
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETH_RPC_URL"));
@@ -303,8 +303,8 @@ contract DeploymentTest is DssTest {
         assertEq(WardsLike(ilkInst.conduitMover).wards(address(this)), 0);
         assertEq(WardsLike(ilkInst.conduitMover).wards(allocatorProxy), 1);
 
-        assertEq(ChainlogLike(LOG).getAddress("ILK_ALLOCATOR_VAULT"),  ilkInst.vault);
-        assertEq(ChainlogLike(LOG).getAddress("ILK_ALLOCATOR_BUFFER"), ilkInst.buffer);
+        assertEq(ChainlogLike(LOG).getAddress("ILK_A_ALLOCATOR_VAULT"),  ilkInst.vault);
+        assertEq(ChainlogLike(LOG).getAddress("ILK_A_ALLOCATOR_BUFFER"), ilkInst.buffer);
 
         assertEq(IlkRegistryLike(ILK_REGISTRY).count(),     previousIlkRegistryCount + 1);
         assertEq(IlkRegistryLike(ILK_REGISTRY).pos(ILK),    previousIlkRegistryCount);
@@ -314,8 +314,8 @@ contract DeploymentTest is DssTest {
         assertEq(IlkRegistryLike(ILK_REGISTRY).class(ILK),  5);
         assertEq(IlkRegistryLike(ILK_REGISTRY).pip(ILK),    sharedInst.oracle);
         assertEq(IlkRegistryLike(ILK_REGISTRY).xlip(ILK),   address(0));
-        assertEq(IlkRegistryLike(ILK_REGISTRY).name(ILK),   "ILK");
-        assertEq(IlkRegistryLike(ILK_REGISTRY).symbol(ILK), "ILK");
+        assertEq(IlkRegistryLike(ILK_REGISTRY).name(ILK),   bytes32ToStr("ILK-A"));
+        assertEq(IlkRegistryLike(ILK_REGISTRY).symbol(ILK), bytes32ToStr("ILK-A"));
     }
 
     function testVaultDrawWipe() public {

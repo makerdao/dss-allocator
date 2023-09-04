@@ -135,6 +135,14 @@ struct AllocatorIlkConfig {
     address ilkRegistry;
 }
 
+function bytes32ToStr(bytes32 _bytes32) pure returns (string memory) {
+    bytes memory bytesArray = new bytes(32);
+    for (uint256 i; i < 32; i++) {
+        bytesArray[i] = _bytes32[i];
+    }
+    return string(bytesArray);
+}
+
 library AllocatorInit {
     uint256 constant WAD = 10 ** 18;
     uint256 constant RAY = 10 ** 27;
@@ -288,8 +296,8 @@ library AllocatorInit {
             _class  : 5, // RWAs are class 3, D3Ms and Teleport are class 4
             _pip    : sharedInstance.oracle,
             _xlip   : address(0),
-            _name   : ilkString,
-            _symbol : ilkString
+            _name   : bytes32ToStr(ilk),
+            _symbol : bytes32ToStr(ilk)
         });
     }
 }
