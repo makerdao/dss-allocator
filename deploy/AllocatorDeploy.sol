@@ -82,7 +82,7 @@ library AllocatorDeploy {
 
         address _stableSwapper = address(new StableSwapper(_swapper));
         ScriptTools.switchOwner(_stableSwapper, deployer, owner);
-        ilkInstance.stableSwapper        = _stableSwapper;
+        ilkInstance.stableSwapper = _stableSwapper;
 
         address _stableDepositorUniV3 = address(new StableDepositorUniV3(_depositorUniV3));
         ScriptTools.switchOwner(_stableDepositorUniV3, deployer, owner);
