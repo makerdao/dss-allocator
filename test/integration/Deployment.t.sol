@@ -282,25 +282,25 @@ contract DeploymentTest is DssTest {
         assertEq(ConduitMover(ilkInst.conduitMover).buds(conduitMoverKeeper1), 1);
         assertEq(ConduitMover(ilkInst.conduitMover).buds(conduitMoverKeeper2), 1);
 
-        assertEq(WardsLike(ilkInst.vault).wards(address(this)), 0);
+        assertEq(WardsLike(ilkInst.vault).wards(PAUSE_PROXY), 0);
         assertEq(WardsLike(ilkInst.vault).wards(allocatorProxy), 1);
 
-        assertEq(WardsLike(ilkInst.buffer).wards(address(this)), 0);
+        assertEq(WardsLike(ilkInst.buffer).wards(PAUSE_PROXY), 0);
         assertEq(WardsLike(ilkInst.buffer).wards(allocatorProxy), 1);
 
-        assertEq(WardsLike(ilkInst.swapper).wards(address(this)), 0);
+        assertEq(WardsLike(ilkInst.swapper).wards(PAUSE_PROXY), 0);
         assertEq(WardsLike(ilkInst.swapper).wards(allocatorProxy), 1);
 
-        assertEq(WardsLike(ilkInst.depositorUniV3).wards(address(this)), 0);
+        assertEq(WardsLike(ilkInst.depositorUniV3).wards(PAUSE_PROXY), 0);
         assertEq(WardsLike(ilkInst.depositorUniV3).wards(allocatorProxy), 1);
 
-        assertEq(WardsLike(ilkInst.stableSwapper).wards(address(this)), 0);
+        assertEq(WardsLike(ilkInst.stableSwapper).wards(PAUSE_PROXY), 0);
         assertEq(WardsLike(ilkInst.stableSwapper).wards(allocatorProxy), 1);
 
-        assertEq(WardsLike(ilkInst.stableDepositorUniV3).wards(address(this)), 0);
+        assertEq(WardsLike(ilkInst.stableDepositorUniV3).wards(PAUSE_PROXY), 0);
         assertEq(WardsLike(ilkInst.stableDepositorUniV3).wards(allocatorProxy), 1);
 
-        assertEq(WardsLike(ilkInst.conduitMover).wards(address(this)), 0);
+        assertEq(WardsLike(ilkInst.conduitMover).wards(PAUSE_PROXY), 0);
         assertEq(WardsLike(ilkInst.conduitMover).wards(allocatorProxy), 1);
 
         assertEq(ChainlogLike(LOG).getAddress("ILK_A_ALLOCATOR_VAULT"),  ilkInst.vault);
