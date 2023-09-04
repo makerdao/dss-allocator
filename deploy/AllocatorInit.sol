@@ -69,7 +69,7 @@ interface SwapperLike {
     function roles() external view returns (address);
     function ilk() external view returns (bytes32);
     function buffer() external view returns (address);
-    function swap(address, address, uint256, uint256, address, bytes calldata) external;
+    function swap(address, address, uint256, uint256, address, bytes calldata) external returns (uint256);
 }
 
 interface DepositorUniV3Like {
@@ -98,7 +98,7 @@ interface DepositorUniV3Like {
     function ilk() external view returns (bytes32);
     function buffer() external view returns (address);
     function deposit(LiquidityParams memory) external returns (uint128, uint256, uint256);
-    function withdraw(LiquidityParams memory, bool) external returns (uint256, uint256);
+    function withdraw(LiquidityParams memory, bool) external returns (uint128, uint256, uint256, uint256, uint256);
     function collect(CollectParams memory) external returns (uint256, uint256);
 }
 
