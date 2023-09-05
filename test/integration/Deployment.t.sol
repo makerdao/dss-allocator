@@ -208,7 +208,6 @@ contract DeploymentTest is DssTest {
     function testInitSharedValues() public {
         emulateSpell();
 
-        assertEq(ChainlogLike(LOG).getAddress("ALLOCATOR_ORACLE"),   sharedInst.oracle);
         assertEq(ChainlogLike(LOG).getAddress("ALLOCATOR_ROLES"),    sharedInst.roles);
         assertEq(ChainlogLike(LOG).getAddress("ALLOCATOR_REGISTRY"), sharedInst.registry);
     }
@@ -305,6 +304,7 @@ contract DeploymentTest is DssTest {
 
         assertEq(ChainlogLike(LOG).getAddress("ILK_A_ALLOCATOR_VAULT"),  ilkInst.vault);
         assertEq(ChainlogLike(LOG).getAddress("ILK_A_ALLOCATOR_BUFFER"), ilkInst.buffer);
+        assertEq(ChainlogLike(LOG).getAddress("PIP_ILK_A"), sharedInst.oracle);
 
         assertEq(IlkRegistryLike(ILK_REGISTRY).count(),     previousIlkRegistryCount + 1);
         assertEq(IlkRegistryLike(ILK_REGISTRY).pos(ILK),    previousIlkRegistryCount);

@@ -155,7 +155,6 @@ library AllocatorInit {
         DssInstance memory dss,
         AllocatorSharedInstance memory sharedInstance
     ) internal {
-        dss.chainlog.setAddress("ALLOCATOR_ORACLE",   sharedInstance.oracle);
         dss.chainlog.setAddress("ALLOCATOR_ROLES",    sharedInstance.roles);
         dss.chainlog.setAddress("ALLOCATOR_REGISTRY", sharedInstance.registry);
     }
@@ -280,6 +279,7 @@ library AllocatorInit {
         string memory ilkString = ScriptTools.ilkToChainlogFormat(ilk);
         dss.chainlog.setAddress(ScriptTools.stringToBytes32(string(abi.encodePacked(ilkString, "_ALLOCATOR_VAULT"))),  ilkInstance.vault);
         dss.chainlog.setAddress(ScriptTools.stringToBytes32(string(abi.encodePacked(ilkString, "_ALLOCATOR_BUFFER"))), ilkInstance.buffer);
+        dss.chainlog.setAddress(ScriptTools.stringToBytes32(string(abi.encodePacked("PIP_", ilkString))), sharedInstance.oracle);
 
         // Add to ilk registry
         IlkRegistryLike(cfg.ilkRegistry).put({
