@@ -20,7 +20,7 @@ import "dss-test/DssTest.sol";
 
 import { AllocatorSharedInstance, AllocatorIlkInstance } from "deploy/AllocatorInstances.sol";
 import { AllocatorDeploy } from "deploy/AllocatorDeploy.sol";
-import { AllocatorInit, AllocatorIlkConfig, bytes32ToStr } from "deploy/AllocatorInit.sol";
+import { AllocatorInit, AllocatorIlkConfig } from "deploy/AllocatorInit.sol";
 
 import { SwapperCalleeUniV3 } from "src/funnels/callees/SwapperCalleeUniV3.sol";
 
@@ -314,8 +314,8 @@ contract DeploymentTest is DssTest {
         assertEq(IlkRegistryLike(ILK_REGISTRY).class(ILK),  5);
         assertEq(IlkRegistryLike(ILK_REGISTRY).pip(ILK),    sharedInst.oracle);
         assertEq(IlkRegistryLike(ILK_REGISTRY).xlip(ILK),   address(0));
-        assertEq(IlkRegistryLike(ILK_REGISTRY).name(ILK),   bytes32ToStr("ILK-A"));
-        assertEq(IlkRegistryLike(ILK_REGISTRY).symbol(ILK), bytes32ToStr("ILK-A"));
+        assertEq(IlkRegistryLike(ILK_REGISTRY).name(ILK),   string("ILK-A"));
+        assertEq(IlkRegistryLike(ILK_REGISTRY).symbol(ILK), string("ILK-A"));
     }
 
     function testVaultDrawWipe() public {
