@@ -21,7 +21,6 @@ import { DssInstance } from "dss-test/MCD.sol";
 import { AllocatorSharedInstance, AllocatorIlkInstance } from "./AllocatorInstances.sol";
 
 interface WardsLike {
-    function wards(address) external view returns (uint256);
     function rely(address) external;
     function deny(address) external;
 }
@@ -150,13 +149,6 @@ library AllocatorInit {
 
     uint256 constant RATES_ONE_HUNDRED_PCT = 1000000021979553151239153027;
 
-    function switchOwner(address base, address currentOwner, address newOwner) internal {
-        if (currentOwner == newOwner) return;
-        require(WardsLike(base).wards(currentOwner) == 1, "AllocatorInit/current-owner-not-authed");
-        WardsLike(base).rely(newOwner);
-        WardsLike(base).deny(currentOwner);
-    }
-
     function initShared(
         DssInstance memory dss,
         AllocatorSharedInstance memory sharedInstance
@@ -274,13 +266,13 @@ library AllocatorInit {
         }
 
         // Move ownership of the ilk contracts to the allocator proxy
-        switchOwner(ilkInstance.vault,                ilkInstance.owner, cfg.allocatorProxy);
-        switchOwner(ilkInstance.buffer,               ilkInstance.owner, cfg.allocatorProxy);
-        switchOwner(ilkInstance.swapper,              ilkInstance.owner, cfg.allocatorProxy);
-        switchOwner(ilkInstance.depositorUniV3,       ilkInstance.owner, cfg.allocatorProxy);
-        switchOwner(ilkInstance.stableSwapper,        ilkInstance.owner, cfg.allocatorProxy);
-        switchOwner(ilkInstance.stableDepositorUniV3, ilkInstance.owner, cfg.allocatorProxy);
-        switchOwner(ilkInstance.conduitMover,         ilkInstance.owner, cfg.allocatorProxy);
+        ScriptTools.switchOwner(ilkInstance.vault,                ilkInstance.owner, cfg.allocatorProxy);
+        ScriptTools.switchOwner(ilkInstance.buffer,               ilkInstance.owner, cfg.allocatorProxy);
+        ScriptTools.switchOwner(ilkInstance.swapper,              ilkInstance.owner, cfg.allocatorProxy);
+        ScriptTools.switchOwner(ilkInstance.depositorUniV3,       ilkInstance.owner, cfg.allocatorProxy);
+        ScriptTools.switchOwner(ilkInstance.stableSwapper,        ilkInstance.owner, cfg.allocatorProxy);
+        ScriptTools.switchOwner(ilkInstance.stableDepositorUniV3, ilkInstance.owner, cfg.allocatorProxy);
+        ScriptTools.switchOwner(ilkInstance.conduitMover,         ilkInstance.owner, cfg.allocatorProxy);
 
         // Add allocator-specific contracts to changelog
         string memory ilkString = ScriptTools.ilkToChainlogFormat(ilk);
