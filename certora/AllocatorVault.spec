@@ -19,6 +19,7 @@ methods {
     function vat.rate() external returns (uint256) envfree;
     function jug.duty() external returns (uint256) envfree;
     function jug.rho() external returns (uint256) envfree;
+    function nst.allowance(address, address) external returns (uint256) envfree;
     function nst.balanceOf(address) external returns (uint256) envfree;
     function nst.totalSupply() external returns (uint256) envfree;
 }
@@ -203,12 +204,101 @@ rule draw_revert(uint256 wad) {
     bool revert3  = wad * RAY() > max_uint256;
     bool revert4  = dart > max_int256();
     bool revert5  = vatArtVault + dart > max_uint256;
-    bool revert6  = rate > max_int256();
-    bool revert7  = rate * dart > max_int256();
-    bool revert8  = vatDaiVault + rate * dart > max_uint256;
-    bool revert9  = vatCanVaultNstJoin != 1;
-    bool revert10 = vatDaiNstJoin + wad * RAY() > max_uint256;
-    bool revert11 = nstTotalSupply + wad > max_uint256;
+    bool revert6  = rate * dart > max_int256();
+    bool revert7  = vatDaiVault + rate * dart > max_uint256;
+    bool revert8  = vatCanVaultNstJoin != 1;
+    bool revert9  = vatDaiNstJoin + wad * RAY() > max_uint256;
+    bool revert10 = nstTotalSupply + wad > max_uint256;
+
+    assert revert1  => lastReverted, "revert1 failed";
+    assert revert2  => lastReverted, "revert2 failed";
+    assert revert3  => lastReverted, "revert3 failed";
+    assert revert4  => lastReverted, "revert4 failed";
+    assert revert5  => lastReverted, "revert5 failed";
+    assert revert6  => lastReverted, "revert6 failed";
+    assert revert7  => lastReverted, "revert7 failed";
+    assert revert8  => lastReverted, "revert8 failed";
+    assert revert9  => lastReverted, "revert9 failed";
+    assert revert10 => lastReverted, "revert10 failed";
+    assert lastReverted => revert1  || revert2 || revert3 ||
+                           revert4  || revert5 || revert6 ||
+                           revert7  || revert8 || revert9 ||
+                           revert10, "Revert rules are not covering all the cases";
+}
+
+// Verify correct storage changes for non reverting wipe
+rule wipe(uint256 wad) {
+    env e;
+
+    address any;
+
+    mathint wardsBefore = wards(any);
+    address jugBefore = jug();
+    mathint nstTotalSupplyBefore = nst.totalSupply();
+    mathint nstBalanceOfBufferBefore = nst.balanceOf(buffer());
+    require nstBalanceOfBufferBefore <= nstTotalSupplyBefore;
+    mathint vatInkVaultBefore; mathint vatArtVaultBefore;
+    vatInkVaultBefore, vatArtVaultBefore = vat.urns(ilk(), currentContract);
+    mathint rate = vat.rate() + (jug.duty() - RAY()) * (e.block.timestamp - jug.rho());
+    require rate > 0;
+    mathint dart = wad * RAY() / rate;
+
+    wipe(e, wad);
+
+    mathint wardsAfter = wards(any);
+    address jugAfter = jug();
+    mathint nstTotalSupplyAfter = nst.totalSupply();
+    mathint nstBalanceOfBufferAfter = nst.balanceOf(buffer());
+    mathint vatInkVaultAfter; mathint vatArtVaultAfter;
+    vatInkVaultAfter, vatArtVaultAfter = vat.urns(ilk(), currentContract);
+
+    assert wardsAfter == wardsBefore, "wipe did not keep unchanged every wards[x]";
+    assert jugAfter == jugBefore, "wipe did not keep unchanged jug";
+    assert vatInkVaultAfter == vatInkVaultBefore, "wipe did not keep vat.urns(ilk,vault).ink unchanged";
+    assert vatArtVaultAfter == vatArtVaultBefore - dart, "wipe did not decrease vat.urns(ilk,vault).art by dart";
+    assert nstBalanceOfBufferAfter == nstBalanceOfBufferBefore - wad, "wipe did not decrease nst.balanceOf(buffer) by wad";
+    assert nstTotalSupplyAfter == nstTotalSupplyBefore - wad, "wipe did not decrease nst.totalSupply() by wad";
+}
+
+// Verify revert rules on wipe
+rule wipe_revert(uint256 wad) {
+    env e;
+
+    bool canCall = roles.canCall(ilk(), e.msg.sender, currentContract, to_bytes4(0xb38a1620));
+    mathint wardsSender = wards(e.msg.sender);
+    mathint nstTotalSupply = nst.totalSupply();
+    address buffer = buffer();
+    require buffer != currentContract;
+    mathint nstBalanceOfBuffer = nst.balanceOf(buffer);
+    mathint nstBalanceOfVault = nst.balanceOf(currentContract);
+    require nstBalanceOfBuffer + nstBalanceOfVault <= nstTotalSupply;
+    mathint nstAllowanceBufferVault = nst.allowance(buffer, currentContract);
+    mathint nstAllowanceVaultNstJoin = nst.allowance(currentContract, nstJoin);
+    mathint vatInkVault; mathint vatArtVault;
+    vatInkVault, vatArtVault = vat.urns(ilk(), currentContract);
+    mathint duty = jug.duty();
+    require duty >= RAY();
+    mathint rho = jug.rho();
+    require to_mathint(e.block.timestamp) >= rho;
+    mathint rate = vat.rate() + (duty - RAY()) * (e.block.timestamp - jug.rho());
+    require rate > 0 && rate <= max_int256();
+    mathint dart = wad * RAY() / rate;
+    mathint vatDaiVault = vat.dai(currentContract);
+    mathint vatDaiNstJoin = vat.dai(nstJoin);
+
+    wipe@withrevert(e, wad);
+
+    bool revert1  = e.msg.value > 0;
+    bool revert2  = !canCall && wardsSender != 1;
+    bool revert3  = nstBalanceOfBuffer < to_mathint(wad);
+    bool revert4  = nstAllowanceBufferVault < to_mathint(wad);
+    bool revert5  = wad * RAY() > max_uint256;
+    bool revert6  = nstAllowanceVaultNstJoin < to_mathint(wad);
+    bool revert7  = vatArtVault < dart;
+    bool revert8  = vatDaiNstJoin < wad * RAY();
+    bool revert9  = vatDaiVault + wad * RAY() > max_uint256;
+    bool revert10 = dart > max_int256();
+    bool revert11 = rate * dart > max_int256();
 
     assert revert1  => lastReverted, "revert1 failed";
     assert revert2  => lastReverted, "revert2 failed";
