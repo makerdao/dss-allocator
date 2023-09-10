@@ -41,7 +41,7 @@ contract AllocatorVaultTest is DssTest {
         nstJoin = new NstJoinMock(vat, nst);
         buffer  = new AllocatorBuffer();
         roles   = new RolesMock();
-        vault   = new AllocatorVault(address(roles), address(buffer), address(vat), ilk, address(nstJoin));
+        vault   = new AllocatorVault(address(roles), address(buffer), ilk, address(nstJoin));
         buffer.approve(address(nst), address(vault), type(uint256).max);
 
         vat.slip(ilk, address(vault), int256(1_000_000 * WAD));

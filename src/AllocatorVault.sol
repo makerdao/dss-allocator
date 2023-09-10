@@ -81,19 +81,17 @@ contract AllocatorVault {
 
     // --- constructor ---
 
-    constructor(address roles_, address buffer_, address vat_, bytes32 ilk_, address nstJoin_) {
+    constructor(address roles_, address buffer_, bytes32 ilk_, address nstJoin_) {
         roles = RolesLike(roles_);
 
         buffer = buffer_;
-        vat = VatLike(vat_);
         ilk = ilk_;
         nstJoin = NstJoinLike(nstJoin_);
 
-        require(vat_ == nstJoin.vat(), "AllocatorVault/vat-not-match");
-
+        vat = VatLike(nstJoin.vat());
         nst = nstJoin.nst();
 
-        VatLike(vat_).hope(nstJoin_);
+        vat.hope(nstJoin_);
         nst.approve(nstJoin_, type(uint256).max);
 
         wards[msg.sender] = 1;
