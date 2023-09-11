@@ -37,7 +37,7 @@ interface GemLike {
 
 interface NstJoinLike {
     function nst() external view returns (GemLike);
-    function vat() external view returns (address);
+    function vat() external view returns (VatLike);
     function exit(address, uint256) external;
     function join(address, uint256) external;
 }
@@ -88,7 +88,7 @@ contract AllocatorVault {
         ilk = ilk_;
         nstJoin = NstJoinLike(nstJoin_);
 
-        vat = VatLike(nstJoin.vat());
+        vat = nstJoin.vat();
         nst = nstJoin.nst();
 
         vat.hope(nstJoin_);
