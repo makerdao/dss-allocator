@@ -302,8 +302,8 @@ contract DeploymentTest is DssTest {
         assertEq(WardsLike(ilkInst.conduitMover).wards(PAUSE_PROXY), 0);
         assertEq(WardsLike(ilkInst.conduitMover).wards(allocatorProxy), 1);
 
-        assertEq(ChainlogLike(LOG).getAddress("ILK_A_ALLOCATOR_VAULT"),  ilkInst.vault);
-        assertEq(ChainlogLike(LOG).getAddress("ILK_A_ALLOCATOR_BUFFER"), ilkInst.buffer);
+        assertEq(ChainlogLike(LOG).getAddress("ILK_A_VAULT"),  ilkInst.vault);
+        assertEq(ChainlogLike(LOG).getAddress("ILK_A_BUFFER"), ilkInst.buffer);
         assertEq(ChainlogLike(LOG).getAddress("PIP_ILK_A"), sharedInst.oracle);
 
         assertEq(IlkRegistryLike(ILK_REGISTRY).count(),     previousIlkRegistryCount + 1);

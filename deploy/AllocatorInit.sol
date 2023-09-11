@@ -277,8 +277,8 @@ library AllocatorInit {
 
         // Add allocator-specific contracts to changelog
         string memory ilkString = ScriptTools.ilkToChainlogFormat(ilk);
-        dss.chainlog.setAddress(ScriptTools.stringToBytes32(string(abi.encodePacked(ilkString, "_ALLOCATOR_VAULT"))),  ilkInstance.vault);
-        dss.chainlog.setAddress(ScriptTools.stringToBytes32(string(abi.encodePacked(ilkString, "_ALLOCATOR_BUFFER"))), ilkInstance.buffer);
+        dss.chainlog.setAddress(ScriptTools.stringToBytes32(string(abi.encodePacked(ilkString, "_VAULT"))),  ilkInstance.vault);
+        dss.chainlog.setAddress(ScriptTools.stringToBytes32(string(abi.encodePacked(ilkString, "_BUFFER"))), ilkInstance.buffer);
         dss.chainlog.setAddress(ScriptTools.stringToBytes32(string(abi.encodePacked("PIP_", ilkString))), sharedInstance.oracle);
 
         // Add to ilk registry
