@@ -31,9 +31,6 @@ import { ConduitMover }         from "src/funnels/automation/ConduitMover.sol";
 
 import { AllocatorSharedInstance, AllocatorIlkInstance } from "./AllocatorInstances.sol";
 
-interface NstJoinLike {
-    function vat() external view returns (address);
-}
 
 library AllocatorDeploy {
 
@@ -68,7 +65,7 @@ library AllocatorDeploy {
         ScriptTools.switchOwner(_buffer, deployer, owner);
         ilkInstance.buffer = _buffer;
 
-        address _vault  = address(new AllocatorVault(roles, _buffer, NstJoinLike(nstJoin).vat(), ilk, nstJoin));
+        address _vault  = address(new AllocatorVault(roles, _buffer, ilk, nstJoin));
         ScriptTools.switchOwner(_vault, deployer, owner);
         ilkInstance.vault = _vault;
 
