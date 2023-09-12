@@ -21,7 +21,6 @@ pragma solidity >=0.8.0;
  *  @dev   Conduits are to be used to manage investment positions for multiple Allocators.
  */
 interface IAllocatorConduit {
-
     /**
      *  @dev   Event emitted when a deposit is made to the Conduit.
      *  @param ilk    The unique identifier of the ilk.

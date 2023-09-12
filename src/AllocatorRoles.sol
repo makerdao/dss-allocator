@@ -17,8 +17,7 @@
 
 pragma solidity ^0.8.16;
 
-contract AllocatorRoles
-{
+contract AllocatorRoles {
     // --- storage variables ---
 
     mapping(address => uint256) public wards;

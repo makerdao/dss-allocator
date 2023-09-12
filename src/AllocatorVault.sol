@@ -43,7 +43,6 @@ interface NstJoinLike {
 }
 
 contract AllocatorVault {
-
     // --- storage variables ---
 
     mapping(address => uint256) public wards;
