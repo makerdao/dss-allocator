@@ -181,6 +181,7 @@ rule swap(address src, address dst, uint256 amt, uint256 minOut, address callee,
     capBefore, eraBefore, dueBefore, endBefore = limits(src, dst);
     mathint capOtherBefore; mathint eraOtherBefore; mathint dueOtherBefore; mathint endOtherBefore;
     capOtherBefore, eraOtherBefore, dueOtherBefore, endOtherBefore = limits(otherAddr, otherAddr2);
+    mathint srcBalanceOfBufferBefore = srcCon.balanceOf(e, buffer);
     mathint dstBalanceOfBufferBefore = dstCon.balanceOf(e, buffer);
 
     require dstBalanceOfBufferBefore + dstCon.balanceOf(e, currentContract) + dstCon.balanceOf(e, callee) <= max_uint256;
@@ -195,6 +196,7 @@ rule swap(address src, address dst, uint256 amt, uint256 minOut, address callee,
 
     mathint expectedDue = (to_mathint(e.block.timestamp) >= endBefore ? capBefore : dueBefore) - amt;
     mathint expectedEnd = to_mathint(e.block.timestamp) >= endBefore ? e.block.timestamp + eraBefore : endBefore;
+    mathint srcBalanceOfBufferAfter = srcCon.balanceOf(e, buffer);
     mathint dstBalanceOfBufferAfter = dstCon.balanceOf(e, buffer);
 
     assert wardsAfter == wardsBefore, "swap did not keep unchanged every wards[x]";
@@ -206,6 +208,7 @@ rule swap(address src, address dst, uint256 amt, uint256 minOut, address callee,
     assert eraOtherAfter == eraOtherBefore, "swap did not keep unchanged the rest of limits[x][y].era";
     assert dueOtherAfter == dueOtherBefore, "swap did not keep unchanged the rest of limits[x][y].due";
     assert endOtherAfter == endOtherBefore, "swap did not keep unchanged the rest of limits[x][y].end";
+    assert srcBalanceOfBufferAfter == srcBalanceOfBufferBefore - amt, "swap did not decrease src.balanceOf(buffer) by amt";
     assert dstBalanceOfBufferAfter >= dstBalanceOfBufferBefore + minOut, "swap did not increase dst.balanceOf(buffer) by at least minOut";
 }
 
