@@ -175,7 +175,7 @@ rule setLimits(address gem0, address gem1, uint24 fee, uint96 cap0, uint96 cap1,
     assert due1Gem0Gem1FeeAfter == 0, "setLimits did not set limits[gem0][gem1][fee].due1 to 0";
     assert endGem0Gem1FeeAfter == 0, "setLimits did not set limits[gem0][gem1][fee].end to 0";
     assert cap0OtherAfter == cap0OtherBefore, "setLimits did not keep unchanged the rest of limits[x][y][z].cap0";
-    assert cap1OtherAfter == cap1OtherBefore, "setLimits did not keep unchanged the rest of limits[x][y][z].cap0";
+    assert cap1OtherAfter == cap1OtherBefore, "setLimits did not keep unchanged the rest of limits[x][y][z].cap1";
     assert eraOtherAfter == eraOtherBefore, "setLimits did not keep unchanged the rest of limits[x][y][z].era";
     assert due0OtherAfter == due0OtherBefore, "setLimits did not keep unchanged the rest of limits[x][y][z].due0";
     assert due1OtherAfter == due1OtherBefore, "setLimits did not keep unchanged the rest of limits[x][y][z].due1";
@@ -259,7 +259,7 @@ rule uniswapV3MintCallback(uint256 amt0Owed, uint256 amt1Owed, bytes data) {
 
     assert wardsAfter == wardsBefore, "uniswapV3MintCallback did not keep unchanged every wards[x]";
     assert cap0After == cap0Before, "uniswapV3MintCallback did not keep unchanged every limits[x][y][z].cap0";
-    assert cap1After == cap1Before, "uniswapV3MintCallback did not keep unchanged every limits[x][y][z].cap0";
+    assert cap1After == cap1Before, "uniswapV3MintCallback did not keep unchanged every limits[x][y][z].cap1";
     assert eraAfter == eraBefore, "uniswapV3MintCallback did not keep unchanged every limits[x][y][z].era";
     assert due0After == due0Before, "uniswapV3MintCallback did not keep unchanged every limits[x][y][z].due0";
     assert due1After == due1Before, "uniswapV3MintCallback did not keep unchanged every limits[x][y][z].due1";
@@ -377,7 +377,7 @@ rule deposit(DepositorUniV3.LiquidityParams p) {
     assert due1Gem0Gem1FeeAfter == expectedDue1, "deposit did not set limits[gem0][gem1][fee].due1 to the expected value";
     assert endGem0Gem1FeeAfter == expectedEnd, "deposit did not set limits[gem0][gem1][fee].end to the expected value";
     assert cap0OtherAfter == cap0OtherBefore, "deposit did not keep unchanged the rest of limits[x][y][z].cap0";
-    assert cap1OtherAfter == cap1OtherBefore, "deposit did not keep unchanged the rest of limits[x][y][z].cap0";
+    assert cap1OtherAfter == cap1OtherBefore, "deposit did not keep unchanged the rest of limits[x][y][z].cap1";
     assert eraOtherAfter == eraOtherBefore, "deposit did not keep unchanged the rest of limits[x][y][z].era";
     assert due0OtherAfter == due0OtherBefore, "deposit did not keep unchanged the rest of limits[x][y][z].due0";
     assert due1OtherAfter == due1OtherBefore, "deposit did not keep unchanged the rest of limits[x][y][z].due1";
@@ -518,7 +518,7 @@ rule withdraw(DepositorUniV3.LiquidityParams p, bool takeFees) {
     assert due1Gem0Gem1FeeAfter == expectedDue1, "withdraw did not set limits[gem0][gem1][fee].due1 to the expected value";
     assert endGem0Gem1FeeAfter == expectedEnd, "withdraw did not set limits[gem0][gem1][fee].end to the expected value";
     assert cap0OtherAfter == cap0OtherBefore, "withdraw did not keep unchanged the rest of limits[x][y][z].cap0";
-    assert cap1OtherAfter == cap1OtherBefore, "withdraw did not keep unchanged the rest of limits[x][y][z].cap0";
+    assert cap1OtherAfter == cap1OtherBefore, "withdraw did not keep unchanged the rest of limits[x][y][z].cap1";
     assert eraOtherAfter == eraOtherBefore, "withdraw did not keep unchanged the rest of limits[x][y][z].era";
     assert due0OtherAfter == due0OtherBefore, "withdraw did not keep unchanged the rest of limits[x][y][z].due0";
     assert due1OtherAfter == due1OtherBefore, "withdraw did not keep unchanged the rest of limits[x][y][z].due1";
@@ -639,7 +639,7 @@ rule collect(DepositorUniV3.CollectParams p) {
 
     assert wardsAfter == wardsBefore, "collect did not keep unchanged every wards[x]";
     assert cap0After == cap0Before, "collect did not keep unchanged every limits[x][y][z].cap0";
-    assert cap1After == cap1Before, "collect did not keep unchanged every limits[x][y][z].cap0";
+    assert cap1After == cap1Before, "collect did not keep unchanged every limits[x][y][z].cap1";
     assert eraAfter == eraBefore, "collect did not keep unchanged every limits[x][y][z].era";
     assert due0After == due0Before, "collect did not keep unchanged every limits[x][y][z].due0";
     assert due1After == due1Before, "collect did not keep unchanged every limits[x][y][z].due1";
