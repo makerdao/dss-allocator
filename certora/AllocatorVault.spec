@@ -297,8 +297,7 @@ rule wipe_revert(uint256 wad) {
     bool revert7  = vatArtVault < dart;
     bool revert8  = vatDaiNstJoin < wad * RAY();
     bool revert9  = vatDaiVault + wad * RAY() > max_uint256;
-    bool revert10 = dart > max_int256();
-    bool revert11 = rate * dart > max_int256();
+    bool revert10 = rate * dart > max_int256();
 
     assert revert1  => lastReverted, "revert1 failed";
     assert revert2  => lastReverted, "revert2 failed";
@@ -310,9 +309,8 @@ rule wipe_revert(uint256 wad) {
     assert revert8  => lastReverted, "revert8 failed";
     assert revert9  => lastReverted, "revert9 failed";
     assert revert10 => lastReverted, "revert10 failed";
-    assert revert11 => lastReverted, "revert11 failed";
     assert lastReverted => revert1  || revert2 || revert3 ||
                            revert4  || revert5 || revert6 ||
                            revert7  || revert8 || revert9 ||
-                           revert10 || revert11, "Revert rules are not covering all the cases";
+                           revert10, "Revert rules are not covering all the cases";
 }
