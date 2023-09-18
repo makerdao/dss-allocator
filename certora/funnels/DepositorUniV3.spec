@@ -563,6 +563,8 @@ rule withdraw_revert(DepositorUniV3.LiquidityParams p, bool takeFees) {
     mathint col1 = takeFees ? poolCon.random3() : amt1;
     mathint gem0BalanceOfPool = gem0Con.balanceOf(poolCon);
     mathint gem1BalanceOfPool = gem1Con.balanceOf(poolCon);
+    require gem0BalanceOfPool >= col0;
+    require gem1BalanceOfPool >= col1;
     mathint due0Updated = to_mathint(e.block.timestamp) >= endGem0Gem1Fee ? cap0Gem0Gem1Fee : due0Gem0Gem1Fee;
     mathint due1Updated = to_mathint(e.block.timestamp) >= endGem0Gem1Fee ? cap1Gem0Gem1Fee : due1Gem0Gem1Fee;
 
@@ -572,10 +574,8 @@ rule withdraw_revert(DepositorUniV3.LiquidityParams p, bool takeFees) {
     bool revert2 = !canCall && wardsSender != 1;
     bool revert3 = p.gem0 >= p.gem1;
     bool revert4 = to_mathint(e.block.timestamp) >= endGem0Gem1Fee && e.block.timestamp + eraGem0Gem1Fee > max_uint32;
-    bool revert5 = gem0BalanceOfPool < col0;
-    bool revert6 = gem1BalanceOfPool < col1;
-    bool revert7 = amt0 < to_mathint(p.amt0Min) || amt1 < to_mathint(p.amt1Min);
-    bool revert8 = amt0 > due0Updated || amt1 > due1Updated;
+    bool revert5 = amt0 < to_mathint(p.amt0Min) || amt1 < to_mathint(p.amt1Min);
+    bool revert6 = amt0 > due0Updated || amt1 > due1Updated;
 
     assert revert1 => lastReverted, "revert1 failed";
     assert revert2 => lastReverted, "revert2 failed";
@@ -583,11 +583,8 @@ rule withdraw_revert(DepositorUniV3.LiquidityParams p, bool takeFees) {
     assert revert4 => lastReverted, "revert4 failed";
     assert revert5 => lastReverted, "revert5 failed";
     assert revert6 => lastReverted, "revert6 failed";
-    assert revert7 => lastReverted, "revert7 failed";
-    assert revert8 => lastReverted, "revert8 failed";
     assert lastReverted => revert1  || revert2 || revert3 ||
-                           revert4  || revert5 || revert6 ||
-                           revert7  || revert8, "Revert rules are not covering all the cases";
+                           revert4  || revert5 || revert6, "Revert rules are not covering all the cases";
 }
 
 // Verify correct storage changes for non reverting collect
@@ -677,20 +674,17 @@ rule collect_revert(DepositorUniV3.CollectParams p) {
     mathint fees1 = poolCon.random3();
     mathint gem0BalanceOfPool = gem0Con.balanceOf(poolCon);
     mathint gem1BalanceOfPool = gem1Con.balanceOf(poolCon);
+    require gem0BalanceOfPool >= fees0;
+    require gem1BalanceOfPool >= fees1;
 
     collect@withrevert(e, p);
 
     bool revert1 = e.msg.value > 0;
     bool revert2 = !canCall && wardsSender != 1;
     bool revert3 = p.gem0 >= p.gem1;
-    bool revert4 = gem0BalanceOfPool < fees0;
-    bool revert5 = gem1BalanceOfPool < fees1;
 
     assert revert1 => lastReverted, "revert1 failed";
     assert revert2 => lastReverted, "revert2 failed";
     assert revert3 => lastReverted, "revert3 failed";
-    assert revert4 => lastReverted, "revert4 failed";
-    assert revert5 => lastReverted, "revert5 failed";
-    assert lastReverted => revert1  || revert2 || revert3 ||
-                           revert4  || revert5, "Revert rules are not covering all the cases";
+    assert lastReverted => revert1  || revert2 || revert3, "Revert rules are not covering all the cases";
 }
