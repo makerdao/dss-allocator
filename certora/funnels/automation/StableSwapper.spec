@@ -8,8 +8,9 @@ methods {
 }
 
 ghost uint256 swapRetValue;
-
+ghost bool swapCalled;
 function swapSummary() returns uint256 {
+    swapCalled = true;
     return swapRetValue;
 }
 
@@ -269,6 +270,8 @@ rule swap(address src, address dst, uint256 minOut, address callee, bytes data) 
 
     require e.block.timestamp <= max_uint32;
 
+    require !swapCalled;
+
     mathint wardsBefore = wards(anyAddr);
     mathint budsBefore = buds(anyAddr);
     mathint numSrcDstBefore; mathint hopSrcDstBefore; mathint zzzSrcDstBefore; mathint lotSrcDstBefore; mathint reqSrcDstBefore;
@@ -297,6 +300,7 @@ rule swap(address src, address dst, uint256 minOut, address callee, bytes data) 
     assert zzzOtherAfter == zzzOtherBefore, "swap did not keep unchanged the rest of configs[x][y].zzz";
     assert lotOtherAfter == lotOtherBefore, "swap did not keep unchanged the rest of configs[x][y].lot";
     assert reqOtherAfter == reqOtherBefore, "swap did not keep unchanged the rest of configs[x][y].req";
+    assert swapCalled, "swap did not make the external call";
 }
 
 // Verify revert rules on swap

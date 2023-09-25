@@ -15,15 +15,21 @@ ghost uint256 retValue3;
 ghost uint256 retValue4;
 ghost uint256 retValue5;
 
+ghost bool depositCalled;
 function depositSummary() returns (uint128, uint256, uint256) {
+    depositCalled = true;
     return (retValue, retValue2, retValue3);
 }
 
+ghost bool withdrawCalled;
 function withdrawSummary() returns (uint128, uint256, uint256, uint256, uint256) {
+    withdrawCalled = true;
     return (retValue, retValue2, retValue3, retValue4, retValue5);
 }
 
+ghost bool collectCalled;
 function collectSummary() returns (uint256, uint256) {
+    collectCalled = true;
     return (retValue2, retValue3);
 }
 
@@ -315,6 +321,8 @@ rule deposit(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tick
 
     require e.block.timestamp <= max_uint32;
 
+    require !depositCalled;
+
     mathint wardsBefore = wards(anyAddr);
     mathint budsBefore = buds(anyAddr);
     mathint numGem0Gem1Before; mathint zzzGem0Gem1Before; mathint amt0Gem0Gem1Before; mathint amt1Gem0Gem1Before; mathint req0Gem0Gem1Before; mathint req1Gem0Gem1Before; mathint hopGem0Gem1Before;
@@ -347,6 +355,7 @@ rule deposit(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tick
     assert req0OtherAfter == req0OtherBefore, "deposit did not keep unchanged the rest of configs[x][y][z][a][b].req0";
     assert req1OtherAfter == req1OtherBefore, "deposit did not keep unchanged the rest of configs[x][y][z][a][b].req1";
     assert hopOtherAfter == hopOtherBefore, "deposit did not keep unchanged the rest of configs[x][y][z][a][b].hop";
+    assert depositCalled, "deposit did not make the external call";
 }
 
 // Verify revert rules on deposit
@@ -392,6 +401,8 @@ rule withdraw(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tic
 
     require e.block.timestamp <= max_uint32;
 
+    require !withdrawCalled;
+
     mathint wardsBefore = wards(anyAddr);
     mathint budsBefore = buds(anyAddr);
     mathint numGem0Gem1Before; mathint zzzGem0Gem1Before; mathint amt0Gem0Gem1Before; mathint amt1Gem0Gem1Before; mathint req0Gem0Gem1Before; mathint req1Gem0Gem1Before; mathint hopGem0Gem1Before;
@@ -424,6 +435,7 @@ rule withdraw(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tic
     assert req0OtherAfter == req0OtherBefore, "withdraw did not keep unchanged the rest of configs[x][y][z][a][b].req0";
     assert req1OtherAfter == req1OtherBefore, "withdraw did not keep unchanged the rest of configs[x][y][z][a][b].req1";
     assert hopOtherAfter == hopOtherBefore, "withdraw did not keep unchanged the rest of configs[x][y][z][a][b].hop";
+    assert withdrawCalled, "withdraw did not make the external call";
 }
 
 // Verify revert rules on withdraw
@@ -469,6 +481,8 @@ rule collect(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tick
 
     require e.block.timestamp <= max_uint32;
 
+    require !collectCalled;
+
     mathint wardsBefore = wards(anyAddr);
     mathint budsBefore = buds(anyAddr);
     mathint numBefore; mathint zzzBefore; mathint amt0Before; mathint amt1Before; mathint req0Before; mathint req1Before; mathint hopBefore;
@@ -490,6 +504,7 @@ rule collect(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tick
     assert req0After == req0Before, "collect did not keep unchanged every configs[x][y][z][a][b].req0";
     assert req1After == req1Before, "collect did not keep unchanged every configs[x][y][z][a][b].req1";
     assert hopAfter == hopBefore, "collect did not keep unchanged every configs[x][y][z][a][b].hop";
+    assert collectCalled, "collect did not make the external call";
 }
 
 // Verify revert rules on collect
