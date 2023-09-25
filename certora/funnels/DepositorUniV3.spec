@@ -151,13 +151,13 @@ rule setLimits(address gem0, address gem1, uint24 fee, uint96 cap0, uint96 cap1,
 
     address anyAddr;
     address otherAddr;
-    address otherAddr2;
+    address otherAddr_2;
     uint24 otherUint24;
-    require otherAddr != gem0 || otherAddr2 != gem1 || otherUint24 != fee;
+    require otherAddr != gem0 || otherAddr_2 != gem1 || otherUint24 != fee;
 
     mathint wardsBefore = wards(anyAddr);
     mathint cap0OtherBefore; mathint cap1OtherBefore; mathint eraOtherBefore; mathint due0OtherBefore; mathint due1OtherBefore; mathint endOtherBefore;
-    cap0OtherBefore, cap1OtherBefore, eraOtherBefore, due0OtherBefore, due1OtherBefore, endOtherBefore = limits(otherAddr, otherAddr2, otherUint24);
+    cap0OtherBefore, cap1OtherBefore, eraOtherBefore, due0OtherBefore, due1OtherBefore, endOtherBefore = limits(otherAddr, otherAddr_2, otherUint24);
 
     setLimits(e, gem0, gem1, fee, cap0, cap1, era);
 
@@ -165,7 +165,7 @@ rule setLimits(address gem0, address gem1, uint24 fee, uint96 cap0, uint96 cap1,
     mathint cap0Gem0Gem1FeeAfter; mathint cap1Gem0Gem1FeeAfter; mathint eraGem0Gem1FeeAfter; mathint due0Gem0Gem1FeeAfter; mathint due1Gem0Gem1FeeAfter; mathint endGem0Gem1FeeAfter;
     cap0Gem0Gem1FeeAfter, cap1Gem0Gem1FeeAfter, eraGem0Gem1FeeAfter, due0Gem0Gem1FeeAfter, due1Gem0Gem1FeeAfter, endGem0Gem1FeeAfter = limits(gem0, gem1, fee);
     mathint cap0OtherAfter; mathint cap1OtherAfter; mathint eraOtherAfter; mathint due0OtherAfter; mathint due1OtherAfter; mathint endOtherAfter;
-    cap0OtherAfter, cap1OtherAfter, eraOtherAfter, due0OtherAfter, due1OtherAfter, endOtherAfter = limits(otherAddr, otherAddr2, otherUint24);
+    cap0OtherAfter, cap1OtherAfter, eraOtherAfter, due0OtherAfter, due1OtherAfter, endOtherAfter = limits(otherAddr, otherAddr_2, otherUint24);
 
     assert wardsAfter == wardsBefore, "setLimits did not keep unchanged every wards[x]";
     assert cap0Gem0Gem1FeeAfter == to_mathint(cap0), "setLimits did not set limits[gem0][gem1][fee].cap0 to cap0";
@@ -325,9 +325,9 @@ rule deposit(DepositorUniV3.LiquidityParams p) {
 
     address anyAddr;
     address otherAddr;
-    address otherAddr2;
+    address otherAddr_2;
     uint24 otherUint24;
-    require otherAddr != p.gem0 || otherAddr2 != p.gem1 || otherUint24 != p.fee;
+    require otherAddr != p.gem0 || otherAddr_2 != p.gem1 || otherUint24 != p.fee;
 
     require e.block.timestamp <= max_uint32;
 
@@ -338,7 +338,7 @@ rule deposit(DepositorUniV3.LiquidityParams p) {
     mathint cap0Gem0Gem1FeeBefore; mathint cap1Gem0Gem1FeeBefore; mathint eraGem0Gem1FeeBefore; mathint due0Gem0Gem1FeeBefore; mathint due1Gem0Gem1FeeBefore; mathint endGem0Gem1FeeBefore;
     cap0Gem0Gem1FeeBefore, cap1Gem0Gem1FeeBefore, eraGem0Gem1FeeBefore, due0Gem0Gem1FeeBefore, due1Gem0Gem1FeeBefore, endGem0Gem1FeeBefore = limits(p.gem0, p.gem1, p.fee);
     mathint cap0OtherBefore; mathint cap1OtherBefore; mathint eraOtherBefore; mathint due0OtherBefore; mathint due1OtherBefore; mathint endOtherBefore;
-    cap0OtherBefore, cap1OtherBefore, eraOtherBefore, due0OtherBefore, due1OtherBefore, endOtherBefore = limits(otherAddr, otherAddr2, otherUint24);
+    cap0OtherBefore, cap1OtherBefore, eraOtherBefore, due0OtherBefore, due1OtherBefore, endOtherBefore = limits(otherAddr, otherAddr_2, otherUint24);
     mathint gem0BalanceOfBufferBefore = gem0Con.balanceOf(buffer);
     mathint gem1BalanceOfBufferBefore = gem1Con.balanceOf(buffer);
     mathint gem0BalanceOfPoolBefore   = gem0Con.balanceOf(poolCon);
@@ -359,7 +359,7 @@ rule deposit(DepositorUniV3.LiquidityParams p) {
     mathint cap0Gem0Gem1FeeAfter; mathint cap1Gem0Gem1FeeAfter; mathint eraGem0Gem1FeeAfter; mathint due0Gem0Gem1FeeAfter; mathint due1Gem0Gem1FeeAfter; mathint endGem0Gem1FeeAfter;
     cap0Gem0Gem1FeeAfter, cap1Gem0Gem1FeeAfter, eraGem0Gem1FeeAfter, due0Gem0Gem1FeeAfter, due1Gem0Gem1FeeAfter, endGem0Gem1FeeAfter = limits(p.gem0, p.gem1, p.fee);
     mathint cap0OtherAfter; mathint cap1OtherAfter; mathint eraOtherAfter; mathint due0OtherAfter; mathint due1OtherAfter; mathint endOtherAfter;
-    cap0OtherAfter, cap1OtherAfter, eraOtherAfter, due0OtherAfter, due1OtherAfter, endOtherAfter = limits(otherAddr, otherAddr2, otherUint24);
+    cap0OtherAfter, cap1OtherAfter, eraOtherAfter, due0OtherAfter, due1OtherAfter, endOtherAfter = limits(otherAddr, otherAddr_2, otherUint24);
     mathint gem0BalanceOfBufferAfter = gem0Con.balanceOf(buffer);
     mathint gem1BalanceOfBufferAfter = gem1Con.balanceOf(buffer);
     mathint gem0BalanceOfPoolAfter   = gem0Con.balanceOf(poolCon);
@@ -464,9 +464,9 @@ rule withdraw(DepositorUniV3.LiquidityParams p, bool takeFees) {
 
     address anyAddr;
     address otherAddr;
-    address otherAddr2;
+    address otherAddr_2;
     uint24 otherUint24;
-    require otherAddr != p.gem0 || otherAddr2 != p.gem1 || otherUint24 != p.fee;
+    require otherAddr != p.gem0 || otherAddr_2 != p.gem1 || otherUint24 != p.fee;
 
     require e.block.timestamp <= max_uint32;
 
@@ -477,7 +477,7 @@ rule withdraw(DepositorUniV3.LiquidityParams p, bool takeFees) {
     mathint cap0Gem0Gem1FeeBefore; mathint cap1Gem0Gem1FeeBefore; mathint eraGem0Gem1FeeBefore; mathint due0Gem0Gem1FeeBefore; mathint due1Gem0Gem1FeeBefore; mathint endGem0Gem1FeeBefore;
     cap0Gem0Gem1FeeBefore, cap1Gem0Gem1FeeBefore, eraGem0Gem1FeeBefore, due0Gem0Gem1FeeBefore, due1Gem0Gem1FeeBefore, endGem0Gem1FeeBefore = limits(p.gem0, p.gem1, p.fee);
     mathint cap0OtherBefore; mathint cap1OtherBefore; mathint eraOtherBefore; mathint due0OtherBefore; mathint due1OtherBefore; mathint endOtherBefore;
-    cap0OtherBefore, cap1OtherBefore, eraOtherBefore, due0OtherBefore, due1OtherBefore, endOtherBefore = limits(otherAddr, otherAddr2, otherUint24);
+    cap0OtherBefore, cap1OtherBefore, eraOtherBefore, due0OtherBefore, due1OtherBefore, endOtherBefore = limits(otherAddr, otherAddr_2, otherUint24);
     mathint gem0BalanceOfBufferBefore = gem0Con.balanceOf(buffer);
     mathint gem1BalanceOfBufferBefore = gem1Con.balanceOf(buffer);
     mathint gem0BalanceOfPoolBefore   = gem0Con.balanceOf(poolCon);
@@ -500,7 +500,7 @@ rule withdraw(DepositorUniV3.LiquidityParams p, bool takeFees) {
     mathint cap0Gem0Gem1FeeAfter; mathint cap1Gem0Gem1FeeAfter; mathint eraGem0Gem1FeeAfter; mathint due0Gem0Gem1FeeAfter; mathint due1Gem0Gem1FeeAfter; mathint endGem0Gem1FeeAfter;
     cap0Gem0Gem1FeeAfter, cap1Gem0Gem1FeeAfter, eraGem0Gem1FeeAfter, due0Gem0Gem1FeeAfter, due1Gem0Gem1FeeAfter, endGem0Gem1FeeAfter = limits(p.gem0, p.gem1, p.fee);
     mathint cap0OtherAfter; mathint cap1OtherAfter; mathint eraOtherAfter; mathint due0OtherAfter; mathint due1OtherAfter; mathint endOtherAfter;
-    cap0OtherAfter, cap1OtherAfter, eraOtherAfter, due0OtherAfter, due1OtherAfter, endOtherAfter = limits(otherAddr, otherAddr2, otherUint24);
+    cap0OtherAfter, cap1OtherAfter, eraOtherAfter, due0OtherAfter, due1OtherAfter, endOtherAfter = limits(otherAddr, otherAddr_2, otherUint24);
     mathint gem0BalanceOfBufferAfter = gem0Con.balanceOf(buffer);
     mathint gem1BalanceOfBufferAfter = gem1Con.balanceOf(buffer);
     mathint gem0BalanceOfPoolAfter   = gem0Con.balanceOf(poolCon);

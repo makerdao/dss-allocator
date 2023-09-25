@@ -297,16 +297,16 @@ rule setConfig(address gem0, address gem1, uint24 fee, int24 tickLower, int24 ti
 
     address anyAddr;
     address otherAddr;
-    address otherAddr2;
+    address otherAddr_2;
     uint24 otherUint24;
     int24 otherInt24;
-    int24 otherInt242;
-    require otherAddr != gem0 || otherAddr2 != gem1 || fee != otherUint24 || tickLower != otherInt24 || tickUpper != otherInt242;
+    int24 otherInt24_2;
+    require otherAddr != gem0 || otherAddr_2 != gem1 || fee != otherUint24 || tickLower != otherInt24 || tickUpper != otherInt24_2;
 
     mathint wardsBefore = wards(anyAddr);
     mathint budsBefore = buds(anyAddr);
     mathint numOtherBefore; mathint zzzOtherBefore; mathint amt0OtherBefore; mathint amt1OtherBefore; mathint req0OtherBefore; mathint req1OtherBefore; mathint hopOtherBefore;
-    numOtherBefore, zzzOtherBefore, amt0OtherBefore, amt1OtherBefore, req0OtherBefore, req1OtherBefore, hopOtherBefore = configs(otherAddr, otherAddr2, otherUint24, otherInt24, otherInt242);
+    numOtherBefore, zzzOtherBefore, amt0OtherBefore, amt1OtherBefore, req0OtherBefore, req1OtherBefore, hopOtherBefore = configs(otherAddr, otherAddr_2, otherUint24, otherInt24, otherInt24_2);
 
     setConfig(e, gem0, gem1, fee, tickLower, tickUpper, num, hop, amt0, amt1, req0, req1);
 
@@ -315,7 +315,7 @@ rule setConfig(address gem0, address gem1, uint24 fee, int24 tickLower, int24 ti
     mathint numGem0Gem1After; mathint zzzGem0Gem1After; mathint amt0Gem0Gem1After; mathint amt1Gem0Gem1After; mathint req0Gem0Gem1After; mathint req1Gem0Gem1After; mathint hopGem0Gem1After;
     numGem0Gem1After, zzzGem0Gem1After, amt0Gem0Gem1After, amt1Gem0Gem1After, req0Gem0Gem1After, req1Gem0Gem1After, hopGem0Gem1After = configs(gem0, gem1, fee, tickLower, tickUpper);
     mathint numOtherAfter; mathint zzzOtherAfter; mathint amt0OtherAfter; mathint amt1OtherAfter; mathint req0OtherAfter; mathint req1OtherAfter; mathint hopOtherAfter;
-    numOtherAfter, zzzOtherAfter, amt0OtherAfter, amt1OtherAfter, req0OtherAfter, req1OtherAfter, hopOtherAfter = configs(otherAddr, otherAddr2, otherUint24, otherInt24, otherInt242);
+    numOtherAfter, zzzOtherAfter, amt0OtherAfter, amt1OtherAfter, req0OtherAfter, req1OtherAfter, hopOtherAfter = configs(otherAddr, otherAddr_2, otherUint24, otherInt24, otherInt24_2);
 
     assert wardsAfter == wardsBefore, "setConfig did not keep unchanged every wards[x]";
     assert budsAfter == budsBefore, "setConfig did not keep unchanged every buds[x]";
@@ -359,11 +359,11 @@ rule deposit(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tick
 
     address anyAddr;
     address otherAddr;
-    address otherAddr2;
+    address otherAddr_2;
     uint24 otherUint24;
     int24 otherInt24;
-    int24 otherInt242;
-    require otherAddr != gem0 || otherAddr2 != gem1 || fee != otherUint24 || tickLower != otherInt24 || tickUpper != otherInt242;
+    int24 otherInt24_2;
+    require otherAddr != gem0 || otherAddr_2 != gem1 || fee != otherUint24 || tickLower != otherInt24 || tickUpper != otherInt24_2;
 
     require e.block.timestamp <= max_uint32;
 
@@ -372,7 +372,7 @@ rule deposit(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tick
     mathint numGem0Gem1Before; mathint zzzGem0Gem1Before; mathint amt0Gem0Gem1Before; mathint amt1Gem0Gem1Before; mathint req0Gem0Gem1Before; mathint req1Gem0Gem1Before; mathint hopGem0Gem1Before;
     numGem0Gem1Before, zzzGem0Gem1Before, amt0Gem0Gem1Before, amt1Gem0Gem1Before, req0Gem0Gem1Before, req1Gem0Gem1Before, hopGem0Gem1Before = configs(gem0, gem1, fee, tickLower, tickUpper);
     mathint numOtherBefore; mathint zzzOtherBefore; mathint amt0OtherBefore; mathint amt1OtherBefore; mathint req0OtherBefore; mathint req1OtherBefore; mathint hopOtherBefore;
-    numOtherBefore, zzzOtherBefore, amt0OtherBefore, amt1OtherBefore, req0OtherBefore, req1OtherBefore, hopOtherBefore = configs(otherAddr, otherAddr2, otherUint24, otherInt24, otherInt242);
+    numOtherBefore, zzzOtherBefore, amt0OtherBefore, amt1OtherBefore, req0OtherBefore, req1OtherBefore, hopOtherBefore = configs(otherAddr, otherAddr_2, otherUint24, otherInt24, otherInt24_2);
 
     deposit(e, gem0, gem1, fee, tickLower, tickUpper, amt0Min, amt1Min);
 
@@ -381,7 +381,7 @@ rule deposit(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tick
     mathint numGem0Gem1After; mathint zzzGem0Gem1After; mathint amt0Gem0Gem1After; mathint amt1Gem0Gem1After; mathint req0Gem0Gem1After; mathint req1Gem0Gem1After; mathint hopGem0Gem1After;
     numGem0Gem1After, zzzGem0Gem1After, amt0Gem0Gem1After, amt1Gem0Gem1After, req0Gem0Gem1After, req1Gem0Gem1After, hopGem0Gem1After = configs(gem0, gem1, fee, tickLower, tickUpper);
     mathint numOtherAfter; mathint zzzOtherAfter; mathint amt0OtherAfter; mathint amt1OtherAfter; mathint req0OtherAfter; mathint req1OtherAfter; mathint hopOtherAfter;
-    numOtherAfter, zzzOtherAfter, amt0OtherAfter, amt1OtherAfter, req0OtherAfter, req1OtherAfter, hopOtherAfter = configs(otherAddr, otherAddr2, otherUint24, otherInt24, otherInt242);
+    numOtherAfter, zzzOtherAfter, amt0OtherAfter, amt1OtherAfter, req0OtherAfter, req1OtherAfter, hopOtherAfter = configs(otherAddr, otherAddr_2, otherUint24, otherInt24, otherInt24_2);
 
     assert wardsAfter == wardsBefore, "deposit did not keep unchanged every wards[x]";
     assert budsAfter == budsBefore, "deposit did not keep unchanged every buds[x]";
@@ -446,11 +446,11 @@ rule withdraw(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tic
 
     address anyAddr;
     address otherAddr;
-    address otherAddr2;
+    address otherAddr_2;
     uint24 otherUint24;
     int24 otherInt24;
-    int24 otherInt242;
-    require otherAddr != gem0 || otherAddr2 != gem1 || fee != otherUint24 || tickLower != otherInt24 || tickUpper != otherInt242;
+    int24 otherInt24_2;
+    require otherAddr != gem0 || otherAddr_2 != gem1 || fee != otherUint24 || tickLower != otherInt24 || tickUpper != otherInt24_2;
 
     require e.block.timestamp <= max_uint32;
 
@@ -459,7 +459,7 @@ rule withdraw(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tic
     mathint numGem0Gem1Before; mathint zzzGem0Gem1Before; mathint amt0Gem0Gem1Before; mathint amt1Gem0Gem1Before; mathint req0Gem0Gem1Before; mathint req1Gem0Gem1Before; mathint hopGem0Gem1Before;
     numGem0Gem1Before, zzzGem0Gem1Before, amt0Gem0Gem1Before, amt1Gem0Gem1Before, req0Gem0Gem1Before, req1Gem0Gem1Before, hopGem0Gem1Before = configs(gem0, gem1, fee, tickLower, tickUpper);
     mathint numOtherBefore; mathint zzzOtherBefore; mathint amt0OtherBefore; mathint amt1OtherBefore; mathint req0OtherBefore; mathint req1OtherBefore; mathint hopOtherBefore;
-    numOtherBefore, zzzOtherBefore, amt0OtherBefore, amt1OtherBefore, req0OtherBefore, req1OtherBefore, hopOtherBefore = configs(otherAddr, otherAddr2, otherUint24, otherInt24, otherInt242);
+    numOtherBefore, zzzOtherBefore, amt0OtherBefore, amt1OtherBefore, req0OtherBefore, req1OtherBefore, hopOtherBefore = configs(otherAddr, otherAddr_2, otherUint24, otherInt24, otherInt24_2);
 
     withdraw(e, gem0, gem1, fee, tickLower, tickUpper, amt0Min, amt1Min);
 
@@ -468,7 +468,7 @@ rule withdraw(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tic
     mathint numGem0Gem1After; mathint zzzGem0Gem1After; mathint amt0Gem0Gem1After; mathint amt1Gem0Gem1After; mathint req0Gem0Gem1After; mathint req1Gem0Gem1After; mathint hopGem0Gem1After;
     numGem0Gem1After, zzzGem0Gem1After, amt0Gem0Gem1After, amt1Gem0Gem1After, req0Gem0Gem1After, req1Gem0Gem1After, hopGem0Gem1After = configs(gem0, gem1, fee, tickLower, tickUpper);
     mathint numOtherAfter; mathint zzzOtherAfter; mathint amt0OtherAfter; mathint amt1OtherAfter; mathint req0OtherAfter; mathint req1OtherAfter; mathint hopOtherAfter;
-    numOtherAfter, zzzOtherAfter, amt0OtherAfter, amt1OtherAfter, req0OtherAfter, req1OtherAfter, hopOtherAfter = configs(otherAddr, otherAddr2, otherUint24, otherInt24, otherInt242);
+    numOtherAfter, zzzOtherAfter, amt0OtherAfter, amt1OtherAfter, req0OtherAfter, req1OtherAfter, hopOtherAfter = configs(otherAddr, otherAddr_2, otherUint24, otherInt24, otherInt24_2);
 
     assert wardsAfter == wardsBefore, "withdraw did not keep unchanged every wards[x]";
     assert budsAfter == budsBefore, "withdraw did not keep unchanged every buds[x]";
@@ -534,25 +534,25 @@ rule collect(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tick
 
     address anyAddr;
     address otherAddr;
-    address otherAddr2;
+    address otherAddr_2;
     uint24 otherUint24;
     int24 otherInt24;
-    int24 otherInt242;
-    require otherAddr != gem0 || otherAddr2 != gem1 || fee != otherUint24 || tickLower != otherInt24 || tickUpper != otherInt242;
+    int24 otherInt24_2;
+    require otherAddr != gem0 || otherAddr_2 != gem1 || fee != otherUint24 || tickLower != otherInt24 || tickUpper != otherInt24_2;
 
     require e.block.timestamp <= max_uint32;
 
     mathint wardsBefore = wards(anyAddr);
     mathint budsBefore = buds(anyAddr);
     mathint numBefore; mathint zzzBefore; mathint amt0Before; mathint amt1Before; mathint req0Before; mathint req1Before; mathint hopBefore;
-    numBefore, zzzBefore, amt0Before, amt1Before, req0Before, req1Before, hopBefore = configs(otherAddr, otherAddr2, otherUint24, otherInt24, otherInt242);
+    numBefore, zzzBefore, amt0Before, amt1Before, req0Before, req1Before, hopBefore = configs(otherAddr, otherAddr_2, otherUint24, otherInt24, otherInt24_2);
 
     collect(e, gem0, gem1, fee, tickLower, tickUpper);
 
     mathint wardsAfter = wards(anyAddr);
     mathint budsAfter = buds(anyAddr);
     mathint numAfter; mathint zzzAfter; mathint amt0After; mathint amt1After; mathint req0After; mathint req1After; mathint hopAfter;
-    numAfter, zzzAfter, amt0After, amt1After, req0After, req1After, hopAfter = configs(otherAddr, otherAddr2, otherUint24, otherInt24, otherInt242);
+    numAfter, zzzAfter, amt0After, amt1After, req0After, req1After, hopAfter = configs(otherAddr, otherAddr_2, otherUint24, otherInt24, otherInt24_2);
 
     assert wardsAfter == wardsBefore, "collect did not keep unchanged every wards[x]";
     assert budsAfter == budsBefore, "collect did not keep unchanged every buds[x]";

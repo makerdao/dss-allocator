@@ -114,12 +114,12 @@ rule setLimits(address src, address dst, uint96 cap, uint32 era) {
 
     address anyAddr;
     address otherAddr;
-    address otherAddr2;
-    require otherAddr != src || otherAddr2 != dst;
+    address otherAddr_2;
+    require otherAddr != src || otherAddr_2 != dst;
 
     mathint wardsBefore = wards(anyAddr);
     mathint capOtherBefore; mathint eraOtherBefore; mathint dueOtherBefore; mathint endOtherBefore;
-    capOtherBefore, eraOtherBefore, dueOtherBefore, endOtherBefore = limits(otherAddr, otherAddr2);
+    capOtherBefore, eraOtherBefore, dueOtherBefore, endOtherBefore = limits(otherAddr, otherAddr_2);
 
     setLimits(e, src, dst, cap, era);
 
@@ -127,7 +127,7 @@ rule setLimits(address src, address dst, uint96 cap, uint32 era) {
     mathint capSrcDstAfter; mathint eraSrcDstAfter; mathint dueSrcDstAfter; mathint endSrcDstAfter;
     capSrcDstAfter, eraSrcDstAfter, dueSrcDstAfter, endSrcDstAfter = limits(src, dst);
     mathint capOtherAfter; mathint eraOtherAfter; mathint dueOtherAfter; mathint endOtherAfter;
-    capOtherAfter, eraOtherAfter, dueOtherAfter, endOtherAfter = limits(otherAddr, otherAddr2);
+    capOtherAfter, eraOtherAfter, dueOtherAfter, endOtherAfter = limits(otherAddr, otherAddr_2);
 
     assert wardsAfter == wardsBefore, "setLimits did not keep unchanged every wards[x]";
     assert capSrcDstAfter == to_mathint(cap), "setLimits did not set limits[src][dst].cap to cap";
@@ -167,8 +167,8 @@ rule swap(address src, address dst, uint256 amt, uint256 minOut, address callee,
 
     address anyAddr;
     address otherAddr;
-    address otherAddr2;
-    require otherAddr != src || otherAddr2 != dst;
+    address otherAddr_2;
+    require otherAddr != src || otherAddr_2 != dst;
 
     require e.block.timestamp <= max_uint32;
 
@@ -180,7 +180,7 @@ rule swap(address src, address dst, uint256 amt, uint256 minOut, address callee,
     mathint capBefore; mathint eraBefore; mathint dueBefore; mathint endBefore;
     capBefore, eraBefore, dueBefore, endBefore = limits(src, dst);
     mathint capOtherBefore; mathint eraOtherBefore; mathint dueOtherBefore; mathint endOtherBefore;
-    capOtherBefore, eraOtherBefore, dueOtherBefore, endOtherBefore = limits(otherAddr, otherAddr2);
+    capOtherBefore, eraOtherBefore, dueOtherBefore, endOtherBefore = limits(otherAddr, otherAddr_2);
     mathint srcBalanceOfBufferBefore = srcCon.balanceOf(e, buffer);
     mathint dstBalanceOfBufferBefore = dstCon.balanceOf(e, buffer);
 
@@ -192,7 +192,7 @@ rule swap(address src, address dst, uint256 amt, uint256 minOut, address callee,
     mathint capAfter; mathint eraAfter; mathint dueAfter; mathint endAfter;
     capAfter, eraAfter, dueAfter, endAfter = limits(src, dst);
     mathint capOtherAfter; mathint eraOtherAfter; mathint dueOtherAfter; mathint endOtherAfter;
-    capOtherAfter, eraOtherAfter, dueOtherAfter, endOtherAfter = limits(otherAddr, otherAddr2);
+    capOtherAfter, eraOtherAfter, dueOtherAfter, endOtherAfter = limits(otherAddr, otherAddr_2);
 
     mathint expectedDue = (to_mathint(e.block.timestamp) >= endBefore ? capBefore : dueBefore) - amt;
     mathint expectedEnd = to_mathint(e.block.timestamp) >= endBefore ? e.block.timestamp + eraBefore : endBefore;

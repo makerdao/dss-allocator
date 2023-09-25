@@ -222,13 +222,13 @@ rule setConfig(address src, address dst, uint128 num, uint32 hop, uint96 lot, ui
 
     address anyAddr;
     address otherAddr;
-    address otherAddr2;
-    require otherAddr != src || otherAddr2 != dst;
+    address otherAddr_2;
+    require otherAddr != src || otherAddr_2 != dst;
 
     mathint wardsBefore = wards(anyAddr);
     mathint budsBefore = buds(anyAddr);
     mathint numOtherBefore; mathint hopOtherBefore; mathint zzzOtherBefore; mathint lotOtherBefore; mathint reqOtherBefore;
-    numOtherBefore, hopOtherBefore, zzzOtherBefore, lotOtherBefore, reqOtherBefore = configs(otherAddr, otherAddr2);
+    numOtherBefore, hopOtherBefore, zzzOtherBefore, lotOtherBefore, reqOtherBefore = configs(otherAddr, otherAddr_2);
 
     setConfig(e, src, dst, num, hop, lot, req);
 
@@ -237,7 +237,7 @@ rule setConfig(address src, address dst, uint128 num, uint32 hop, uint96 lot, ui
     mathint numSrcDstAfter; mathint hopSrcDstAfter; mathint zzzSrcDstAfter; mathint lotSrcDstAfter; mathint reqSrcDstAfter;
     numSrcDstAfter, hopSrcDstAfter, zzzSrcDstAfter, lotSrcDstAfter, reqSrcDstAfter = configs(src, dst);
     mathint numOtherAfter; mathint hopOtherAfter; mathint zzzOtherAfter; mathint lotOtherAfter; mathint reqOtherAfter;
-    numOtherAfter, hopOtherAfter, zzzOtherAfter, lotOtherAfter, reqOtherAfter = configs(otherAddr, otherAddr2);
+    numOtherAfter, hopOtherAfter, zzzOtherAfter, lotOtherAfter, reqOtherAfter = configs(otherAddr, otherAddr_2);
 
     assert wardsAfter == wardsBefore, "setConfig did not keep unchanged every wards[x]";
     assert budsAfter == budsBefore, "setConfig did not keep unchanged every buds[x]";
@@ -275,8 +275,8 @@ rule swap(address src, address dst, uint256 minOut, address callee, bytes data) 
 
     address anyAddr;
     address otherAddr;
-    address otherAddr2;
-    require otherAddr != src || otherAddr2 != dst;
+    address otherAddr_2;
+    require otherAddr != src || otherAddr_2 != dst;
 
     require e.block.timestamp <= max_uint32;
 
@@ -285,7 +285,7 @@ rule swap(address src, address dst, uint256 minOut, address callee, bytes data) 
     mathint numSrcDstBefore; mathint hopSrcDstBefore; mathint zzzSrcDstBefore; mathint lotSrcDstBefore; mathint reqSrcDstBefore;
     numSrcDstBefore, hopSrcDstBefore, zzzSrcDstBefore, lotSrcDstBefore, reqSrcDstBefore = configs(src, dst);
     mathint numOtherBefore; mathint hopOtherBefore; mathint zzzOtherBefore; mathint lotOtherBefore; mathint reqOtherBefore;
-    numOtherBefore, hopOtherBefore, zzzOtherBefore, lotOtherBefore, reqOtherBefore = configs(otherAddr, otherAddr2);
+    numOtherBefore, hopOtherBefore, zzzOtherBefore, lotOtherBefore, reqOtherBefore = configs(otherAddr, otherAddr_2);
 
     swap(e, src, dst, minOut, callee, data);
 
@@ -294,7 +294,7 @@ rule swap(address src, address dst, uint256 minOut, address callee, bytes data) 
     mathint numSrcDstAfter; mathint hopSrcDstAfter; mathint zzzSrcDstAfter; mathint lotSrcDstAfter; mathint reqSrcDstAfter;
     numSrcDstAfter, hopSrcDstAfter, zzzSrcDstAfter, lotSrcDstAfter, reqSrcDstAfter = configs(src, dst);
     mathint numOtherAfter; mathint hopOtherAfter; mathint zzzOtherAfter; mathint lotOtherAfter; mathint reqOtherAfter;
-    numOtherAfter, hopOtherAfter, zzzOtherAfter, lotOtherAfter, reqOtherAfter = configs(otherAddr, otherAddr2);
+    numOtherAfter, hopOtherAfter, zzzOtherAfter, lotOtherAfter, reqOtherAfter = configs(otherAddr, otherAddr_2);
 
     assert wardsAfter == wardsBefore, "swap did not keep unchanged every wards[x]";
     assert budsAfter == budsBefore, "swap did not keep unchanged every buds[x]";
