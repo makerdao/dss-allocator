@@ -56,19 +56,19 @@ rule rely(address usr) {
     address other;
     require other != usr;
     address anyAddr;
-    address anyAddr2;
+    address anyAddr_2;
     uint24 anyUint24;
 
     mathint wardsOtherBefore = wards(other);
     mathint cap0Before; mathint cap1Before; mathint eraBefore; mathint due0Before; mathint due1Before; mathint endBefore;
-    cap0Before, cap1Before, eraBefore, due0Before, due1Before, endBefore = limits(anyAddr, anyAddr2, anyUint24);
+    cap0Before, cap1Before, eraBefore, due0Before, due1Before, endBefore = limits(anyAddr, anyAddr_2, anyUint24);
 
     rely(e, usr);
 
     mathint wardsUsrAfter = wards(usr);
     mathint wardsOtherAfter = wards(other);
     mathint cap0After; mathint cap1After; mathint eraAfter; mathint due0After; mathint due1After; mathint endAfter;
-    cap0After, cap1After, eraAfter, due0After, due1After, endAfter = limits(anyAddr, anyAddr2, anyUint24);
+    cap0After, cap1After, eraAfter, due0After, due1After, endAfter = limits(anyAddr, anyAddr_2, anyUint24);
 
     assert wardsUsrAfter == 1, "rely did not set the wards";
     assert wardsOtherAfter == wardsOtherBefore, "rely did not keep unchanged the rest of wards[x]";
@@ -104,19 +104,19 @@ rule deny(address usr) {
     address other;
     require other != usr;
     address anyAddr;
-    address anyAddr2;
+    address anyAddr_2;
     uint24 anyUint24;
 
     mathint wardsOtherBefore = wards(other);
     mathint cap0Before; mathint cap1Before; mathint eraBefore; mathint due0Before; mathint due1Before; mathint endBefore;
-    cap0Before, cap1Before, eraBefore, due0Before, due1Before, endBefore = limits(anyAddr, anyAddr2, anyUint24);
+    cap0Before, cap1Before, eraBefore, due0Before, due1Before, endBefore = limits(anyAddr, anyAddr_2, anyUint24);
 
     deny(e, usr);
 
     mathint wardsUsrAfter = wards(usr);
     mathint wardsOtherAfter = wards(other);
     mathint cap0After; mathint cap1After; mathint eraAfter; mathint due0After; mathint due1After; mathint endAfter;
-    cap0After, cap1After, eraAfter, due0After, due1After, endAfter = limits(anyAddr, anyAddr2, anyUint24);
+    cap0After, cap1After, eraAfter, due0After, due1After, endAfter = limits(anyAddr, anyAddr_2, anyUint24);
 
     assert wardsUsrAfter == 0, "deny did not set the wards";
     assert wardsOtherAfter == wardsOtherBefore, "deny did not keep unchanged the rest of wards[x]";
@@ -230,7 +230,7 @@ rule uniswapV3MintCallback(uint256 amt0Owed, uint256 amt1Owed, bytes data) {
     require gem1 == gem1Con;
 
     address anyAddr;
-    address anyAddr2;
+    address anyAddr_2;
     uint24 anyUint24;
 
     address buffer = buffer();
@@ -238,7 +238,7 @@ rule uniswapV3MintCallback(uint256 amt0Owed, uint256 amt1Owed, bytes data) {
 
     mathint wardsBefore = wards(anyAddr);
     mathint cap0Before; mathint cap1Before; mathint eraBefore; mathint due0Before; mathint due1Before; mathint endBefore;
-    cap0Before, cap1Before, eraBefore, due0Before, due1Before, endBefore = limits(anyAddr, anyAddr2, anyUint24);
+    cap0Before, cap1Before, eraBefore, due0Before, due1Before, endBefore = limits(anyAddr, anyAddr_2, anyUint24);
     mathint gem0BalanceOfBufferBefore = gem0Con.balanceOf(buffer);
     mathint gem1BalanceOfBufferBefore = gem1Con.balanceOf(buffer);
     mathint gem0BalanceOfSenderBefore = gem0Con.balanceOf(e.msg.sender);
@@ -251,7 +251,7 @@ rule uniswapV3MintCallback(uint256 amt0Owed, uint256 amt1Owed, bytes data) {
 
     mathint wardsAfter = wards(anyAddr);
     mathint cap0After; mathint cap1After; mathint eraAfter; mathint due0After; mathint due1After; mathint endAfter;
-    cap0After, cap1After, eraAfter, due0After, due1After, endAfter = limits(anyAddr, anyAddr2, anyUint24);
+    cap0After, cap1After, eraAfter, due0After, due1After, endAfter = limits(anyAddr, anyAddr_2, anyUint24);
     mathint gem0BalanceOfBufferAfter = gem0Con.balanceOf(buffer);
     mathint gem1BalanceOfBufferAfter = gem1Con.balanceOf(buffer);
     mathint gem0BalanceOfSenderAfter = gem0Con.balanceOf(e.msg.sender);
@@ -601,7 +601,7 @@ rule collect(DepositorUniV3.CollectParams p) {
     require poolCon.random3() >= poolCon.random1();
 
     address anyAddr;
-    address anyAddr2;
+    address anyAddr_2;
     uint24 anyUint24;
 
     require e.block.timestamp <= max_uint32;
@@ -611,7 +611,7 @@ rule collect(DepositorUniV3.CollectParams p) {
 
     mathint wardsBefore = wards(anyAddr);
     mathint cap0Before; mathint cap1Before; mathint eraBefore; mathint due0Before; mathint due1Before; mathint endBefore;
-    cap0Before, cap1Before, eraBefore, due0Before, due1Before, endBefore = limits(anyAddr, anyAddr2, anyUint24);
+    cap0Before, cap1Before, eraBefore, due0Before, due1Before, endBefore = limits(anyAddr, anyAddr_2, anyUint24);
     mathint gem0BalanceOfBufferBefore = gem0Con.balanceOf(buffer);
     mathint gem1BalanceOfBufferBefore = gem1Con.balanceOf(buffer);
     mathint gem0BalanceOfPoolBefore   = gem0Con.balanceOf(poolCon);
@@ -628,7 +628,7 @@ rule collect(DepositorUniV3.CollectParams p) {
 
     mathint wardsAfter = wards(anyAddr);
     mathint cap0After; mathint cap1After; mathint eraAfter; mathint due0After; mathint due1After; mathint endAfter;
-    cap0After, cap1After, eraAfter, due0After, due1After, endAfter = limits(anyAddr, anyAddr2, anyUint24);
+    cap0After, cap1After, eraAfter, due0After, due1After, endAfter = limits(anyAddr, anyAddr_2, anyUint24);
     mathint gem0BalanceOfBufferAfter = gem0Con.balanceOf(buffer);
     mathint gem1BalanceOfBufferAfter = gem1Con.balanceOf(buffer);
     mathint gem0BalanceOfPoolAfter   = gem0Con.balanceOf(poolCon);

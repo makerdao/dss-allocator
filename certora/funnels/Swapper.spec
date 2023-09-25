@@ -25,18 +25,18 @@ rule rely(address usr) {
     address other;
     require other != usr;
     address anyAddr;
-    address anyAddr2;
+    address anyAddr_2;
 
     mathint wardsOtherBefore = wards(other);
     mathint capBefore; mathint eraBefore; mathint dueBefore; mathint endBefore;
-    capBefore, eraBefore, dueBefore, endBefore = limits(anyAddr, anyAddr2);
+    capBefore, eraBefore, dueBefore, endBefore = limits(anyAddr, anyAddr_2);
 
     rely(e, usr);
 
     mathint wardsUsrAfter = wards(usr);
     mathint wardsOtherAfter = wards(other);
     mathint capAfter; mathint eraAfter; mathint dueAfter; mathint endAfter;
-    capAfter, eraAfter, dueAfter, endAfter = limits(anyAddr, anyAddr2);
+    capAfter, eraAfter, dueAfter, endAfter = limits(anyAddr, anyAddr_2);
 
     assert wardsUsrAfter == 1, "rely did not set the wards";
     assert wardsOtherAfter == wardsOtherBefore, "rely did not keep unchanged the rest of wards[x]";
@@ -70,18 +70,18 @@ rule deny(address usr) {
     address other;
     require other != usr;
     address anyAddr;
-    address anyAddr2;
+    address anyAddr_2;
 
     mathint wardsOtherBefore = wards(other);
     mathint capBefore; mathint eraBefore; mathint dueBefore; mathint endBefore;
-    capBefore, eraBefore, dueBefore, endBefore = limits(anyAddr, anyAddr2);
+    capBefore, eraBefore, dueBefore, endBefore = limits(anyAddr, anyAddr_2);
 
     deny(e, usr);
 
     mathint wardsUsrAfter = wards(usr);
     mathint wardsOtherAfter = wards(other);
     mathint capAfter; mathint eraAfter; mathint dueAfter; mathint endAfter;
-    capAfter, eraAfter, dueAfter, endAfter = limits(anyAddr, anyAddr2);
+    capAfter, eraAfter, dueAfter, endAfter = limits(anyAddr, anyAddr_2);
 
     assert wardsUsrAfter == 0, "deny did not set the wards";
     assert wardsOtherAfter == wardsOtherBefore, "deny did not keep unchanged the rest of wards[x]";

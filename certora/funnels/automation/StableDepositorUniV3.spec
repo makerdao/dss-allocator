@@ -34,15 +34,15 @@ rule rely(address usr) {
     address other;
     require other != usr;
     address anyAddr;
-    address anyAddr2;
+    address anyAddr_2;
     uint24 anyUint24;
     int24 anyInt24;
-    int24 anyInt242;
+    int24 anyInt24_2;
 
     mathint wardsOtherBefore = wards(other);
     mathint budsBefore = buds(anyAddr);
     mathint numBefore; mathint zzzBefore; mathint amt0Before; mathint amt1Before; mathint req0Before; mathint req1Before; mathint hopBefore;
-    numBefore, zzzBefore, amt0Before, amt1Before, req0Before, req1Before, hopBefore = configs(anyAddr, anyAddr2, anyUint24, anyInt24, anyInt242);
+    numBefore, zzzBefore, amt0Before, amt1Before, req0Before, req1Before, hopBefore = configs(anyAddr, anyAddr_2, anyUint24, anyInt24, anyInt24_2);
 
     rely(e, usr);
 
@@ -50,7 +50,7 @@ rule rely(address usr) {
     mathint wardsOtherAfter = wards(other);
     mathint budsAfter = buds(anyAddr);
     mathint numAfter; mathint zzzAfter; mathint amt0After; mathint amt1After; mathint req0After; mathint req1After; mathint hopAfter;
-    numAfter, zzzAfter, amt0After, amt1After, req0After, req1After, hopAfter = configs(anyAddr, anyAddr2, anyUint24, anyInt24, anyInt242);
+    numAfter, zzzAfter, amt0After, amt1After, req0After, req1After, hopAfter = configs(anyAddr, anyAddr_2, anyUint24, anyInt24, anyInt24_2);
 
     assert wardsUsrAfter == 1, "rely did not set the wards";
     assert wardsOtherAfter == wardsOtherBefore, "rely did not keep unchanged the rest of wards[x]";
@@ -87,15 +87,15 @@ rule deny(address usr) {
     address other;
     require other != usr;
     address anyAddr;
-    address anyAddr2;
+    address anyAddr_2;
     uint24 anyUint24;
     int24 anyInt24;
-    int24 anyInt242;
+    int24 anyInt24_2;
 
     mathint wardsOtherBefore = wards(other);
     mathint budsBefore = buds(anyAddr);
     mathint numBefore; mathint zzzBefore; mathint amt0Before; mathint amt1Before; mathint req0Before; mathint req1Before; mathint hopBefore;
-    numBefore, zzzBefore, amt0Before, amt1Before, req0Before, req1Before, hopBefore = configs(anyAddr, anyAddr2, anyUint24, anyInt24, anyInt242);
+    numBefore, zzzBefore, amt0Before, amt1Before, req0Before, req1Before, hopBefore = configs(anyAddr, anyAddr_2, anyUint24, anyInt24, anyInt24_2);
 
     deny(e, usr);
 
@@ -103,7 +103,7 @@ rule deny(address usr) {
     mathint wardsOtherAfter = wards(other);
     mathint budsAfter = buds(anyAddr);
     mathint numAfter; mathint zzzAfter; mathint amt0After; mathint amt1After; mathint req0After; mathint req1After; mathint hopAfter;
-    numAfter, zzzAfter, amt0After, amt1After, req0After, req1After, hopAfter = configs(anyAddr, anyAddr2, anyUint24, anyInt24, anyInt242);
+    numAfter, zzzAfter, amt0After, amt1After, req0After, req1After, hopAfter = configs(anyAddr, anyAddr_2, anyUint24, anyInt24, anyInt24_2);
 
     assert wardsUsrAfter == 0, "deny did not set the wards";
     assert wardsOtherAfter == wardsOtherBefore, "deny did not keep unchanged the rest of wards[x]";
@@ -140,15 +140,15 @@ rule kiss(address usr) {
     address other;
     require other != usr;
     address anyAddr;
-    address anyAddr2;
+    address anyAddr_2;
     uint24 anyUint24;
     int24 anyInt24;
-    int24 anyInt242;
+    int24 anyInt24_2;
 
     mathint wardsBefore = wards(anyAddr);
     mathint budsOtherBefore = buds(other);
     mathint numBefore; mathint zzzBefore; mathint amt0Before; mathint amt1Before; mathint req0Before; mathint req1Before; mathint hopBefore;
-    numBefore, zzzBefore, amt0Before, amt1Before, req0Before, req1Before, hopBefore = configs(anyAddr, anyAddr2, anyUint24, anyInt24, anyInt242);
+    numBefore, zzzBefore, amt0Before, amt1Before, req0Before, req1Before, hopBefore = configs(anyAddr, anyAddr_2, anyUint24, anyInt24, anyInt24_2);
 
     kiss(e, usr);
 
@@ -156,7 +156,7 @@ rule kiss(address usr) {
     mathint budsUsrAfter = buds(usr);
     mathint budsOtherAfter = buds(other);
     mathint numAfter; mathint zzzAfter; mathint amt0After; mathint amt1After; mathint req0After; mathint req1After; mathint hopAfter;
-    numAfter, zzzAfter, amt0After, amt1After, req0After, req1After, hopAfter = configs(anyAddr, anyAddr2, anyUint24, anyInt24, anyInt242);
+    numAfter, zzzAfter, amt0After, amt1After, req0After, req1After, hopAfter = configs(anyAddr, anyAddr_2, anyUint24, anyInt24, anyInt24_2);
 
     assert wardsAfter == wardsBefore, "kiss did not keep unchanged every wards[x]";
     assert budsUsrAfter == 1, "kiss did not set the buds";
@@ -193,15 +193,15 @@ rule diss(address usr) {
     address other;
     require other != usr;
     address anyAddr;
-    address anyAddr2;
+    address anyAddr_2;
     uint24 anyUint24;
     int24 anyInt24;
-    int24 anyInt242;
+    int24 anyInt24_2;
 
     mathint wardsBefore = wards(anyAddr);
     mathint budsOtherBefore = buds(other);
     mathint numBefore; mathint zzzBefore; mathint amt0Before; mathint amt1Before; mathint req0Before; mathint req1Before; mathint hopBefore;
-    numBefore, zzzBefore, amt0Before, amt1Before, req0Before, req1Before, hopBefore = configs(anyAddr, anyAddr2, anyUint24, anyInt24, anyInt242);
+    numBefore, zzzBefore, amt0Before, amt1Before, req0Before, req1Before, hopBefore = configs(anyAddr, anyAddr_2, anyUint24, anyInt24, anyInt24_2);
 
     diss(e, usr);
 
@@ -209,7 +209,7 @@ rule diss(address usr) {
     mathint budsUsrAfter = buds(usr);
     mathint budsOtherAfter = buds(other);
     mathint numAfter; mathint zzzAfter; mathint amt0After; mathint amt1After; mathint req0After; mathint req1After; mathint hopAfter;
-    numAfter, zzzAfter, amt0After, amt1After, req0After, req1After, hopAfter = configs(anyAddr, anyAddr2, anyUint24, anyInt24, anyInt242);
+    numAfter, zzzAfter, amt0After, amt1After, req0After, req1After, hopAfter = configs(anyAddr, anyAddr_2, anyUint24, anyInt24, anyInt24_2);
 
     assert wardsAfter == wardsBefore, "diss did not keep unchanged every wards[x]";
     assert budsUsrAfter == 0, "diss did not set the buds";
