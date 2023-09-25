@@ -4,9 +4,9 @@ methods {
     function wards(address) external returns (uint256) envfree;
     function buds(address) external returns (uint256) envfree;
     function configs(address, address, uint24, int24, int24) external returns (int32, uint32, uint96, uint96, uint96, uint96, uint32) envfree;
-    function _.deposit(DepositorUniV3Like.LiquidityParams) external => depositSummary() expect uint128, uint256, uint256;
-    function _.withdraw(DepositorUniV3Like.LiquidityParams, bool) external => withdrawSummary() expect uint128, uint256, uint256, uint256, uint256;
-    function _.collect(DepositorUniV3Like.CollectParams) external => collectSummary() expect uint256, uint256;
+    function _.deposit(DepositorUniV3Like.LiquidityParams p) external => depositSummary(p) expect uint128, uint256, uint256;
+    function _.withdraw(DepositorUniV3Like.LiquidityParams p, bool takeFees) external => withdrawSummary(p, takeFees) expect uint128, uint256, uint256, uint256, uint256;
+    function _.collect(DepositorUniV3Like.CollectParams p) external => collectSummary(p) expect uint256, uint256;
 }
 
 ghost uint128 retValue;
@@ -15,21 +15,67 @@ ghost uint256 retValue3;
 ghost uint256 retValue4;
 ghost uint256 retValue5;
 
-ghost bool depositCalled;
-function depositSummary() returns (uint128, uint256, uint256) {
-    depositCalled = true;
+ghost address depositGem0;
+ghost address depositGem1;
+ghost uint24  depositFee;
+ghost int24   depositTickLower;
+ghost int24   depositTickUpper;
+ghost uint128 depositLiquidity;
+ghost uint256 depositAmt0Desired;
+ghost uint256 depositAmt1Desired;
+ghost uint256 depositAmt0Min;
+ghost uint256 depositAmt1Min;
+function depositSummary(DepositorUniV3Like.LiquidityParams p) returns (uint128, uint256, uint256) {
+    depositGem0 = p.gem0;
+    depositGem1 = p.gem1;
+    depositFee = p.fee;
+    depositTickLower = p.tickLower;
+    depositTickUpper = p.tickUpper;
+    depositLiquidity = p.liquidity;
+    depositAmt0Desired = p.amt0Desired;
+    depositAmt1Desired = p.amt1Desired;
+    depositAmt0Min = p.amt0Min;
+    depositAmt1Min = p.amt1Min;
     return (retValue, retValue2, retValue3);
 }
 
-ghost bool withdrawCalled;
-function withdrawSummary() returns (uint128, uint256, uint256, uint256, uint256) {
-    withdrawCalled = true;
+ghost address withdrawGem0;
+ghost address withdrawGem1;
+ghost uint24  withdrawFee;
+ghost int24   withdrawTickLower;
+ghost int24   withdrawTickUpper;
+ghost uint128 withdrawLiquidity;
+ghost uint256 withdrawAmt0Desired;
+ghost uint256 withdrawAmt1Desired;
+ghost uint256 withdrawAmt0Min;
+ghost uint256 withdrawAmt1Min;
+ghost bool    withdrawTakeFees;
+function withdrawSummary(DepositorUniV3Like.LiquidityParams p, bool takeFees) returns (uint128, uint256, uint256, uint256, uint256) {
+    withdrawGem0 = p.gem0;
+    withdrawGem1 = p.gem1;
+    withdrawFee = p.fee;
+    withdrawTickLower = p.tickLower;
+    withdrawTickUpper = p.tickUpper;
+    withdrawLiquidity = p.liquidity;
+    withdrawAmt0Desired = p.amt0Desired;
+    withdrawAmt1Desired = p.amt1Desired;
+    withdrawAmt0Min = p.amt0Min;
+    withdrawAmt1Min = p.amt1Min;
+    withdrawTakeFees = takeFees;
     return (retValue, retValue2, retValue3, retValue4, retValue5);
 }
 
-ghost bool collectCalled;
-function collectSummary() returns (uint256, uint256) {
-    collectCalled = true;
+ghost address collectGem0;
+ghost address collectGem1;
+ghost uint24  collectFee;
+ghost int24   collectTickLower;
+ghost int24   collectTickUpper;
+function collectSummary(DepositorUniV3Like.CollectParams p) returns (uint256, uint256) {
+    collectGem0 = p.gem0;
+    collectGem1 = p.gem1;
+    collectFee = p.fee;
+    collectTickLower = p.tickLower;
+    collectTickUpper = p.tickUpper;
     return (retValue2, retValue3);
 }
 
@@ -321,8 +367,6 @@ rule deposit(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tick
 
     require e.block.timestamp <= max_uint32;
 
-    require !depositCalled;
-
     mathint wardsBefore = wards(anyAddr);
     mathint budsBefore = buds(anyAddr);
     mathint numGem0Gem1Before; mathint zzzGem0Gem1Before; mathint amt0Gem0Gem1Before; mathint amt1Gem0Gem1Before; mathint req0Gem0Gem1Before; mathint req1Gem0Gem1Before; mathint hopGem0Gem1Before;
@@ -355,7 +399,16 @@ rule deposit(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tick
     assert req0OtherAfter == req0OtherBefore, "deposit did not keep unchanged the rest of configs[x][y][z][a][b].req0";
     assert req1OtherAfter == req1OtherBefore, "deposit did not keep unchanged the rest of configs[x][y][z][a][b].req1";
     assert hopOtherAfter == hopOtherBefore, "deposit did not keep unchanged the rest of configs[x][y][z][a][b].hop";
-    assert depositCalled, "deposit did not make the external call";
+    assert depositGem0 == gem0, "deposit did not pass the correct gem0 to the external call";
+    assert depositGem1 == gem1, "deposit did not pass the correct gem1 to the external call";
+    assert depositFee == fee, "deposit did not pass the correct fee to the external call";
+    assert depositTickLower == tickLower, "deposit did not pass the correct tickLower to the external call";
+    assert depositTickUpper == tickUpper, "deposit did not pass the correct tickUpper to the external call";
+    assert depositLiquidity == 0, "deposit did not pass the correct liquidity to the external call";
+    assert to_mathint(depositAmt0Desired) == amt0Gem0Gem1Before, "deposit did not pass the correct amt0Desired to the external call";
+    assert to_mathint(depositAmt1Desired) == amt1Gem0Gem1Before, "deposit did not pass the correct amt1Desired to the external call";
+    assert to_mathint(depositAmt0Min) == (amt0Min == 0 ? req0Gem0Gem1Before : to_mathint(amt0Min)), "deposit did not pass the correct amt0Min to the external call";
+    assert to_mathint(depositAmt1Min) == (amt1Min == 0 ? req1Gem0Gem1Before : to_mathint(amt1Min)), "deposit did not pass the correct amt1Min to the external call";
 }
 
 // Verify revert rules on deposit
@@ -401,8 +454,6 @@ rule withdraw(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tic
 
     require e.block.timestamp <= max_uint32;
 
-    require !withdrawCalled;
-
     mathint wardsBefore = wards(anyAddr);
     mathint budsBefore = buds(anyAddr);
     mathint numGem0Gem1Before; mathint zzzGem0Gem1Before; mathint amt0Gem0Gem1Before; mathint amt1Gem0Gem1Before; mathint req0Gem0Gem1Before; mathint req1Gem0Gem1Before; mathint hopGem0Gem1Before;
@@ -435,7 +486,17 @@ rule withdraw(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tic
     assert req0OtherAfter == req0OtherBefore, "withdraw did not keep unchanged the rest of configs[x][y][z][a][b].req0";
     assert req1OtherAfter == req1OtherBefore, "withdraw did not keep unchanged the rest of configs[x][y][z][a][b].req1";
     assert hopOtherAfter == hopOtherBefore, "withdraw did not keep unchanged the rest of configs[x][y][z][a][b].hop";
-    assert withdrawCalled, "withdraw did not make the external call";
+    assert withdrawGem0 == gem0, "withdraw did not pass the correct gem0 to the external call";
+    assert withdrawGem1 == gem1, "withdraw did not pass the correct gem1 to the external call";
+    assert withdrawFee == fee, "withdraw did not pass the correct fee to the external call";
+    assert withdrawTickLower == tickLower, "withdraw did not pass the correct tickLower to the external call";
+    assert withdrawTickUpper == tickUpper, "withdraw did not pass the correct tickUpper to the external call";
+    assert withdrawLiquidity == 0, "withdraw did not pass the correct liquidity to the external call";
+    assert to_mathint(withdrawAmt0Desired) == amt0Gem0Gem1Before, "withdraw did not pass the correct amt0Desired to the external call";
+    assert to_mathint(withdrawAmt1Desired) == amt1Gem0Gem1Before, "withdraw did not pass the correct amt1Desired to the external call";
+    assert to_mathint(withdrawAmt0Min) == (amt0Min == 0 ? req0Gem0Gem1Before : to_mathint(amt0Min)), "withdraw did not pass the correct amt0Min to the external call";
+    assert to_mathint(withdrawAmt1Min) == (amt1Min == 0 ? req1Gem0Gem1Before : to_mathint(amt1Min)), "withdraw did not pass the correct amt1Min to the external call";
+    assert withdrawTakeFees, "withdraw did not pass the correct takeFees to the external call";
 }
 
 // Verify revert rules on withdraw
@@ -481,8 +542,6 @@ rule collect(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tick
 
     require e.block.timestamp <= max_uint32;
 
-    require !collectCalled;
-
     mathint wardsBefore = wards(anyAddr);
     mathint budsBefore = buds(anyAddr);
     mathint numBefore; mathint zzzBefore; mathint amt0Before; mathint amt1Before; mathint req0Before; mathint req1Before; mathint hopBefore;
@@ -504,7 +563,11 @@ rule collect(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tick
     assert req0After == req0Before, "collect did not keep unchanged every configs[x][y][z][a][b].req0";
     assert req1After == req1Before, "collect did not keep unchanged every configs[x][y][z][a][b].req1";
     assert hopAfter == hopBefore, "collect did not keep unchanged every configs[x][y][z][a][b].hop";
-    assert collectCalled, "collect did not make the external call";
+    assert collectGem0 == gem0, "collect did not pass the correct gem0 to the external call";
+    assert collectGem1 == gem1, "collect did not pass the correct gem1 to the external call";
+    assert collectFee == fee, "collect did not pass the correct fee to the external call";
+    assert collectTickLower == tickLower, "collect did not pass the correct tickLower to the external call";
+    assert collectTickUpper == tickUpper, "collect did not pass the correct tickUpper to the external call";
 }
 
 // Verify revert rules on collect
