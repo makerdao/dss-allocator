@@ -4,9 +4,10 @@ methods {
     function wards(address) external returns (uint256) envfree;
     function buds(address) external returns (uint256) envfree;
     function configs(address, address, uint24, int24, int24) external returns (int32, uint32, uint96, uint96, uint96, uint96, uint32) envfree;
-    function _.deposit(DepositorUniV3Like.LiquidityParams p) external => depositSummary(p) expect uint128, uint256, uint256;
-    function _.withdraw(DepositorUniV3Like.LiquidityParams p, bool takeFees) external => withdrawSummary(p, takeFees) expect uint128, uint256, uint256, uint256, uint256;
-    function _.collect(DepositorUniV3Like.CollectParams p) external => collectSummary(p) expect uint256, uint256;
+    function depositor() external returns (address) envfree;
+    function _.deposit(DepositorUniV3Like.LiquidityParams p) external => depositSummary(calledContract, p) expect uint128, uint256, uint256;
+    function _.withdraw(DepositorUniV3Like.LiquidityParams p, bool takeFees) external => withdrawSummary(calledContract, p, takeFees) expect uint128, uint256, uint256, uint256, uint256;
+    function _.collect(DepositorUniV3Like.CollectParams p) external => collectSummary(calledContract, p) expect uint256, uint256;
 }
 
 ghost uint128 retValue;
@@ -15,6 +16,7 @@ ghost uint256 retValue3;
 ghost uint256 retValue4;
 ghost uint256 retValue5;
 
+ghost address depositAddr;
 ghost address depositGem0;
 ghost address depositGem1;
 ghost uint24  depositFee;
@@ -25,7 +27,8 @@ ghost uint256 depositAmt0Desired;
 ghost uint256 depositAmt1Desired;
 ghost uint256 depositAmt0Min;
 ghost uint256 depositAmt1Min;
-function depositSummary(DepositorUniV3Like.LiquidityParams p) returns (uint128, uint256, uint256) {
+function depositSummary(address addr, DepositorUniV3Like.LiquidityParams p) returns (uint128, uint256, uint256) {
+    depositAddr = addr;
     depositGem0 = p.gem0;
     depositGem1 = p.gem1;
     depositFee = p.fee;
@@ -39,6 +42,7 @@ function depositSummary(DepositorUniV3Like.LiquidityParams p) returns (uint128, 
     return (retValue, retValue2, retValue3);
 }
 
+ghost address withdrawAddr;
 ghost address withdrawGem0;
 ghost address withdrawGem1;
 ghost uint24  withdrawFee;
@@ -50,7 +54,8 @@ ghost uint256 withdrawAmt1Desired;
 ghost uint256 withdrawAmt0Min;
 ghost uint256 withdrawAmt1Min;
 ghost bool    withdrawTakeFees;
-function withdrawSummary(DepositorUniV3Like.LiquidityParams p, bool takeFees) returns (uint128, uint256, uint256, uint256, uint256) {
+function withdrawSummary(address addr, DepositorUniV3Like.LiquidityParams p, bool takeFees) returns (uint128, uint256, uint256, uint256, uint256) {
+    withdrawAddr = addr;
     withdrawGem0 = p.gem0;
     withdrawGem1 = p.gem1;
     withdrawFee = p.fee;
@@ -65,12 +70,14 @@ function withdrawSummary(DepositorUniV3Like.LiquidityParams p, bool takeFees) re
     return (retValue, retValue2, retValue3, retValue4, retValue5);
 }
 
+ghost address collectAddr;
 ghost address collectGem0;
 ghost address collectGem1;
 ghost uint24  collectFee;
 ghost int24   collectTickLower;
 ghost int24   collectTickUpper;
-function collectSummary(DepositorUniV3Like.CollectParams p) returns (uint256, uint256) {
+function collectSummary(address addr, DepositorUniV3Like.CollectParams p) returns (uint256, uint256) {
+    collectAddr = addr;
     collectGem0 = p.gem0;
     collectGem1 = p.gem1;
     collectFee = p.fee;
@@ -399,6 +406,7 @@ rule deposit(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tick
     assert req0OtherAfter == req0OtherBefore, "deposit did not keep unchanged the rest of configs[x][y][z][a][b].req0";
     assert req1OtherAfter == req1OtherBefore, "deposit did not keep unchanged the rest of configs[x][y][z][a][b].req1";
     assert hopOtherAfter == hopOtherBefore, "deposit did not keep unchanged the rest of configs[x][y][z][a][b].hop";
+    assert depositAddr == depositor(), "deposit did not execute the deposit external call to the correct 'depositor()' contract";
     assert depositGem0 == gem0, "deposit did not pass the correct gem0 to the external call";
     assert depositGem1 == gem1, "deposit did not pass the correct gem1 to the external call";
     assert depositFee == fee, "deposit did not pass the correct fee to the external call";
@@ -486,6 +494,7 @@ rule withdraw(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tic
     assert req0OtherAfter == req0OtherBefore, "withdraw did not keep unchanged the rest of configs[x][y][z][a][b].req0";
     assert req1OtherAfter == req1OtherBefore, "withdraw did not keep unchanged the rest of configs[x][y][z][a][b].req1";
     assert hopOtherAfter == hopOtherBefore, "withdraw did not keep unchanged the rest of configs[x][y][z][a][b].hop";
+    assert withdrawAddr == depositor(), "withdraw did not execute the withdraw external call to the correct 'depositor()' contract";
     assert withdrawGem0 == gem0, "withdraw did not pass the correct gem0 to the external call";
     assert withdrawGem1 == gem1, "withdraw did not pass the correct gem1 to the external call";
     assert withdrawFee == fee, "withdraw did not pass the correct fee to the external call";
@@ -563,6 +572,7 @@ rule collect(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tick
     assert req0After == req0Before, "collect did not keep unchanged every configs[x][y][z][a][b].req0";
     assert req1After == req1Before, "collect did not keep unchanged every configs[x][y][z][a][b].req1";
     assert hopAfter == hopBefore, "collect did not keep unchanged every configs[x][y][z][a][b].hop";
+    assert collectAddr == depositor(), "collect did not execute the collect external call to the correct 'depositor()' contract";
     assert collectGem0 == gem0, "collect did not pass the correct gem0 to the external call";
     assert collectGem1 == gem1, "collect did not pass the correct gem1 to the external call";
     assert collectFee == fee, "collect did not pass the correct fee to the external call";

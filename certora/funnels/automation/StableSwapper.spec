@@ -4,9 +4,11 @@ methods {
     function wards(address) external returns (uint256) envfree;
     function buds(address) external returns (uint256) envfree;
     function configs(address, address) external returns (uint128, uint32, uint32, uint96, uint96) envfree;
-    function _.swap(address src, address dst, uint256 lot, uint256 minOut, address callee, bytes data) external => swapSummary(src, dst, lot, minOut, callee, data) expect uint256;
+    function swapper() external returns (address) envfree;
+    function _.swap(address src, address dst, uint256 lot, uint256 minOut, address callee, bytes data) external => swapSummary(calledContract, src, dst, lot, minOut, callee, data) expect uint256;
 }
 
+ghost address swapAddr;
 ghost uint256 swapRetValue;
 ghost address swapSrc;
 ghost address swapDst;
@@ -14,7 +16,8 @@ ghost uint256 swapLot;
 ghost uint256 swapMinOut;
 ghost address swapCallee;
 ghost uint256 swapDataLength;
-function swapSummary(address src, address dst, uint256 lot, uint256 minOut, address callee, bytes data) returns uint256 {
+function swapSummary(address addr, address src, address dst, uint256 lot, uint256 minOut, address callee, bytes data) returns uint256 {
+    swapAddr = addr;
     swapSrc = src;
     swapDst = dst;
     swapLot = lot;
@@ -308,6 +311,7 @@ rule swap(address src, address dst, uint256 minOut, address callee, bytes data) 
     assert zzzOtherAfter == zzzOtherBefore, "swap did not keep unchanged the rest of configs[x][y].zzz";
     assert lotOtherAfter == lotOtherBefore, "swap did not keep unchanged the rest of configs[x][y].lot";
     assert reqOtherAfter == reqOtherBefore, "swap did not keep unchanged the rest of configs[x][y].req";
+    assert swapAddr == swapper(), "swap did not execute the swap external call to the correct 'swapper()' contract";
     assert swapSrc == src, "swap did not not pass the correct src to the external call";
     assert swapDst == dst, "swap did not not pass the correct dst to the external call";
     assert to_mathint(swapLot) == lotSrcDstBefore, "swap did not not pass the correct lot to the external call";
