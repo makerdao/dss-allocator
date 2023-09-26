@@ -43,7 +43,6 @@ library UniV3Utils {
 
     address constant UNIV3_ROUTER = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
     address constant UNIV3_FACTORY = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
-    
     // https://github.com/Uniswap/v3-periphery/blob/464a8a49611272f7349c970e0fadb7ec1d3c1086/contracts/libraries/PoolAddress.sol#L33
     function getPool(address gem0, address gem1, uint24 fee) internal pure returns (UniV3PoolLike pool) {
         pool = UniV3PoolLike(address(uint160(uint256(keccak256(abi.encodePacked(
@@ -183,7 +182,6 @@ library UniV3Utils {
             (uint160 sqrtPriceX96, int24 tick,,,,,) = pool.slot0();
             int256 liqDelta = int256(uint256(liquidity == 0 ? getLiquidityForAmts(pool, tickLower, tickUpper, amt0Desired, amt1Desired) : liquidity));
             int128 signedLiqDelta = int128(withdrawal ? -liqDelta : liqDelta);
-            
             if (tick < tickUpper) {
                 int256 expectedAmt0_ = getAmount0Delta_(
                     tick < tickLower ? TickMath.getSqrtRatioAtTick(tickLower) : sqrtPriceX96,
@@ -202,4 +200,5 @@ library UniV3Utils {
             }
         }
     }
+
 }
