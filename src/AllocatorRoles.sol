@@ -55,11 +55,11 @@ contract AllocatorRoles {
     // --- getters ---
 
     function hasUserRole(bytes32 ilk, address who, uint8 role) external view returns (bool has) {
-        has = userRoles[ilk][who] & bytes32(2 ** uint256(role)) != bytes32(0);
+        has = userRoles[ilk][who] & bytes32(uint256(1) << role) != bytes32(0);
     }
 
     function hasActionRole(bytes32 ilk, address target, bytes4 sig, uint8 role) external view returns (bool has) {
-        has = actionsRoles[ilk][target][sig] & bytes32(2 ** uint256(role)) != bytes32(0);
+        has = actionsRoles[ilk][target][sig] & bytes32(uint256(1) << role) != bytes32(0);
     }
 
     // --- general administration ---
@@ -82,7 +82,7 @@ contract AllocatorRoles {
     // --- ilk administration ---
 
     function setUserRole(bytes32 ilk, address who, uint8 role, bool enabled) public ilkAuth(ilk) {
-        bytes32 mask = bytes32(2 ** uint256(role));
+        bytes32 mask = bytes32(uint256(1) << role);
         if (enabled) {
             userRoles[ilk][who] |= mask;
         } else {
@@ -92,7 +92,7 @@ contract AllocatorRoles {
     }
 
     function setRoleAction(bytes32 ilk, uint8 role, address target, bytes4 sig, bool enabled) external ilkAuth(ilk) {
-        bytes32 mask = bytes32(2 ** uint256(role));
+        bytes32 mask = bytes32(uint256(1) << role);
         if (enabled) {
             actionsRoles[ilk][target][sig] |= mask;
         } else {
