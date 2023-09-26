@@ -19,6 +19,7 @@ jobs:
           - depositoruniv3
           - stable-swapper
           - stable-depositoruniv3
+          - conduit-mover
 
     steps:
       - name: Checkout
