@@ -62,12 +62,6 @@ contract AllocatorRoles {
         has = actionsRoles[ilk][target][sig] & bytes32(2 ** uint256(role)) != bytes32(0);
     }
 
-    // --- internals ---
-
-    function _bitNot(bytes32 input) internal pure returns (bytes32 output) {
-        output = (input ^ bytes32(type(uint256).max));
-    }
-
     // --- general administration ---
 
     function rely(address usr) external auth {
@@ -92,7 +86,7 @@ contract AllocatorRoles {
         if (enabled) {
             userRoles[ilk][who] |= mask;
         } else {
-            userRoles[ilk][who] &= _bitNot(mask);
+            userRoles[ilk][who] &= ~mask;
         }
         emit SetUserRole(ilk, who, role, enabled);
     }
@@ -102,7 +96,7 @@ contract AllocatorRoles {
         if (enabled) {
             actionsRoles[ilk][target][sig] |= mask;
         } else {
-            actionsRoles[ilk][target][sig] &= _bitNot(mask);
+            actionsRoles[ilk][target][sig] &= ~mask;
         }
         emit SetRoleAction(ilk, role, target, sig, enabled);
     }
