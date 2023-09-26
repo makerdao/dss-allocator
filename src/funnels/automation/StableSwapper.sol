@@ -52,7 +52,7 @@ contract StableSwapper {
         _;
     }
 
-    // permissionned to whitelisted keepers
+    // permissioned to whitelisted keepers
     modifier toll { 
         require(buds[msg.sender] == 1, "StableSwapper/non-keeper");
         _;
