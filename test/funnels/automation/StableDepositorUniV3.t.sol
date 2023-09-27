@@ -237,17 +237,13 @@ contract StableDepositorUniV3Test is DssTest {
     }
 
     function testDepositWithMin0TooSmall() public {
-        (,,,,, uint96 req0_,) = stableDepositor.configs(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
-
         vm.expectRevert("StableDepositorUniV3/min-amt0-too-small");
-        vm.prank(KEEPER); stableDepositor.deposit(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, req0_ - 1, req1);
+        vm.prank(KEEPER); stableDepositor.deposit(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, req0 - 1, req1);
     }
 
     function testDepositWithMin1TooSmall() public {
-        (,,,,,, uint96 req1_) = stableDepositor.configs(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
-
         vm.expectRevert("StableDepositorUniV3/min-amt1-too-small");
-        vm.prank(KEEPER); stableDepositor.deposit(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, req0, req1_ - 1);
+        vm.prank(KEEPER); stableDepositor.deposit(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, req0, req1 - 1);
     }
 
     function testCollectByKeeper() public {
