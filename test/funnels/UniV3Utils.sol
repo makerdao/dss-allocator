@@ -28,10 +28,6 @@ interface UniV3PoolLike {
 
 // https://github.com/Uniswap/v3-core/blob/d8b1c635c275d2a9450bd6a78f3fa2484fef73eb/contracts/libraries/SafeCast.sol
 library SafeCast {
-    function toInt128(int256 y) internal pure returns (int128 z) {
-        require((z = int128(y)) == y);
-    }
-
     function toInt256(uint256 y) internal pure returns (int256 z) {
         require(y < 2**255);
         z = int256(y);
