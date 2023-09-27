@@ -28,6 +28,10 @@ interface UniV3PoolLike {
 
 // https://github.com/Uniswap/v3-core/blob/d8b1c635c275d2a9450bd6a78f3fa2484fef73eb/contracts/libraries/SafeCast.sol
 library SafeCast {
+    function toInt128(int256 y) internal pure returns (int128 z) {
+        require((z = int128(y)) == y);
+    }
+
     function toInt256(uint256 y) internal pure returns (int256 z) {
         require(y < 2**255);
         z = int256(y);
@@ -36,6 +40,7 @@ library SafeCast {
 
 library UniV3Utils {
     using SafeCast for uint256;
+    using SafeCast for int256;
 
     address constant UNIV3_ROUTER = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
     address constant UNIV3_FACTORY = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
@@ -176,7 +181,7 @@ library UniV3Utils {
         unchecked {
             UniV3PoolLike pool = getPool(gem0, gem1, fee);
             (uint160 sqrtPriceX96, int24 tick,,,,,) = pool.slot0();
-            int128 liqDelta = int128(int256(uint256(liquidity == 0 ? getLiquidityForAmts(pool, tickLower, tickUpper, amt0Desired, amt1Desired) : liquidity)));
+            int128 liqDelta = (int256(uint256(liquidity == 0 ? getLiquidityForAmts(pool, tickLower, tickUpper, amt0Desired, amt1Desired) : liquidity))).toInt128();
             if (withdrawal) liqDelta = -liqDelta;
             
             int256 expectedAmt0_;
