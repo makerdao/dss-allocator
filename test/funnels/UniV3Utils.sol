@@ -138,7 +138,7 @@ library UniV3Utils {
     }
 
     // https://github.com/Uniswap/v3-core/blob/d8b1c635c275d2a9450bd6a78f3fa2484fef73eb/contracts/libraries/SqrtPriceMath.sol#L201
-    function getAmount0Delta_(
+    function getAmount0Delta(
         uint160 sqrtRatioAX96,
         uint160 sqrtRatioBX96,
         int128 liquidity
@@ -152,7 +152,7 @@ library UniV3Utils {
     }
 
     // https://github.com/Uniswap/v3-core/blob/d8b1c635c275d2a9450bd6a78f3fa2484fef73eb/contracts/libraries/SqrtPriceMath.sol#L217C7-L217C7
-    function getAmount1Delta_(
+    function getAmount1Delta(
         uint160 sqrtRatioAX96,
         uint160 sqrtRatioBX96,
         int128 liquidity
@@ -180,24 +180,38 @@ library UniV3Utils {
         unchecked {
             UniV3PoolLike pool = getPool(gem0, gem1, fee);
             (uint160 sqrtPriceX96, int24 tick,,,,,) = pool.slot0();
-            int256 liqDelta = int256(uint256(liquidity == 0 ? getLiquidityForAmts(pool, tickLower, tickUpper, amt0Desired, amt1Desired) : liquidity));
-            int128 signedLiqDelta = int128(withdrawal ? -liqDelta : liqDelta);
-            if (tick < tickUpper) {
-                int256 expectedAmt0_ = getAmount0Delta_(
-                    tick < tickLower ? TickMath.getSqrtRatioAtTick(tickLower) : sqrtPriceX96,
-                    TickMath.getSqrtRatioAtTick(tickUpper),
-                    signedLiqDelta
-                );
-                expectedAmt0 = uint256(withdrawal ? -expectedAmt0_: expectedAmt0_);
-            }
-            if (tick >= tickLower) {
-                int256 expectedAmt1_ = getAmount1Delta_(
+            int128 liqDelta = int128(int256(uint256(liquidity == 0 ? getLiquidityForAmts(pool, tickLower, tickUpper, amt0Desired, amt1Desired) : liquidity)));
+            if (withdrawal) liqDelta = -liqDelta;
+            
+            int256 expectedAmt0_;
+            int256 expectedAmt1_;
+            if (tick < tickLower) {
+                expectedAmt0_ = getAmount0Delta(
                     TickMath.getSqrtRatioAtTick(tickLower),
-                    tick >= tickUpper ? TickMath.getSqrtRatioAtTick(tickUpper) : sqrtPriceX96,
-                    signedLiqDelta
+                    TickMath.getSqrtRatioAtTick(tickUpper),
+                    liqDelta
                 );
-                expectedAmt1 = uint256(withdrawal ? -expectedAmt1_: expectedAmt1_);
+            } else if (tick < tickUpper) {
+                expectedAmt0_ = getAmount0Delta(
+                    sqrtPriceX96,
+                    TickMath.getSqrtRatioAtTick(tickUpper),
+                    liqDelta
+                );
+                expectedAmt1_ = getAmount1Delta(
+                    TickMath.getSqrtRatioAtTick(tickLower),
+                    sqrtPriceX96,
+                    liqDelta
+                );
+            } else {
+                expectedAmt1_ = getAmount1Delta(
+                    TickMath.getSqrtRatioAtTick(tickLower),
+                    TickMath.getSqrtRatioAtTick(tickUpper),
+                    liqDelta
+                );
             }
+
+            expectedAmt0 = uint256(withdrawal ? -expectedAmt0_: expectedAmt0_);
+            expectedAmt1 = uint256(withdrawal ? -expectedAmt1_: expectedAmt1_);
         }
     }
 }
