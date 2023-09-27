@@ -17,10 +17,10 @@
 pragma solidity ^0.8.16;
 
 interface ApproveLike {
-    function approve(address, uint256) external returns (bool);
+    function approve(address, uint256) external;
 }
 
-// https://github.com/Uniswap/v3-periphery/blob/b06959dd01f5999aa93e1dc530fe573c7bb295f6/contracts/SwapRlefter.sol
+// https://github.com/Uniswap/v3-periphery/blob/b06959dd01f5999aa93e1dc530fe573c7bb295f6/contracts/SwapRouter.sol
 interface SwapRouterLike {
     function exactInput(ExactInputParams calldata params) external returns (uint256 amountOut);
 
