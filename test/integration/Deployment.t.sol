@@ -64,6 +64,10 @@ interface IlkRegistryLike {
     function name(bytes32) external view returns (string memory);
 }
 
+interface AutoLineLike {
+    function ilks(bytes32) external view returns (uint256, uint256, uint48, uint48, uint48);
+}
+
 contract DeploymentTest is DssTest {
 
     // existing contracts
@@ -175,7 +179,9 @@ contract DeploymentTest is DssTest {
         AllocatorIlkConfig memory cfg = AllocatorIlkConfig({
             ilk                         : ILK,
             duty                        : 1000000001243680656318820312,
-            debtCeiling                 : 100_000_000,
+            maxLine                     : 100_000_000 * RAD,
+            gap                         : 10_000_000 * RAD,
+            ttl                         : 1 days,
             allocatorProxy              : allocatorProxy,
             facilitatorRole             : facilitatorRole,
             automationRole              : automationRole,
@@ -223,8 +229,18 @@ contract DeploymentTest is DssTest {
         (, uint256 rate, uint256 spot, uint256 line,) = dss.vat.ilks(ILK);
         assertEq(rate, RAY);
         assertEq(spot, 10**6 * 10**18 * RAY * 10**9 / dss.spotter.par());
-        assertEq(line, 100_000_000 * RAD);
-        assertEq(dss.vat.Line(), previousLine + 100_000_000 * RAD);
+        assertEq(line, 10_000_000 * RAD);
+        assertEq(dss.vat.Line(), previousLine + 10_000_000 * RAD);
+
+        {
+            AutoLineLike autoLine = AutoLineLike(ChainlogLike(LOG).getAddress("MCD_IAM_AUTO_LINE"));
+            (uint256 maxline, uint256 gap, uint48 ttl, uint48 last, uint48 lastInc) = autoLine.ilks(ILK);
+            assertEq(maxline, 100_000_000 * RAD);
+            assertEq(gap, 10_000_000 * RAD);
+            assertEq(ttl, 1 days);
+            assertEq(last, 0);
+            assertEq(lastInc, 0);
+        }
 
         (uint256 duty, uint256 rho) = dss.jug.ilks(ILK);
         assertEq(duty, 1000000001243680656318820312);
