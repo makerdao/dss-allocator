@@ -10,6 +10,11 @@ methods {
     function _.deposit(bytes32 ilk, address gem, uint256 amount) external => depositSummary(calledContract, ilk, gem, amount) expect bool; // Forcing to have a return value
 }
 
+ghost mapping(address => bool) nonZeroExtcodesize;
+hook EXTCODESIZE(address addr) uint v {
+    nonZeroExtcodesize[addr] = (v != 0);
+}
+
 ghost address withdrawAddr;
 ghost bytes32 withdrawIlk;
 ghost address withdrawGem;
@@ -346,6 +351,9 @@ rule move_revert(address from, address to, address gem) {
     env e;
 
     require e.block.timestamp <= max_uint32;
+    require !nonZeroExtcodesize[from] && !nonZeroExtcodesize[to];
+
+    address buffer = buffer();
 
     mathint budsSender = buds(e.msg.sender);
     mathint numFromToGem; mathint hopFromToGem; mathint zzzFromToGem; mathint lotFromToGem;
@@ -357,11 +365,15 @@ rule move_revert(address from, address to, address gem) {
     bool revert2 = budsSender != 1;
     bool revert3 = numFromToGem == 0;
     bool revert4 = to_mathint(e.block.timestamp) < zzzFromToGem + hopFromToGem;
+    bool revert5 = from != buffer && !nonZeroExtcodesize[from];
+    bool revert6 = to != buffer && !nonZeroExtcodesize[to];
 
     assert revert1 => lastReverted, "revert1 failed";
     assert revert2 => lastReverted, "revert2 failed";
     assert revert3 => lastReverted, "revert3 failed";
     assert revert4 => lastReverted, "revert4 failed";
-    // assert lastReverted => revert1 || revert2 || revert3 ||
-    //                        revert4, "Revert rules are not covering all the cases";
+    assert revert5 => lastReverted, "revert5 failed";
+    assert revert6 => lastReverted, "revert6 failed";
+    assert lastReverted => revert1 || revert2 || revert3 ||
+                           revert4 || revert5 || revert6, "Revert rules are not covering all the cases";
 }
