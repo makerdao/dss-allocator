@@ -16,7 +16,7 @@
 
 pragma solidity ^0.8.16;
 
-interface ApproveLike {
+interface GemLike {
     function approve(address, uint256) external;
 }
 
@@ -43,7 +43,7 @@ contract SwapperCalleeUniV3 {
     }
 
     function swapCallback(address src, address /* dst */, uint256 amt, uint256 minOut, address to, bytes calldata data) external {
-        ApproveLike(src).approve(uniV3Router, amt);
+        GemLike(src).approve(uniV3Router, amt);
         SwapRouterLike.ExactInputParams memory params = SwapRouterLike.ExactInputParams({
             path:             data,
             recipient:        to,
