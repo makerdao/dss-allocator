@@ -49,9 +49,7 @@ contract DepositorUniV3Test is DssTest {
     address constant FACILITATOR    = address(0x1337);
     uint8   constant DEPOSITOR_ROLE = uint8(2);
 
-    int24 refTick;
-    int24 tickLower;
-    int24 tickUpper;
+    int24 REF_TICK;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETH_RPC_URL"));
@@ -73,9 +71,7 @@ contract DepositorUniV3Test is DssTest {
         buffer.approve(USDC, address(depositor), type(uint256).max);
         buffer.approve(DAI,  address(depositor), type(uint256).max);
 
-        refTick = UniV3Utils.getCurrentTick(DAI, USDC, uint24(100));
-        tickLower = refTick - 100;
-        tickUpper = refTick + 100;
+        REF_TICK = UniV3Utils.getCurrentTick(DAI, USDC, uint24(100));
     }
 
     function testConstructor() public {
@@ -137,13 +133,13 @@ contract DepositorUniV3Test is DssTest {
 
     // helps avoid stack too deep errors
     function _getTestDepositParams(uint128 liquidity, uint256 amt0Desired, uint256 amt1Desired) internal view returns (DepositorUniV3.LiquidityParams memory dp) {
-        (uint256 expectedAmt0, uint256 expectedAmt1) = UniV3Utils.getExpectedAmounts(DAI, USDC, uint24(100), tickLower, tickUpper, liquidity, amt0Desired, amt1Desired, false);
+        (uint256 expectedAmt0, uint256 expectedAmt1) = UniV3Utils.getExpectedAmounts(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, liquidity, amt0Desired, amt1Desired, false);
         dp = DepositorUniV3.LiquidityParams({
             gem0: DAI,
             gem1: USDC,
             fee: uint24(100),
-            tickLower: tickLower,
-            tickUpper: tickUpper,
+            tickLower: REF_TICK-100,
+            tickUpper: REF_TICK+100,
             liquidity: liquidity,
             amt0Desired: amt0Desired,
             amt1Desired: amt1Desired,
@@ -153,13 +149,13 @@ contract DepositorUniV3Test is DssTest {
     }
 
     function _getTestWithdrawParams(uint128 liquidity, uint256 amt0Desired, uint256 amt1Desired) internal view returns (DepositorUniV3.LiquidityParams memory dp) {
-        (uint256 expectedAmt0, uint256 expectedAmt1) = UniV3Utils.getExpectedAmounts(DAI, USDC, uint24(100), tickLower, tickUpper, liquidity, amt0Desired, amt1Desired, true);
+        (uint256 expectedAmt0, uint256 expectedAmt1) = UniV3Utils.getExpectedAmounts(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, liquidity, amt0Desired, amt1Desired, true);
         dp = DepositorUniV3.LiquidityParams({
             gem0: DAI,
             gem1: USDC,
             fee: uint24(100),
-            tickLower: tickLower,
-            tickUpper: tickUpper,
+            tickLower: REF_TICK-100,
+            tickUpper: REF_TICK+100,
             liquidity: liquidity,
             amt0Desired: amt0Desired,
             amt1Desired: amt1Desired,
@@ -169,7 +165,7 @@ contract DepositorUniV3Test is DssTest {
     }
 
     function testDeposit() public {
-        assertEq(UniV3Utils.getLiquidity(address(depositor), DAI, USDC, 100, tickLower, tickUpper), 0);
+        assertEq(UniV3Utils.getLiquidity(address(depositor), DAI, USDC, 100, REF_TICK-100, REF_TICK+100), 0);
         uint256 prevUSDC = GemLike(USDC).balanceOf(address(buffer));
         uint256 prevDAI = GemLike(DAI).balanceOf(address(buffer));
         uint32 initialTime = uint32(block.timestamp);
@@ -188,7 +184,7 @@ contract DepositorUniV3Test is DssTest {
         assertLt(GemLike(USDC).balanceOf(address(buffer)), prevUSDC);
         assertEq(GemLike(DAI).balanceOf(address(depositor)), 0);
         assertEq(GemLike(USDC).balanceOf(address(depositor)), 0);
-        uint128 liquidityAfterDeposit = UniV3Utils.getLiquidity(address(depositor), DAI, USDC, 100, tickLower, tickUpper);
+        uint128 liquidityAfterDeposit = UniV3Utils.getLiquidity(address(depositor), DAI, USDC, 100, REF_TICK-100, REF_TICK+100);
         assertGt(liquidityAfterDeposit, 0);
         (,,, uint96 due0, uint96 due1, uint32 end) = depositor.limits(DAI, USDC, 100);
         assertEq(end, initialTime + 3600);
@@ -209,7 +205,7 @@ contract DepositorUniV3Test is DssTest {
         assertLt(GemLike(USDC).balanceOf(address(buffer)), prevUSDC);
         assertEq(GemLike(DAI).balanceOf(address(depositor)), 0);
         assertEq(GemLike(USDC).balanceOf(address(depositor)), 0);
-        assertGt(UniV3Utils.getLiquidity(address(depositor), DAI, USDC, 100, tickLower, tickUpper), liquidityAfterDeposit);
+        assertGt(UniV3Utils.getLiquidity(address(depositor), DAI, USDC, 100, REF_TICK-100, REF_TICK+100), liquidityAfterDeposit);
         assertLt(due0, 10_000 * WAD - amt0);
         assertLt(due1, 10_000 * 10**6 - amt1);
 
@@ -235,7 +231,7 @@ contract DepositorUniV3Test is DssTest {
             uint256 feeGrowthInside1LastX128,
             uint128 tokensOwed0,
             uint128 tokensOwed1
-        ) = depositor.getPosition(DAI, USDC, 100, tickLower, tickUpper);
+        ) = depositor.getPosition(DAI, USDC, 100, REF_TICK-100, REF_TICK+100);
         assertEq(liquidity, 0);
         assertEq(feeGrowthInside0LastX128, 0);
         assertEq(feeGrowthInside1LastX128, 0);
@@ -247,8 +243,8 @@ contract DepositorUniV3Test is DssTest {
             gem0: DAI,
             gem1: USDC,
             fee: uint24(100),
-            tickLower: tickLower,
-            tickUpper: tickUpper,
+            tickLower: REF_TICK-100,
+            tickUpper: REF_TICK+100,
             liquidity: 99777667447878834,
             amt0Desired: 0,
             amt1Desired: 0,
@@ -263,7 +259,7 @@ contract DepositorUniV3Test is DssTest {
             feeGrowthInside1LastX128,
             tokensOwed0,
             tokensOwed1
-        ) = depositor.getPosition(DAI, USDC, 100, tickLower, tickUpper);
+        ) = depositor.getPosition(DAI, USDC, 100, REF_TICK-100, REF_TICK+100);
         assertEq(liquidity, 99777667447878834);
         assertGt(feeGrowthInside0LastX128, 0); // initial value now that the position is created
         assertGt(feeGrowthInside1LastX128, 0); // initial value now that the position is created
@@ -294,7 +290,7 @@ contract DepositorUniV3Test is DssTest {
             updatedfeeGrowthInside1LastX128,
             tokensOwed0,
             tokensOwed1
-        ) = depositor.getPosition(DAI, USDC, 100, tickLower, tickUpper);
+        ) = depositor.getPosition(DAI, USDC, 100, REF_TICK-100, REF_TICK+100);
         assertEq(liquidity, 0);
         assertTrue(updatedfeeGrowthInside0LastX128 > feeGrowthInside0LastX128 || updatedfeeGrowthInside1LastX128 > feeGrowthInside1LastX128);
         assertTrue(tokensOwed0 > 0 || tokensOwed1 > 0);
@@ -323,8 +319,8 @@ contract DepositorUniV3Test is DssTest {
             gem0: DAI,
             gem1: USDC,
             fee: uint24(100), 
-            tickLower: tickLower, 
-            tickUpper: tickUpper
+            tickLower: REF_TICK-100, 
+            tickUpper: REF_TICK+100
         });
 
         uint256 snapshot = vm.snapshot();
@@ -349,7 +345,7 @@ contract DepositorUniV3Test is DssTest {
 
         DepositorUniV3.LiquidityParams memory dp = _getTestDepositParams(0, 500 * WAD, 500 * 10**6);
         vm.prank(FACILITATOR); (uint128 liq, uint256 deposited0, uint256 deposited1) = depositor.deposit(dp);
-        assertGt(UniV3Utils.getLiquidity(address(depositor), DAI, USDC, 100, tickLower, tickUpper), 0);
+        assertGt(UniV3Utils.getLiquidity(address(depositor), DAI, USDC, 100, REF_TICK-100, REF_TICK+100), 0);
 
         dp = _getTestWithdrawParams(liq, 0, 0);
 
@@ -367,7 +363,7 @@ contract DepositorUniV3Test is DssTest {
         assertGe(GemLike(USDC).balanceOf(address(buffer)) + 1, initialUSDC);
         assertEq(GemLike(DAI).balanceOf(address(depositor)), 0);
         assertEq(GemLike(USDC).balanceOf(address(depositor)), 0);
-        assertEq(UniV3Utils.getLiquidity(address(depositor), DAI, USDC, 100, tickLower, tickUpper), 0);
+        assertEq(UniV3Utils.getLiquidity(address(depositor), DAI, USDC, 100, REF_TICK-100, REF_TICK+100), 0);
         assertEq(fees0, 0);
         assertEq(fees1, 0);
         assertEq(liquidity, liq);
@@ -403,7 +399,7 @@ contract DepositorUniV3Test is DssTest {
     function testWithdrawWithFeeCollection() public {
         DepositorUniV3.LiquidityParams memory dp = _getTestDepositParams(0, 500 * WAD, 500 * 10**6);
         vm.prank(FACILITATOR); (uint128 liq,,) = depositor.deposit(dp);
-        assertGt(UniV3Utils.getLiquidity(address(depositor), DAI, USDC, 100, tickLower, tickUpper), 0);
+        assertGt(UniV3Utils.getLiquidity(address(depositor), DAI, USDC, 100, REF_TICK-100, REF_TICK+100), 0);
         uint256 prevUSDC = GemLike(USDC).balanceOf(address(buffer));
         uint256 prevDAI = GemLike(DAI).balanceOf(address(buffer));
 
@@ -436,14 +432,14 @@ contract DepositorUniV3Test is DssTest {
         assertEq(GemLike(USDC).balanceOf(address(buffer)), prevUSDC + withdrawn1 + fees1);
         assertEq(GemLike(DAI).balanceOf(address(depositor)), 0);
         assertEq(GemLike(USDC).balanceOf(address(depositor)), 0);
-        assertEq(UniV3Utils.getLiquidity(address(depositor), DAI, USDC, 100, tickLower, tickUpper), 0);
+        assertEq(UniV3Utils.getLiquidity(address(depositor), DAI, USDC, 100, REF_TICK-100, REF_TICK+100), 0);
         assertEq(liquidity, liq);
     }
 
     function testWithdrawZeroWithFeeCollection() public {
         DepositorUniV3.LiquidityParams memory dp = _getTestDepositParams(0, 500 * WAD, 500 * 10**6);
         vm.prank(FACILITATOR); (uint128 liq,,) = depositor.deposit(dp);
-        assertGt(UniV3Utils.getLiquidity(address(depositor), DAI, USDC, 100, tickLower, tickUpper), 0);
+        assertGt(UniV3Utils.getLiquidity(address(depositor), DAI, USDC, 100, REF_TICK-100, REF_TICK+100), 0);
         uint256 prevUSDC = GemLike(USDC).balanceOf(address(buffer));
         uint256 prevDAI = GemLike(DAI).balanceOf(address(buffer));
 
@@ -481,17 +477,17 @@ contract DepositorUniV3Test is DssTest {
         assertEq(GemLike(USDC).balanceOf(address(buffer)), prevUSDC + fees1);
         assertEq(GemLike(DAI).balanceOf(address(depositor)), 0);
         assertEq(GemLike(USDC).balanceOf(address(depositor)), 0);
-        assertEq(UniV3Utils.getLiquidity(address(depositor), DAI, USDC, 100, tickLower, tickUpper), liq);
+        assertEq(UniV3Utils.getLiquidity(address(depositor), DAI, USDC, 100, REF_TICK-100, REF_TICK+100), liq);
     }
 
     function testWithdrawAmounts() public {
         DepositorUniV3.LiquidityParams memory dp = _getTestDepositParams(0, 500 * WAD, 500 * 10**6);
         vm.prank(FACILITATOR); (, uint256 deposited0, uint256 deposited1) = depositor.deposit(dp);
-        assertGt(UniV3Utils.getLiquidity(address(depositor), DAI, USDC, 100, tickLower, tickUpper), 0);
+        assertGt(UniV3Utils.getLiquidity(address(depositor), DAI, USDC, 100, REF_TICK-100, REF_TICK+100), 0);
 
         dp = _getTestWithdrawParams(0, deposited0, deposited1);
 
-        uint256 liquidityBeforeWithdraw = UniV3Utils.getLiquidity(address(depositor), DAI, USDC, 100, tickLower, tickUpper);
+        uint256 liquidityBeforeWithdraw = UniV3Utils.getLiquidity(address(depositor), DAI, USDC, 100, REF_TICK-100, REF_TICK+100);
 
         vm.warp(block.timestamp + 3600);
 
@@ -508,7 +504,7 @@ contract DepositorUniV3Test is DssTest {
         assertGe(withdrawn1 * 100001 / 100000, deposited1);
         assertEq(GemLike(DAI).balanceOf(address(depositor)), 0);
         assertEq(GemLike(USDC).balanceOf(address(depositor)), 0);
-        assertLt(UniV3Utils.getLiquidity(address(depositor), DAI, USDC, 100, tickLower, tickUpper), liquidityBeforeWithdraw);
+        assertLt(UniV3Utils.getLiquidity(address(depositor), DAI, USDC, 100, REF_TICK-100, REF_TICK+100), liquidityBeforeWithdraw);
         assertEq(fees0, 0);
         assertEq(fees1, 0);
         assertGt(liquidity, 0);
@@ -519,8 +515,8 @@ contract DepositorUniV3Test is DssTest {
             gem0: USDC,
             gem1: DAI,
             fee: uint24(100),
-            tickLower: tickLower,
-            tickUpper: tickUpper,
+            tickLower: REF_TICK-100,
+            tickUpper: REF_TICK+100,
             liquidity: 0,
             amt0Desired: 0,
             amt1Desired: 0,
@@ -536,8 +532,8 @@ contract DepositorUniV3Test is DssTest {
             gem0: DAI,
             gem1: USDC,
             fee: uint24(100),
-            tickLower: tickLower,
-            tickUpper: tickUpper,
+            tickLower: REF_TICK-100,
+            tickUpper: REF_TICK+100,
             liquidity: 0,
             amt0Desired: 2 * uint128(1 * WAD),
             amt1Desired: 2 * uint128(1 * 10**6),
@@ -564,8 +560,8 @@ contract DepositorUniV3Test is DssTest {
             gem0: DAI,
             gem1: USDC,
             fee: uint24(100),
-            tickLower: tickLower,
-            tickUpper: tickUpper,
+            tickLower: REF_TICK-100,
+            tickUpper: REF_TICK+100,
             liquidity: 0,
             amt0Desired: 500 * WAD,
             amt1Desired: 500 * 10**6,
@@ -588,8 +584,8 @@ contract DepositorUniV3Test is DssTest {
             gem0: USDC,
             gem1: DAI,
             fee: uint24(100),
-            tickLower: tickLower,
-            tickUpper: tickUpper,
+            tickLower: REF_TICK-100,
+            tickUpper: REF_TICK+100,
             liquidity: 0,
             amt0Desired: 0,
             amt1Desired: 0,
@@ -606,8 +602,8 @@ contract DepositorUniV3Test is DssTest {
             gem0: DAI,
             gem1: USDC,
             fee: uint24(100),
-            tickLower: tickLower,
-            tickUpper: tickUpper,
+            tickLower: REF_TICK-100,
+            tickUpper: REF_TICK+100,
             liquidity: 1,
             amt0Desired: 0,
             amt1Desired: 0,
@@ -625,8 +621,8 @@ contract DepositorUniV3Test is DssTest {
             gem0: DAI,
             gem1: USDC,
             fee: uint24(100),
-            tickLower: tickLower,
-            tickUpper: tickUpper,
+            tickLower: REF_TICK-100,
+            tickUpper: REF_TICK+100,
             liquidity: 0,
             amt0Desired: 2 * WAD,
             amt1Desired: 2 * 10**6,
@@ -657,8 +653,8 @@ contract DepositorUniV3Test is DssTest {
             gem0: DAI,
             gem1: USDC,
             fee: uint24(100),
-            tickLower: tickLower,
-            tickUpper: tickUpper,
+            tickLower: REF_TICK-100,
+            tickUpper: REF_TICK+100,
             liquidity: 0,
             amt0Desired: 500 * WAD,
             amt1Desired: 500 * 10**6,
@@ -685,8 +681,8 @@ contract DepositorUniV3Test is DssTest {
             gem0: USDC,
             gem1: DAI,
             fee: uint24(100),
-            tickLower: tickLower,
-            tickUpper: tickUpper
+            tickLower: REF_TICK-100,
+            tickUpper: REF_TICK+100
         });
 
         vm.expectRevert("DepositorUniV3/wrong-gem-order");
@@ -698,8 +694,8 @@ contract DepositorUniV3Test is DssTest {
             gem0: DAI,
             gem1: USDC,
             fee: uint24(100),
-            tickLower: tickLower,
-            tickUpper: tickUpper
+            tickLower: REF_TICK-100,
+            tickUpper: REF_TICK+100
         });
 
         // 0 liquidity position - https://github.com/Uniswap/v3-core/blob/d8b1c635c275d2a9450bd6a78f3fa2484fef73eb/contracts/libraries/Position.sol#L54
