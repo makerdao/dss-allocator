@@ -179,6 +179,13 @@ contract StableDepositorUniV3Test is DssTest {
         assertEq(num, initNum - 2);
         assertEq(zzz, initialTime + 360);
 
+        vm.warp(initialTime + 2*360);
+        vm.prank(KEEPER); stableDepositor.deposit(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, req0 + 1, req1 + 1); // also making sure that amt{i}Min is allowed to be > req{i}
+        (num, zzz,,,,,) = stableDepositor.configs(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
+
+        assertEq(num, initNum - 3);
+        assertEq(zzz, initialTime + 2*360);
+
         (uint256 expectedAmt0, uint256 expectedAmt1) = UniV3Utils.getExpectedAmounts(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, 0, 500 * WAD, 500 * 10**6, true);
         uint96 req0_ = uint96(expectedAmt0 * 90 / 100);
         uint96 req1_ = uint96(expectedAmt1 * 90 / 100);
@@ -189,20 +196,27 @@ contract StableDepositorUniV3Test is DssTest {
         vm.prank(KEEPER); stableDepositor.withdraw(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, req0_, req1_);
         (num, zzz,,,,,) = stableDepositor.configs(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
         assertEq(num, initNum + 1);
-        assertEq(zzz, initialTime + 360);
+        assertEq(zzz, initialTime + 2*360);
 
-        vm.warp(initialTime + 540);
+        vm.warp(initialTime + 2*360 + 180);
         vm.expectRevert("StableDepositorUniV3/too-soon");
         vm.prank(KEEPER); stableDepositor.withdraw(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, req0_, req1_);
 
-        vm.warp(initialTime + 720);
+        vm.warp(initialTime + 3*360);
         vm.prank(KEEPER); stableDepositor.withdraw(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, req0_, req1_);
+        (num, zzz,,,,,) = stableDepositor.configs(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
+
+        assertEq(num, initNum + 2);
+        assertEq(zzz, initialTime + 3*360);
+
+        vm.warp(initialTime + 4*360);
+        vm.prank(KEEPER); stableDepositor.withdraw(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, req0_ + 1, req1_ + 1); // also making sure that amt{i}Min is allowed to be > req{i}
         (num, zzz,,,,,) = stableDepositor.configs(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
 
         assertGt(GemLike(DAI).balanceOf(address(buffer)), afterDepositDai);
         assertGt(GemLike(USDC).balanceOf(address(buffer)), afterDepositUsdc);
-        assertEq(num, initNum + 2);
-        assertEq(zzz, initialTime + 720);
+        assertEq(num, initNum + 3);
+        assertEq(zzz, initialTime + 4*360);
     }
 
     function testDepositWithdrawMinZero() public {
