@@ -26,6 +26,7 @@ contract SwapperCalleeUniV3Test is DssTest {
 
         deal(DAI,  address(this), 1_000_000 * WAD,   true);
         deal(USDC, address(this), 1_000_000 * 10**6, true);
+        deal(USDT, address(this), 1_000_000 * 10**6, true);
     }
 
     function testConstructor() public {
@@ -48,10 +49,17 @@ contract SwapperCalleeUniV3Test is DssTest {
         assertEq(GemLike(to).balanceOf(address(callee)), 0);
     }
 
+    function testSwapUsdt() public {
+        bytes memory USDT_DAI_PATH = abi.encodePacked(USDT, uint24(100), DAI);
+        checkStableSwap(USDT, DAI, USDT_DAI_PATH);
+        checkStableSwap(USDT, DAI, USDT_DAI_PATH); // swapping a 2nd time to verify that USDT allowance has been cleared after the 1st swap
+    }
+
     function testSwapShortPath() public {
         bytes memory DAI_USDC_PATH = abi.encodePacked(DAI, uint24(100), USDC);
         checkStableSwap(DAI, USDC, DAI_USDC_PATH);
     }
+
 
     function testSwapLongPath() public {
         bytes memory USDC_USDT_DAI_PATH = abi.encodePacked(USDC, uint24(100), USDT, uint24(100), DAI);
