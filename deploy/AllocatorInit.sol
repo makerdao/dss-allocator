@@ -118,10 +118,16 @@ interface KissLike {
     function kiss(address) external;
 }
 
+interface AutoLineLike {
+    function setIlk(bytes32, uint256, uint256, uint256) external;
+}
+
 struct AllocatorIlkConfig {
     bytes32 ilk;
     uint256 duty;
-    uint256 debtCeiling;
+    uint256 gap;
+    uint256 maxLine;
+    uint256 ttl;
     address allocatorProxy;
     uint8 facilitatorRole;
     uint8 automationRole;
@@ -195,9 +201,9 @@ library AllocatorInit {
         require((cfg.duty >= RAY) && (cfg.duty <= RATES_ONE_HUNDRED_PCT), "AllocatorInit/ilk-duty-out-of-bounds");
         dss.jug.file(ilk, "duty", cfg.duty);
 
-        require(cfg.debtCeiling < WAD, "AllocatorInit/incorrect-ilk-line-precision");
-        dss.vat.file(ilk, "line", cfg.debtCeiling * RAD);
-        dss.vat.file("Line", dss.vat.Line() + cfg.debtCeiling * RAD);
+        dss.vat.file(ilk, "line", cfg.gap);
+        dss.vat.file("Line", dss.vat.Line() + cfg.gap);
+        AutoLineLike(dss.chainlog.getAddress("MCD_IAM_AUTO_LINE")).setIlk(ilk, cfg.maxLine, cfg.gap, cfg.ttl);
 
         dss.spotter.file(ilk, "pip", sharedInstance.oracle);
         dss.spotter.file(ilk, "mat", RAY);
