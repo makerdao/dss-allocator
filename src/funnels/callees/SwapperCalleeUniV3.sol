@@ -43,9 +43,17 @@ contract SwapperCalleeUniV3 {
     }
 
     function swapCallback(address src, address /* dst */, uint256 amt, uint256 minOut, address to, bytes calldata data) external {
+        bytes memory path = data;
+
+        address src_;
+        assembly {
+            src_ := shr(0x60, mload(add(path, 0x20)))
+        }
+        require(src == src_, "SwapperCalleeUniV3/invalid-path"); // forbids lingering approval of src
+
         GemLike(src).approve(uniV3Router, amt);
         SwapRouterLike.ExactInputParams memory params = SwapRouterLike.ExactInputParams({
-            path:             data,
+            path:             path,
             recipient:        to,
             deadline:         block.timestamp,
             amountIn:         amt,
