@@ -191,7 +191,8 @@ contract DeploymentTest is DssTest {
             conduitMoverKeepers         : conduitMoverKeepers,
             swapTokens                  : swapTokens,
             depositTokens               : depositTokens,
-            ilkRegistry                 : ILK_REGISTRY
+            ilkRegistry                 : ILK_REGISTRY,
+            uniV3Factory                : UNIV3_FACTORY
         });
 
         AllocatorInit.initIlk(dss, sharedInst, ilkInst, cfg);
