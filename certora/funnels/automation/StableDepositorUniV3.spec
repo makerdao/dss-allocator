@@ -16,6 +16,7 @@ ghost uint256 retValue3;
 ghost uint256 retValue4;
 ghost uint256 retValue5;
 
+ghost mathint depositCounter;
 ghost address depositAddr;
 ghost address depositGem0;
 ghost address depositGem1;
@@ -28,6 +29,7 @@ ghost uint256 depositAmt1Desired;
 ghost uint256 depositAmt0Min;
 ghost uint256 depositAmt1Min;
 function depositSummary(address addr, DepositorUniV3Like.LiquidityParams p) returns (uint128, uint256, uint256) {
+    depositCounter = depositCounter + 1;
     depositAddr = addr;
     depositGem0 = p.gem0;
     depositGem1 = p.gem1;
@@ -42,6 +44,7 @@ function depositSummary(address addr, DepositorUniV3Like.LiquidityParams p) retu
     return (retValue, retValue2, retValue3);
 }
 
+ghost mathint withdrawCounter;
 ghost address withdrawAddr;
 ghost address withdrawGem0;
 ghost address withdrawGem1;
@@ -55,6 +58,7 @@ ghost uint256 withdrawAmt0Min;
 ghost uint256 withdrawAmt1Min;
 ghost bool    withdrawTakeFees;
 function withdrawSummary(address addr, DepositorUniV3Like.LiquidityParams p, bool takeFees) returns (uint128, uint256, uint256, uint256, uint256) {
+    withdrawCounter = withdrawCounter + 1;
     withdrawAddr = addr;
     withdrawGem0 = p.gem0;
     withdrawGem1 = p.gem1;
@@ -70,6 +74,7 @@ function withdrawSummary(address addr, DepositorUniV3Like.LiquidityParams p, boo
     return (retValue, retValue2, retValue3, retValue4, retValue5);
 }
 
+ghost mathint collectCounter;
 ghost address collectAddr;
 ghost address collectGem0;
 ghost address collectGem1;
@@ -77,6 +82,7 @@ ghost uint24  collectFee;
 ghost int24   collectTickLower;
 ghost int24   collectTickUpper;
 function collectSummary(address addr, DepositorUniV3Like.CollectParams p) returns (uint256, uint256) {
+    collectCounter = collectCounter + 1;
     collectAddr = addr;
     collectGem0 = p.gem0;
     collectGem1 = p.gem1;
@@ -381,6 +387,8 @@ rule deposit(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tick
     mathint numOtherBefore; mathint zzzOtherBefore; mathint amt0OtherBefore; mathint amt1OtherBefore; mathint req0OtherBefore; mathint req1OtherBefore; mathint hopOtherBefore;
     numOtherBefore, zzzOtherBefore, amt0OtherBefore, amt1OtherBefore, req0OtherBefore, req1OtherBefore, hopOtherBefore = configs(otherAddr, otherAddr_2, otherUint24, otherInt24, otherInt24_2);
 
+    mathint depositCounterBefore = depositCounter;
+
     deposit(e, gem0, gem1, fee, tickLower, tickUpper, amt0Min, amt1Min);
 
     mathint wardsAfter = wards(anyAddr);
@@ -406,6 +414,7 @@ rule deposit(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tick
     assert req0OtherAfter == req0OtherBefore, "deposit did not keep unchanged the rest of configs[x][y][z][a][b].req0";
     assert req1OtherAfter == req1OtherBefore, "deposit did not keep unchanged the rest of configs[x][y][z][a][b].req1";
     assert hopOtherAfter == hopOtherBefore, "deposit did not keep unchanged the rest of configs[x][y][z][a][b].hop";
+    assert depositCounter == depositCounterBefore + 1, "deposit did not execute exactly one deposit external call";
     assert depositAddr == depositor(), "deposit did not execute the deposit external call to the correct 'depositor()' contract";
     assert depositGem0 == gem0, "deposit did not pass the correct gem0 to the external call";
     assert depositGem1 == gem1, "deposit did not pass the correct gem1 to the external call";
@@ -469,6 +478,8 @@ rule withdraw(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tic
     mathint numOtherBefore; mathint zzzOtherBefore; mathint amt0OtherBefore; mathint amt1OtherBefore; mathint req0OtherBefore; mathint req1OtherBefore; mathint hopOtherBefore;
     numOtherBefore, zzzOtherBefore, amt0OtherBefore, amt1OtherBefore, req0OtherBefore, req1OtherBefore, hopOtherBefore = configs(otherAddr, otherAddr_2, otherUint24, otherInt24, otherInt24_2);
 
+    mathint withdrawCounterBefore = withdrawCounter;
+
     withdraw(e, gem0, gem1, fee, tickLower, tickUpper, amt0Min, amt1Min);
 
     mathint wardsAfter = wards(anyAddr);
@@ -494,6 +505,7 @@ rule withdraw(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tic
     assert req0OtherAfter == req0OtherBefore, "withdraw did not keep unchanged the rest of configs[x][y][z][a][b].req0";
     assert req1OtherAfter == req1OtherBefore, "withdraw did not keep unchanged the rest of configs[x][y][z][a][b].req1";
     assert hopOtherAfter == hopOtherBefore, "withdraw did not keep unchanged the rest of configs[x][y][z][a][b].hop";
+    assert withdrawCounter == withdrawCounterBefore + 1, "withdraw did not execute exactly one withdraw external call";
     assert withdrawAddr == depositor(), "withdraw did not execute the withdraw external call to the correct 'depositor()' contract";
     assert withdrawGem0 == gem0, "withdraw did not pass the correct gem0 to the external call";
     assert withdrawGem1 == gem1, "withdraw did not pass the correct gem1 to the external call";
@@ -556,6 +568,8 @@ rule collect(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tick
     mathint numBefore; mathint zzzBefore; mathint amt0Before; mathint amt1Before; mathint req0Before; mathint req1Before; mathint hopBefore;
     numBefore, zzzBefore, amt0Before, amt1Before, req0Before, req1Before, hopBefore = configs(otherAddr, otherAddr_2, otherUint24, otherInt24, otherInt24_2);
 
+    mathint collectCounterBefore = collectCounter;
+
     collect(e, gem0, gem1, fee, tickLower, tickUpper);
 
     mathint wardsAfter = wards(anyAddr);
@@ -572,6 +586,7 @@ rule collect(address gem0, address gem1, uint24 fee, int24 tickLower, int24 tick
     assert req0After == req0Before, "collect did not keep unchanged every configs[x][y][z][a][b].req0";
     assert req1After == req1Before, "collect did not keep unchanged every configs[x][y][z][a][b].req1";
     assert hopAfter == hopBefore, "collect did not keep unchanged every configs[x][y][z][a][b].hop";
+    assert collectCounter == collectCounterBefore + 1, "collect did not execute exactly one collect external call";
     assert collectAddr == depositor(), "collect did not execute the collect external call to the correct 'depositor()' contract";
     assert collectGem0 == gem0, "collect did not pass the correct gem0 to the external call";
     assert collectGem1 == gem1, "collect did not pass the correct gem1 to the external call";

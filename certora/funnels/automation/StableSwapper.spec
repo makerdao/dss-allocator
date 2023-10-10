@@ -8,6 +8,7 @@ methods {
     function _.swap(address src, address dst, uint256 lot, uint256 minOut, address callee, bytes data) external => swapSummary(calledContract, src, dst, lot, minOut, callee, data) expect uint256;
 }
 
+ghost mathint swapCounter;
 ghost address swapAddr;
 ghost uint256 swapRetValue;
 ghost address swapSrc;
@@ -17,6 +18,7 @@ ghost uint256 swapMinOut;
 ghost address swapCallee;
 ghost uint256 swapDataLength;
 function swapSummary(address addr, address src, address dst, uint256 lot, uint256 minOut, address callee, bytes data) returns uint256 {
+    swapCounter = swapCounter + 1;
     swapAddr = addr;
     swapSrc = src;
     swapDst = dst;
@@ -290,6 +292,8 @@ rule swap(address src, address dst, uint256 minOut, address callee, bytes data) 
     mathint numOtherBefore; mathint hopOtherBefore; mathint zzzOtherBefore; mathint lotOtherBefore; mathint reqOtherBefore;
     numOtherBefore, hopOtherBefore, zzzOtherBefore, lotOtherBefore, reqOtherBefore = configs(otherAddr, otherAddr_2);
 
+    mathint swapCounterBefore = swapCounter;
+
     swap(e, src, dst, minOut, callee, data);
 
     mathint wardsAfter = wards(anyAddr);
@@ -311,6 +315,7 @@ rule swap(address src, address dst, uint256 minOut, address callee, bytes data) 
     assert zzzOtherAfter == zzzOtherBefore, "swap did not keep unchanged the rest of configs[x][y].zzz";
     assert lotOtherAfter == lotOtherBefore, "swap did not keep unchanged the rest of configs[x][y].lot";
     assert reqOtherAfter == reqOtherBefore, "swap did not keep unchanged the rest of configs[x][y].req";
+    assert swapCounter == swapCounterBefore + 1, "swap did not execute exactly one swap external call";
     assert swapAddr == swapper(), "swap did not execute the swap external call to the correct 'swapper()' contract";
     assert swapSrc == src, "swap did not not pass the correct src to the external call";
     assert swapDst == dst, "swap did not not pass the correct dst to the external call";

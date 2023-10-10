@@ -15,11 +15,13 @@ hook EXTCODESIZE(address addr) uint v {
     nonZeroExtcodesize[addr] = (v != 0);
 }
 
+ghost mathint withdrawCounter;
 ghost address withdrawAddr;
 ghost bytes32 withdrawIlk;
 ghost address withdrawGem;
 ghost uint256 withdrawAmount;
 function withdrawSummary(address addr, bytes32 ilk, address gem, uint256 amount) returns bool {
+    withdrawCounter = withdrawCounter + 1;
     withdrawAddr = addr;
     withdrawIlk = ilk;
     withdrawGem = gem;
@@ -27,11 +29,13 @@ function withdrawSummary(address addr, bytes32 ilk, address gem, uint256 amount)
     return true;
 }
 
+ghost mathint depositCounter;
 ghost address depositAddr;
 ghost bytes32 depositIlk;
 ghost address depositGem;
 ghost uint256 depositAmount;
 function depositSummary(address addr, bytes32 ilk, address gem, uint256 amount) returns bool {
+    depositCounter = depositCounter + 1;
     depositAddr = addr;
     depositIlk = ilk;
     depositGem = gem;
@@ -311,6 +315,9 @@ rule move(address from, address to, address gem) {
     address depositGemBefore = depositGem;
     mathint depositAmountBefore = depositAmount;
 
+    mathint withdrawCounterBefore = withdrawCounter;
+    mathint depositCounterBefore = depositCounter;
+
     move(e, from, to, gem);
 
     mathint wardsAfter = wards(anyAddr);
@@ -330,17 +337,21 @@ rule move(address from, address to, address gem) {
     assert hopOtherAfter == hopOtherBefore, "move did not keep unchanged the rest of configs[x][y][z].hop";
     assert zzzOtherAfter == zzzOtherBefore, "move did not keep unchanged the rest of configs[x][y][z].zzz";
     assert lotOtherAfter == lotOtherBefore, "move did not keep unchanged the rest of configs[x][y][z].lot";
+    assert from != buffer => withdrawCounter == withdrawCounterBefore + 1, "move did not execute exactly one withdraw external call";
     assert from != buffer => withdrawAddr == from, "move did not execute the withdraw external call to the correct 'from' contract";
     assert from != buffer => withdrawIlk == ilk(), "move did not pass the correct ilk to the withdraw external call";
     assert from != buffer => withdrawGem == gem, "move did not pass the correct gen to the withdraw external call";
     assert from != buffer => to_mathint(withdrawAmount) == lotFromToGemBefore, "move did not pass the correct amount to the withdraw external call";
+    assert from == buffer => withdrawCounter == withdrawCounterBefore, "move did execute one or more withdraw external call when it did not correspond";
     assert from == buffer => withdrawIlk == withdrawIlkBefore, "move did execute the withdraw external call when it did not correspond";
     assert from == buffer => withdrawGem == withdrawGemBefore, "move did execute the withdraw external call when it did not correspond 2";
     assert from == buffer => to_mathint(withdrawAmount) == withdrawAmountBefore, "move did execute the withdraw external call when it did not correspond 3";
+    assert to != buffer => depositCounter == depositCounterBefore + 1, "move did not execute exactly one deposit external call";
     assert to != buffer => depositAddr == to, "move did not execute the deposit external call to the correct 'to' contract";
     assert to != buffer => depositIlk == ilk(), "move did not pass the correct ilk to the deposit external call";
     assert to != buffer => depositGem == gem, "move did not pass the correct gen to the deposit external call";
     assert to != buffer => to_mathint(depositAmount) == lotFromToGemBefore, "move did not pass the correct amount to the deposit external call";
+    assert to == buffer => depositCounter == depositCounterBefore, "move did execute one or more deposit external call when it did not correspond";
     assert to == buffer => depositIlk == depositIlkBefore, "move did execute the deposit external call when it did not correspond";
     assert to == buffer => depositGem == depositGemBefore, "move did execute the deposit external call when it did not correspond 2";
     assert to == buffer => to_mathint(depositAmount) == depositAmountBefore, "move did execute the deposit external call when it did not correspond 3";
