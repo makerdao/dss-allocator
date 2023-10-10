@@ -5,8 +5,10 @@ pragma solidity ^0.8.16;
 import "dss-test/DssTest.sol";
 import { Swapper } from "src/funnels/Swapper.sol";
 import { SwapperCalleeUniV3 } from "src/funnels/callees/SwapperCalleeUniV3.sol";
+import { SwapperCalleePsm } from "src/funnels/callees/SwapperCalleePsm.sol";
 import { AllocatorRoles } from "src/AllocatorRoles.sol";
 import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
+import { PsmMock } from "test/mocks/PsmMock.sol";
 
 interface GemLike {
     function balanceOf(address) external view returns (uint256);
@@ -170,6 +172,46 @@ contract SwapperTest is DssTest {
         (,, due, end) = swapper.limits(DAI, USDC);
         assertEq(due, 9_000 * WAD);
         assertEq(end, initialTime + 7200);
+    }
+
+    function testSwapPsmCallee() public {
+        PsmMock psm = new PsmMock(DAI, USDC);
+        SwapperCalleePsm swapperCalleePsm = new SwapperCalleePsm(address(psm));
+        psm.rely(address(swapperCalleePsm));
+        swapperCalleePsm.rely(address(swapper));
+        deal(DAI, address(psm), 1_000 * WAD, true);
+
+        uint256 prevSrc = GemLike(USDC).balanceOf(address(buffer));
+        uint256 prevDst = GemLike(DAI).balanceOf(address(buffer));
+
+        vm.expectEmit(true, true, true, true);
+        emit Swap(FACILITATOR, USDC, DAI, 1_000 * 10**6, 1_000 * WAD);
+        vm.prank(FACILITATOR); uint256 out = swapper.swap(USDC, DAI, 1_000 * 10**6, 1_000 * WAD, address(swapperCalleePsm), "");
+
+        assertEq(out, 1_000 * WAD);
+        assertEq(GemLike(USDC).balanceOf(address(buffer)), prevSrc - 1_000 * 10**6);
+        assertEq(GemLike(DAI).balanceOf(address(buffer)), prevDst + 1_000 * WAD);
+        assertEq(GemLike(DAI).balanceOf(address(swapper)), 0);
+        assertEq(GemLike(USDC).balanceOf(address(swapper)), 0);
+        assertEq(GemLike(DAI).balanceOf(address(swapperCalleePsm)), 0);
+        assertEq(GemLike(USDC).balanceOf(address(swapperCalleePsm)), 0);
+ 
+        vm.warp(uint32(block.timestamp) + 3600);
+
+        prevSrc = GemLike(DAI).balanceOf(address(buffer));
+        prevDst = GemLike(USDC).balanceOf(address(buffer));
+
+        vm.expectEmit(true, true, true, false);
+        emit Swap(FACILITATOR, DAI, USDC, 1_000 * WAD, 1_000 * 10**6);
+        vm.prank(FACILITATOR); out = swapper.swap(DAI, USDC, 1_000 * WAD, 1_000 * 10**6, address(swapperCalleePsm), "");
+        
+        assertEq(out, 1_000 * 10**6);
+        assertEq(GemLike(DAI).balanceOf(address(buffer)), prevSrc - 1_000 * WAD);
+        assertEq(GemLike(USDC).balanceOf(address(buffer)), prevDst + 1_000 * 10**6);
+        assertEq(GemLike(DAI).balanceOf(address(swapper)), 0);
+        assertEq(GemLike(USDC).balanceOf(address(swapper)), 0);
+        assertEq(GemLike(DAI).balanceOf(address(swapperCalleePsm)), 0);
+        assertEq(GemLike(USDC).balanceOf(address(swapperCalleePsm)), 0);
     }
 
     function testSwapAllAferEra() public {
