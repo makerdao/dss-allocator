@@ -102,7 +102,9 @@ contract ConduitMover {
         if (from != buffer) {
             require(ConduitLike(from).withdraw(ilk, gem, cfg.lot) == cfg.lot, "ConduitMover/lot-withdraw-failed");
         }
-        if (to   != buffer) ConduitLike(to).deposit(ilk, gem, cfg.lot);
+        if (to != buffer) {
+            ConduitLike(to).deposit(ilk, gem, cfg.lot);
+        }
 
         emit Move(from, to, gem, cfg.lot);
     }
