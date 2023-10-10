@@ -197,4 +197,12 @@ contract ConduitMoverTest is DssTest {
         vm.expectRevert("ConduitMover/exceeds-num");
         vm.prank(KEEPER); mover.move(conduit1, conduit2, address(0x123));
     }
+
+    function testMoveLotWithdrawFail() public {
+        vm.prank(FACILITATOR); mover.setConfig(conduit1, buffer, USDC, 10, 1 hours, uint128(3_100 * 10**6));
+        assertEq(GemLike(USDC).balanceOf(conduit1), 3_000 * 10**6);
+
+        vm.expectRevert("ConduitMover/lot-withdraw-failed");
+        vm.prank(KEEPER); mover.move(conduit1, buffer, USDC);
+    }
 }
