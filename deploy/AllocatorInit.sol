@@ -95,6 +95,7 @@ interface DepositorUniV3Like {
 
     function roles() external view returns (address);
     function ilk() external view returns (bytes32);
+    function uniV3Factory() external view returns (address);
     function buffer() external view returns (address);
     function deposit(LiquidityParams memory) external returns (uint128, uint256, uint256);
     function withdraw(LiquidityParams memory, bool) external returns (uint128, uint256, uint256, uint256, uint256);
@@ -138,6 +139,7 @@ struct AllocatorIlkConfig {
     address[] swapTokens;
     address[] depositTokens;
     address ilkRegistry;
+    address uniV3Factory;
 }
 
 function bytes32ToStr(bytes32 _bytes32) pure returns (string memory) {
@@ -184,9 +186,10 @@ library AllocatorInit {
         require(SwapperLike(ilkInstance.swapper).ilk()    == ilk,                  "AllocatorInit/swapper-ilk-mismatch");
         require(SwapperLike(ilkInstance.swapper).buffer() == ilkInstance.buffer,   "AllocatorInit/swapper-buffer-mismatch");
 
-        require(DepositorUniV3Like(ilkInstance.depositorUniV3).roles()  == sharedInstance.roles, "AllocatorInit/depositorUniV3-roles-mismatch");
-        require(DepositorUniV3Like(ilkInstance.depositorUniV3).ilk()    == ilk,                  "AllocatorInit/depositorUniV3-ilk-mismatch");
-        require(DepositorUniV3Like(ilkInstance.depositorUniV3).buffer() == ilkInstance.buffer,   "AllocatorInit/depositorUniV3-buffer-mismatch");
+        require(DepositorUniV3Like(ilkInstance.depositorUniV3).roles()        == sharedInstance.roles, "AllocatorInit/depositorUniV3-roles-mismatch");
+        require(DepositorUniV3Like(ilkInstance.depositorUniV3).ilk()          == ilk,                  "AllocatorInit/depositorUniV3-ilk-mismatch");
+        require(DepositorUniV3Like(ilkInstance.depositorUniV3).uniV3Factory() == cfg.uniV3Factory,     "AllocatorInit/depositorUniV3-uniV3Factory-mismatch");
+        require(DepositorUniV3Like(ilkInstance.depositorUniV3).buffer()       == ilkInstance.buffer,   "AllocatorInit/depositorUniV3-buffer-mismatch");
 
         require(StableSwapperLike(ilkInstance.stableSwapper).swapper()                 == ilkInstance.swapper,        "AllocatorInit/stableSwapper-swapper-mismatch");
         require(StableDepositorUniV3Like(ilkInstance.stableDepositorUniV3).depositor() == ilkInstance.depositorUniV3, "AllocatorInit/stableDepositorUniV3-depositorUniV3-mismatch");
