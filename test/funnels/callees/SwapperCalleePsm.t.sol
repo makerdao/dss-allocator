@@ -13,11 +13,14 @@ interface GemLike {
 
 contract SwapperCalleePsmTest is DssTest {
 
-    SwapperCalleePsm public callee;
-    PsmMock public psm;
+    PsmMock psm;
+    PsmMock psmUSDT;
+    SwapperCalleePsm callee;
+    SwapperCalleePsm calleeUSDT;
 
     address constant DAI  = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address constant USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
 
     function setUp() public {
         vm.createSelectFork(vm.envString("ETH_RPC_URL"));
@@ -27,10 +30,18 @@ contract SwapperCalleePsmTest is DssTest {
         psm.rely(address(callee));
         callee.rely(address(this));
 
+        psmUSDT = new PsmMock(DAI, USDT);
+        calleeUSDT = new SwapperCalleePsm(address(psmUSDT));
+        psmUSDT.rely(address(calleeUSDT));
+        calleeUSDT.rely(address(this));
+
         deal(DAI,  address(this), 1_000_000 * WAD,   true);
         deal(DAI,  address(psm),  1_000_000 * WAD,   true);
+        deal(DAI,  address(psmUSDT),  1_000_000 * WAD,   true);
         deal(USDC, address(this), 1_000_000 * 10**6, true);
         deal(USDC, psm.keg(),     1_000_000 * 10**6, true);
+        deal(USDT, address(this), 1_000_000 * 10**6, true);
+        deal(USDT, psmUSDT.keg(),     1_000_000 * 10**6, true);
     }
 
     function testConstructor() public {
@@ -54,26 +65,28 @@ contract SwapperCalleePsmTest is DssTest {
         vm.stopPrank();
     }
 
-    function checkPsmSwap(address from, address to) public {
+    function checkPsmSwap(SwapperCalleePsm callee_, address from, address to) public {
         uint256 prevFrom = GemLike(from).balanceOf(address(this));
         uint256 prevTo = GemLike(to).balanceOf(address(this));
         uint8 fromDecimals = GemLike(from).decimals();
         uint8 toDecimals = GemLike(to).decimals();
 
-        GemLike(from).transfer(address(callee), 10_000 * 10**fromDecimals);
-        callee.swapCallback(from, to, 10_000 * 10**fromDecimals, 0, address(this), "");
+        GemLike(from).transfer(address(callee_), 10_000 * 10**fromDecimals);
+        callee_.swapCallback(from, to, 10_000 * 10**fromDecimals, 0, address(this), "");
         
         assertEq(GemLike(from).balanceOf(address(this)), prevFrom - 10_000 * 10**fromDecimals);
         assertEq(GemLike(to  ).balanceOf(address(this)), prevTo   + 10_000 * 10**toDecimals  );
-        assertEq(GemLike(from).balanceOf(address(callee)), 0);
-        assertEq(GemLike(to  ).balanceOf(address(callee)), 0);
+        assertEq(GemLike(from).balanceOf(address(callee_)), 0);
+        assertEq(GemLike(to  ).balanceOf(address(callee_)), 0);
     }
 
     function testDaiToGemSwap() public {
-        checkPsmSwap(DAI, USDC);
+        checkPsmSwap(callee, DAI, USDC);
+        checkPsmSwap(calleeUSDT, DAI, USDT);
     }
 
     function testGemToDaiSwap() public {
-        checkPsmSwap(USDC, DAI);
+        checkPsmSwap(callee, USDC, DAI);
+        checkPsmSwap(calleeUSDT, DAI, USDT);
     }
 }
