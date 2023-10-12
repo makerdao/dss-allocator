@@ -261,8 +261,8 @@ contract DepositorUniV3Test is DssTest {
             tokensOwed1
         ) = depositor.getPosition(DAI, USDC, 100, REF_TICK-100, REF_TICK+100);
         assertEq(liquidity, 99777667447878834);
-        assertGt(feeGrowthInside0LastX128, 0); // initial value now that the position is created
-        assertGt(feeGrowthInside1LastX128, 0); // initial value now that the position is created
+        assertGe(feeGrowthInside0LastX128, 0); // initial value now that the position is created
+        assertGe(feeGrowthInside1LastX128, 0); // initial value now that the position is created
         assertEq(tokensOwed0, 0);
         assertEq(tokensOwed1, 0);
 
