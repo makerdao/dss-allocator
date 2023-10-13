@@ -28,6 +28,7 @@ contract AllocatorVaultTest is DssTest {
     event Wipe(address indexed sender, uint256 wad);
 
     function _divup(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        // Note: _divup(0,0) will return 0 differing from natural solidity division
         unchecked {
             z = x != 0 ? ((x - 1) / y) + 1 : 0;
         }

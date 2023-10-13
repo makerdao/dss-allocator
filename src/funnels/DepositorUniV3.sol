@@ -91,9 +91,9 @@ contract DepositorUniV3 {
     event Rely(address indexed usr);
     event Deny(address indexed usr);
     event SetLimits(address indexed gem0, address indexed gem1, uint24 indexed fee, uint96 cap0, uint96 cap1, uint32 era);
-    event Deposit(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1);
-    event Withdraw(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1, uint256 fees0, uint256 fees1);
-    event Collect(address indexed sender, address indexed gem0, address indexed gem1, uint256 fees0, uint256 fees1);
+    event Deposit(address indexed sender, address indexed gem0, address indexed gem1, uint24 fee, uint128 liquidity, uint256 amt0, uint256 amt1);
+    event Withdraw(address indexed sender, address indexed gem0, address indexed gem1, uint24 fee, uint128 liquidity, uint256 amt0, uint256 amt1, uint256 fees0, uint256 fees1);
+    event Collect(address indexed sender, address indexed gem0, address indexed gem1, uint24 fee, uint256 fees0, uint256 fees1);
 
     constructor(address roles_, bytes32 ilk_, address uniV3Factory_, address buffer_) {
         roles        = RolesLike(roles_);
@@ -251,7 +251,7 @@ contract DepositorUniV3 {
         limits[p.gem0][p.gem1][p.fee].due1 = limit.due1 - uint96(amt1);
         limits[p.gem0][p.gem1][p.fee].end  = limit.end;
 
-        emit Deposit(msg.sender, p.gem0, p.gem1, liquidity, amt0, amt1);
+        emit Deposit(msg.sender, p.gem0, p.gem1, p.fee, liquidity, amt0, amt1);
     }
 
     function withdraw(LiquidityParams memory p, bool takeFees)
@@ -295,7 +295,7 @@ contract DepositorUniV3 {
         });
         (fees0, fees1) = (collected0 - amt0, collected1 - amt1);
 
-        emit Withdraw(msg.sender, p.gem0, p.gem1, liquidity, amt0, amt1, fees0, fees1);
+        emit Withdraw(msg.sender, p.gem0, p.gem1, p.fee, liquidity, amt0, amt1, fees0, fees1);
     }
 
     struct CollectParams {
@@ -324,6 +324,6 @@ contract DepositorUniV3 {
             amount1Requested: type(uint128).max
         });
 
-        emit Collect(msg.sender, p.gem0, p.gem1, fees0, fees1);
+        emit Collect(msg.sender, p.gem0, p.gem1, p.fee, fees0, fees1);
     }
 }

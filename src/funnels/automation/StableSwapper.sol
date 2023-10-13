@@ -32,7 +32,7 @@ contract StableSwapper {
         uint32  hop; // Cooldown period it has to wait between swap executions
         uint32  zzz; // Timestamp of the last swap execution
         uint96  lot; // The amount swapped by keepers from src to dst every hop
-        uint96  req; // The minimum required output amount to insist on in the swap form src to dst
+        uint96  req; // The minimum required output amount to insist on in the swap from src to dst
     }
 
     event Rely(address indexed usr);
@@ -52,7 +52,7 @@ contract StableSwapper {
         _;
     }
 
-    // permissionned to whitelisted keepers
+    // permissioned to whitelisted keepers
     modifier toll { 
         require(buds[msg.sender] == 1, "StableSwapper/non-keeper");
         _;

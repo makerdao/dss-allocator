@@ -90,7 +90,7 @@ It enforces that:
 
 ### Swapper Callees
 
-Contracts that perform the actual swap and send the resulting funds to the Swapper (to be forwarded to the AllocatoBuffer).
+Contracts that perform the actual swap and send the resulting funds to the Swapper (to be forwarded to the AllocatorBuffer).
 
 - They can be implemented on top of any DEX / swap vehicle.
 - An example is `SwapperCalleeUniV3`, where swaps in Uniswap V3 can be triggered.
@@ -130,7 +130,8 @@ An interface which each Conduit should implement.
 ## Security Model:
 - AllocatorDAOs can not incur a loss of more than the debt ceiling (`line`) of their respective `ilk`.
 - A funnel operator (whether a facilitator or an automated contract) can not incur a loss of more than `cap` amount of funds per `era` interval for a specific configuration. This includes not being able to move funds directly to any unknown address that the AllocatorDAO Proxy did not approve.
-- A keeper can not incur a loss of more than the funnel opeator can, and any loss it can incur is also constrained by `req` or `req0` and `req1` for a specific configuration.
+- A keeper's maximum loss must be bounded by `cap` amount of funds per `era` (as for a funnel operator) but is additionally constrainted by `lot` (or `amt0` and `amt1`) amount of funds per `hop` for a specific configuration. Moreover, a keeper's execution must guarantee a minimum amount of output tokens, defined by `req` (or `req0` and `req1`) for a specific configuration.
+- If a rate limit is needed for depositing or withdrawing in a specific Conduit (in order to limit the harm a rogue facilitator can cause), it is the responsibility of the Conduit itself to implement it.
 
 ## Technical Assumptions:
 - A `uint32` is suitable for storing timestamps or time intervals in the funnels, as the current version of the Allocation System is expected to be deprecated long before 2106.

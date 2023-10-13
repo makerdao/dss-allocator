@@ -16,11 +16,11 @@
 
 pragma solidity ^0.8.16;
 
-interface ApproveLike {
-    function approve(address, uint256) external returns (bool);
+interface GemLike {
+    function approve(address, uint256) external;
 }
 
-// https://github.com/Uniswap/v3-periphery/blob/b06959dd01f5999aa93e1dc530fe573c7bb295f6/contracts/SwapRlefter.sol
+// https://github.com/Uniswap/v3-periphery/blob/b06959dd01f5999aa93e1dc530fe573c7bb295f6/contracts/SwapRouter.sol
 interface SwapRouterLike {
     function exactInput(ExactInputParams calldata params) external returns (uint256 amountOut);
 
@@ -43,9 +43,17 @@ contract SwapperCalleeUniV3 {
     }
 
     function swapCallback(address src, address /* dst */, uint256 amt, uint256 minOut, address to, bytes calldata data) external {
-        ApproveLike(src).approve(uniV3Router, amt);
+        bytes memory path = data;
+
+        address src_;
+        assembly {
+            src_ := shr(0x60, mload(add(path, 0x20)))
+        }
+        require(src == src_, "SwapperCalleeUniV3/invalid-path"); // forbids lingering approval of src
+
+        GemLike(src).approve(uniV3Router, amt);
         SwapRouterLike.ExactInputParams memory params = SwapRouterLike.ExactInputParams({
-            path:             data,
+            path:             path,
             recipient:        to,
             deadline:         block.timestamp,
             amountIn:         amt,

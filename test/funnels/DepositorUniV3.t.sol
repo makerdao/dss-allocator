@@ -29,9 +29,9 @@ interface SwapRouterLike {
 
 contract DepositorUniV3Test is DssTest {
     event SetLimits(address indexed gem0, address indexed gem1, uint24 indexed fee, uint96 cap0, uint96 cap1, uint32 era);
-    event Deposit(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1);
-    event Withdraw(address indexed sender, address indexed gem0, address indexed gem1, uint128 liquidity, uint256 amt0, uint256 amt1, uint256 fees0, uint256 fees1);
-    event Collect(address indexed sender, address indexed gem0, address indexed gem1, uint256 fees0, uint256 fees1);
+    event Deposit(address indexed sender, address indexed gem0, address indexed gem1, uint24 fee, uint128 liquidity, uint256 amt0, uint256 amt1);
+    event Withdraw(address indexed sender, address indexed gem0, address indexed gem1, uint24 fee, uint128 liquidity, uint256 amt0, uint256 amt1, uint256 fees0, uint256 fees1);
+    event Collect(address indexed sender, address indexed gem0, address indexed gem1, uint24 fee, uint256 fees0, uint256 fees1);
 
     AllocatorRoles  public roles;
     AllocatorBuffer public buffer;
@@ -177,7 +177,7 @@ contract DepositorUniV3Test is DssTest {
         vm.revertTo(snapshot);
 
         vm.expectEmit(true, true, true, true);
-        emit Deposit(FACILITATOR, DAI, USDC, liq, amt0, amt1);
+        emit Deposit(FACILITATOR, DAI, USDC, uint24(100), liq, amt0, amt1);
         vm.prank(FACILITATOR); depositor.deposit(dp);
 
         assertLt(GemLike(DAI).balanceOf(address(buffer)), prevDAI);
@@ -328,7 +328,7 @@ contract DepositorUniV3Test is DssTest {
         vm.revertTo(snapshot);
 
         vm.expectEmit(true, true, true, true);
-        emit Collect(FACILITATOR, DAI, USDC, expectedFees0, expectedFees1);
+        emit Collect(FACILITATOR, DAI, USDC, uint24(100), expectedFees0, expectedFees1);
         vm.prank(FACILITATOR); (uint256 fees0, uint256 fees1) = depositor.collect(cp);
 
         assertTrue(fees0 > 0 || fees1 > 0);
@@ -354,7 +354,7 @@ contract DepositorUniV3Test is DssTest {
         vm.revertTo(snapshot);
 
         vm.expectEmit(true, true, true, true);
-        emit Withdraw(FACILITATOR, DAI, USDC, liquidity, withdrawn0, withdrawn1, fees0, fees1);
+        emit Withdraw(FACILITATOR, DAI, USDC, uint24(100), liquidity, withdrawn0, withdrawn1, fees0, fees1);
         vm.prank(FACILITATOR); depositor.withdraw(dp, false);
         
         assertGe(withdrawn0 + 1, deposited0);
@@ -423,7 +423,7 @@ contract DepositorUniV3Test is DssTest {
         vm.revertTo(snapshot);
 
         vm.expectEmit(true, true, true, true);
-        emit Withdraw(FACILITATOR, DAI, USDC, liquidity, withdrawn0, withdrawn1, fees0, fees1);
+        emit Withdraw(FACILITATOR, DAI, USDC, uint24(100), liquidity, withdrawn0, withdrawn1, fees0, fees1);
         vm.prank(FACILITATOR); depositor.withdraw(dp, true);
 
         assertTrue(fees0 > 0 || fees1 > 0);
@@ -466,7 +466,7 @@ contract DepositorUniV3Test is DssTest {
         vm.revertTo(snapshot);
 
         vm.expectEmit(true, true, true, true);
-        emit Withdraw(FACILITATOR, DAI, USDC, liquidity, withdrawn0, withdrawn1, fees0, fees1);
+        emit Withdraw(FACILITATOR, DAI, USDC, uint24(100), liquidity, withdrawn0, withdrawn1, fees0, fees1);
         vm.prank(FACILITATOR); depositor.withdraw(dp, true);
 
         assertEq(liquidity, 0);
@@ -496,7 +496,7 @@ contract DepositorUniV3Test is DssTest {
         vm.revertTo(snapshot);
 
         vm.expectEmit(true, true, true, true);
-        emit Withdraw(FACILITATOR, DAI, USDC, liquidity, withdrawn0, withdrawn1, fees0, fees1);
+        emit Withdraw(FACILITATOR, DAI, USDC, uint24(100), liquidity, withdrawn0, withdrawn1, fees0, fees1);
         vm.prank(FACILITATOR); depositor.withdraw(dp, false);
 
         // due to liquidity from amounts calculation there is rounding dust
