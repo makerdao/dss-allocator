@@ -119,7 +119,7 @@ rule file(bytes32 what, address data) {
     address jugAfter = jug();
 
     assert wardsAfter == wardsBefore, "file did not keep unchanged every wards[x]";
-    assert jugAfter == data, "file did not keep unchanged jug";
+    assert jugAfter == data, "file did not set jug";
 }
 
 // Verify revert rules on file
