@@ -6,7 +6,7 @@ methods {
     function configs(address, address, address) external returns (uint64, uint32, uint32, uint128) envfree;
     function ilk() external returns (bytes32) envfree;
     function buffer() external returns (address) envfree;
-    function _.withdraw(bytes32 ilk, address gem, uint256 amount) external => withdrawSummary(calledContract, ilk, gem, amount) expect bool; // Forcing to have a return value
+    function _.withdraw(bytes32 ilk, address gem, uint256 amount) external => withdrawSummary(calledContract, ilk, gem, amount) expect uint256;
     function _.deposit(bytes32 ilk, address gem, uint256 amount) external => depositSummary(calledContract, ilk, gem, amount) expect bool; // Forcing to have a return value
 }
 
@@ -20,13 +20,14 @@ ghost address withdrawAddr;
 ghost bytes32 withdrawIlk;
 ghost address withdrawGem;
 ghost uint256 withdrawAmount;
-function withdrawSummary(address addr, bytes32 ilk, address gem, uint256 amount) returns bool {
+ghost uint256 withdrawReturn;
+function withdrawSummary(address addr, bytes32 ilk, address gem, uint256 amount) returns uint256 {
     withdrawCounter = withdrawCounter + 1;
     withdrawAddr = addr;
     withdrawIlk = ilk;
     withdrawGem = gem;
     withdrawAmount = amount;
-    return true;
+    return withdrawReturn;
 }
 
 ghost mathint depositCounter;
@@ -362,7 +363,7 @@ rule move_revert(address from, address to, address gem) {
     env e;
 
     require e.block.timestamp <= max_uint32;
-    require !nonZeroExtcodesize[from] && !nonZeroExtcodesize[to];
+    require !nonZeroExtcodesize[to];
 
     address buffer = buffer();
 
@@ -370,13 +371,15 @@ rule move_revert(address from, address to, address gem) {
     mathint numFromToGem; mathint hopFromToGem; mathint zzzFromToGem; mathint lotFromToGem;
     numFromToGem, hopFromToGem, zzzFromToGem, lotFromToGem = configs(from, to, gem);
 
+    require to_mathint(withdrawReturn) == lotFromToGem;
+
     move@withrevert(e, from, to, gem);
 
     bool revert1 = e.msg.value > 0;
     bool revert2 = budsSender != 1;
     bool revert3 = numFromToGem == 0;
     bool revert4 = to_mathint(e.block.timestamp) < zzzFromToGem + hopFromToGem;
-    bool revert5 = from != buffer && !nonZeroExtcodesize[from];
+    bool revert5 = to_mathint(withdrawReturn) != lotFromToGem;
     bool revert6 = to != buffer && !nonZeroExtcodesize[to];
 
     assert revert1 => lastReverted, "revert1 failed";
