@@ -28,6 +28,7 @@ contract AllocatorVaultTest is DssTest {
     event Wipe(address indexed sender, uint256 wad);
 
     function _divup(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        // Note: _divup(0,0) will return 0 differing from natural solidity division
         unchecked {
             z = x != 0 ? ((x - 1) / y) + 1 : 0;
         }
@@ -41,7 +42,7 @@ contract AllocatorVaultTest is DssTest {
         nstJoin = new NstJoinMock(vat, nst);
         buffer  = new AllocatorBuffer();
         roles   = new RolesMock();
-        vault   = new AllocatorVault(address(roles), address(buffer), address(vat), ilk, address(nstJoin));
+        vault   = new AllocatorVault(address(roles), address(buffer), ilk, address(nstJoin));
         buffer.approve(address(nst), address(vault), type(uint256).max);
 
         vat.slip(ilk, address(vault), int256(1_000_000 * WAD));

@@ -17,8 +17,7 @@
 
 pragma solidity ^0.8.16;
 
-contract AllocatorRoles
-{
+contract AllocatorRoles {
     // --- storage variables ---
 
     mapping(address => uint256) public wards;
@@ -56,17 +55,11 @@ contract AllocatorRoles
     // --- getters ---
 
     function hasUserRole(bytes32 ilk, address who, uint8 role) external view returns (bool has) {
-        has = userRoles[ilk][who] & bytes32(2 ** uint256(role)) != bytes32(0);
+        has = userRoles[ilk][who] & bytes32(uint256(1) << role) != bytes32(0);
     }
 
     function hasActionRole(bytes32 ilk, address target, bytes4 sig, uint8 role) external view returns (bool has) {
-        has = actionsRoles[ilk][target][sig] & bytes32(2 ** uint256(role)) != bytes32(0);
-    }
-
-    // --- internals ---
-
-    function _bitNot(bytes32 input) internal pure returns (bytes32 output) {
-        output = (input ^ bytes32(type(uint256).max));
+        has = actionsRoles[ilk][target][sig] & bytes32(uint256(1) << role) != bytes32(0);
     }
 
     // --- general administration ---
@@ -89,21 +82,21 @@ contract AllocatorRoles
     // --- ilk administration ---
 
     function setUserRole(bytes32 ilk, address who, uint8 role, bool enabled) public ilkAuth(ilk) {
-        bytes32 mask = bytes32(2 ** uint256(role));
+        bytes32 mask = bytes32(uint256(1) << role);
         if (enabled) {
             userRoles[ilk][who] |= mask;
         } else {
-            userRoles[ilk][who] &= _bitNot(mask);
+            userRoles[ilk][who] &= ~mask;
         }
         emit SetUserRole(ilk, who, role, enabled);
     }
 
     function setRoleAction(bytes32 ilk, uint8 role, address target, bytes4 sig, bool enabled) external ilkAuth(ilk) {
-        bytes32 mask = bytes32(2 ** uint256(role));
+        bytes32 mask = bytes32(uint256(1) << role);
         if (enabled) {
             actionsRoles[ilk][target][sig] |= mask;
         } else {
-            actionsRoles[ilk][target][sig] &= _bitNot(mask);
+            actionsRoles[ilk][target][sig] &= ~mask;
         }
         emit SetRoleAction(ilk, role, target, sig, enabled);
     }

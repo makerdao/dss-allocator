@@ -18,7 +18,7 @@ pragma solidity ^0.8.16;
 
 interface ConduitLike {
     function deposit(bytes32, address, uint256) external;
-    function withdraw(bytes32, address, uint256) external;
+    function withdraw(bytes32, address, uint256) external returns (uint256);
 }
 
 contract ConduitMover {
@@ -99,8 +99,12 @@ contract ConduitMover {
         unchecked { configs[from][to][gem].num = cfg.num - 1; }
         configs[from][to][gem].zzz = uint32(block.timestamp);
 
-        if (from != buffer) ConduitLike(from).withdraw(ilk, gem, cfg.lot);
-        if (to   != buffer) ConduitLike(to).deposit(ilk, gem, cfg.lot);
+        if (from != buffer) {
+            require(ConduitLike(from).withdraw(ilk, gem, cfg.lot) == cfg.lot, "ConduitMover/lot-withdraw-failed");
+        }
+        if (to != buffer) {
+            ConduitLike(to).deposit(ilk, gem, cfg.lot);
+        }
 
         emit Move(from, to, gem, cfg.lot);
     }

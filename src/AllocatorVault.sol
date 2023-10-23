@@ -37,13 +37,12 @@ interface GemLike {
 
 interface NstJoinLike {
     function nst() external view returns (GemLike);
-    function vat() external view returns (address);
+    function vat() external view returns (VatLike);
     function exit(address, uint256) external;
     function join(address, uint256) external;
 }
 
 contract AllocatorVault {
-
     // --- storage variables ---
 
     mapping(address => uint256) public wards;
@@ -81,19 +80,17 @@ contract AllocatorVault {
 
     // --- constructor ---
 
-    constructor(address roles_, address buffer_, address vat_, bytes32 ilk_, address nstJoin_) {
+    constructor(address roles_, address buffer_, bytes32 ilk_, address nstJoin_) {
         roles = RolesLike(roles_);
 
         buffer = buffer_;
-        vat = VatLike(vat_);
         ilk = ilk_;
         nstJoin = NstJoinLike(nstJoin_);
 
-        require(vat_ == nstJoin.vat(), "AllocatorVault/vat-not-match");
-
+        vat = nstJoin.vat();
         nst = nstJoin.nst();
 
-        VatLike(vat_).hope(nstJoin_);
+        vat.hope(nstJoin_);
         nst.approve(nstJoin_, type(uint256).max);
 
         wards[msg.sender] = 1;
@@ -103,6 +100,7 @@ contract AllocatorVault {
     // --- math ---
 
     function _divup(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        // Note: _divup(0,0) will return 0 differing from natural solidity division
         unchecked {
             z = x != 0 ? ((x - 1) / y) + 1 : 0;
         }

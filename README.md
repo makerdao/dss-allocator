@@ -90,7 +90,7 @@ It enforces that:
 
 ### Swapper Callees
 
-Contracts that perform the actual swap and send the resulting funds to the Swapper (to be forwarded to the AllocatoBuffer).
+Contracts that perform the actual swap and send the resulting funds to the Swapper (to be forwarded to the AllocatorBuffer).
 
 - They can be implemented on top of any DEX / swap vehicle.
 - An example is `SwapperCalleeUniV3`, where swaps in Uniswap V3 can be triggered.
@@ -130,7 +130,8 @@ An interface which each Conduit should implement.
 ## Security Model:
 - AllocatorDAOs can not incur a loss of more than the debt ceiling (`line`) of their respective `ilk`.
 - A funnel operator (whether a facilitator or an automated contract) can not incur a loss of more than `cap` amount of funds per `era` interval for a specific configuration. This includes not being able to move funds directly to any unknown address that the AllocatorDAO Proxy did not approve.
-- A keeper can not incur a loss of more than the funnel opeator can, and any loss it can incur is also constrained by `req` or `req0` and `req1` for a specific configuration.
+- A keeper's maximum loss must be bounded by `cap` amount of funds per `era` (as for a funnel operator) but is additionally constrainted by `lot` (or `amt0` and `amt1`) amount of funds per `hop` for a specific configuration. Moreover, a keeper's execution must guarantee a minimum amount of output tokens, defined by `req` (or `req0` and `req1`) for a specific configuration.
+- If a rate limit is needed for depositing or withdrawing in a specific Conduit (in order to limit the harm a rogue facilitator can cause), it is the responsibility of the Conduit itself to implement it.
 
 ## Technical Assumptions:
 - A `uint32` is suitable for storing timestamps or time intervals in the funnels, as the current version of the Allocation System is expected to be deprecated long before 2106.
@@ -144,4 +145,7 @@ An interface which each Conduit should implement.
 - In the Swapper, in case `limit.era` is zero the full cap amount can be swapped for multiple times in the same transaction because `limit.due` will be reset upon re-entry. However, this is consistent with the intended behavior, as in that case zero cooldown is explicitly defined.
 - In StableSwapper the keeper's minimal out value is assumed to be updated whenever `configs[src][dst]` is changed. Failing to do so may result in the swap call reverting or in taking on more slippage than intended (up to a limit controlled by `configs[src][dst].min`).
 - In StableDepositorUniV3 the keeper's minimal amt values are assumed to be updated whenever `configs[gem0][gem1][fee][tickLower][tickUpper]` is changed. Failing to do so may result in the deposit/withdraw call reverting or in taking on more slippage than intended (up to a limit controlled by `configs[gem0][gem1][fee][tickLower][tickUpper].req0/1`).
+- Deployment sanity checks are done as part of the init functions (see the `deploy` directory).
+- DepositorUniV3 has limits for the maximum amount of a pair of tokens that can be added or removed from the pool per era. The rate is purposefully shared between the deposit and withdraw operations (so both actions share the same capacity).
+- The AllocatorDAO Proxy configuring the different rate limits is assumed to know what it is doing and is allowed to set any configuration, even if one configuration collides or duplicates others.
 - The Allocation System assumes that the ESM threshold is set large enough prior to its deployment, so Emergency Shutdown can never be called.
