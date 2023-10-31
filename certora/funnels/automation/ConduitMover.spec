@@ -44,36 +44,51 @@ function depositSummary(address addr, bytes32 ilk, address gem, uint256 amount) 
     return true;
 }
 
+// Verify that each storage layout is only modified in the corresponding functions
+rule storageAffected(method f) {
+    env e;
+
+    address anyAddr;
+    address anyAddr_2;
+    address anyAddr_3;
+
+    mathint wardsBefore = wards(anyAddr);
+    mathint budsBefore = buds(anyAddr);
+    mathint numBefore; mathint hopBefore; mathint zzzBefore; mathint lotBefore;
+    numBefore, hopBefore, zzzBefore, lotBefore = configs(anyAddr, anyAddr_2, anyAddr_3);
+
+    calldataarg args;
+    f(e, args);
+
+    mathint wardsAfter = wards(anyAddr);
+    mathint budsAfter = buds(anyAddr);
+    mathint numAfter; mathint hopAfter; mathint zzzAfter; mathint lotAfter;
+    numAfter, hopAfter, zzzAfter, lotAfter = configs(anyAddr, anyAddr_2, anyAddr_3);
+
+    assert wardsAfter != wardsBefore => f.selector == sig:rely(address).selector || f.selector == sig:deny(address).selector, "wards[x] changed in an unexpected function";
+    assert budsAfter != budsBefore => f.selector == sig:kiss(address).selector || f.selector == sig:diss(address).selector, "buds[x] changed in an unexpected function";
+    assert numAfter != numBefore => f.selector == sig:setConfig(address,address,address,uint64,uint32,uint128).selector || f.selector == sig:move(address,address,address).selector, "configs[x][y][z].num changed in an unexpected function";
+    assert hopAfter != hopBefore => f.selector == sig:setConfig(address,address,address,uint64,uint32,uint128).selector, "configs[x][y][z].hop changed in an unexpected function";
+    assert zzzAfter != zzzBefore => f.selector == sig:setConfig(address,address,address,uint64,uint32,uint128).selector || f.selector == sig:move(address,address,address).selector, "configs[x][y][z].zzz changed in an unexpected function";
+    assert lotAfter != lotBefore => f.selector == sig:setConfig(address,address,address,uint64,uint32,uint128).selector, "configs[x][y][z].lot changed in an unexpected function";
+}
+
 // Verify correct storage changes for non reverting rely
 rule rely(address usr) {
     env e;
 
     address other;
     require other != usr;
-    address anyAddr;
-    address anyAddr_2;
-    address anyAddr_3;
 
     mathint wardsOtherBefore = wards(other);
-    mathint budsBefore = buds(anyAddr);
-    mathint numBefore; mathint hopBefore; mathint zzzBefore; mathint lotBefore;
-    numBefore, hopBefore, zzzBefore, lotBefore = configs(anyAddr, anyAddr_2, anyAddr_3);
 
     rely(e, usr);
 
     mathint wardsUsrAfter = wards(usr);
     mathint wardsOtherAfter = wards(other);
-    mathint budsAfter = buds(anyAddr);
-    mathint numAfter; mathint hopAfter; mathint zzzAfter; mathint lotAfter;
-    numAfter, hopAfter, zzzAfter, lotAfter = configs(anyAddr, anyAddr_2, anyAddr_3);
 
     assert wardsUsrAfter == 1, "rely did not set the wards";
     assert wardsOtherAfter == wardsOtherBefore, "rely did not keep unchanged the rest of wards[x]";
-    assert budsAfter == budsBefore, "rely did not keep unchanged every buds[x]";
-    assert numAfter == numBefore, "rely did not keep unchanged every configs[x][y][z].num";
-    assert hopAfter == hopBefore, "rely did not keep unchanged every configs[x][y][z].hop";
-    assert zzzAfter == zzzBefore, "rely did not keep unchanged every configs[x][y][z].zzz";
-    assert lotAfter == lotBefore, "rely did not keep unchanged every configs[x][y][z].lot";
 }
 
 // Verify revert rules on rely
@@ -98,30 +113,16 @@ rule deny(address usr) {
 
     address other;
     require other != usr;
-    address anyAddr;
-    address anyAddr_2;
-    address anyAddr_3;
 
     mathint wardsOtherBefore = wards(other);
-    mathint budsBefore = buds(anyAddr);
-    mathint numBefore; mathint hopBefore; mathint zzzBefore; mathint lotBefore;
-    numBefore, hopBefore, zzzBefore, lotBefore = configs(anyAddr, anyAddr_2, anyAddr_3);
 
     deny(e, usr);
 
     mathint wardsUsrAfter = wards(usr);
     mathint wardsOtherAfter = wards(other);
-    mathint budsAfter = buds(anyAddr);
-    mathint numAfter; mathint hopAfter; mathint zzzAfter; mathint lotAfter;
-    numAfter, hopAfter, zzzAfter, lotAfter = configs(anyAddr, anyAddr_2, anyAddr_3);
 
     assert wardsUsrAfter == 0, "deny did not set the wards";
     assert wardsOtherAfter == wardsOtherBefore, "deny did not keep unchanged the rest of wards[x]";
-    assert budsAfter == budsBefore, "deny did not keep unchanged every buds[x]";
-    assert numAfter == numBefore, "deny did not keep unchanged every configs[x][y][z].num";
-    assert hopAfter == hopBefore, "deny did not keep unchanged every configs[x][y][z].hop";
-    assert zzzAfter == zzzBefore, "deny did not keep unchanged every configs[x][y][z].zzz";
-    assert lotAfter == lotBefore, "deny did not keep unchanged every configs[x][y][z].lot";
 }
 
 // Verify revert rules on deny
@@ -146,30 +147,16 @@ rule kiss(address usr) {
 
     address other;
     require other != usr;
-    address anyAddr;
-    address anyAddr_2;
-    address anyAddr_3;
 
-    mathint wardsBefore = wards(anyAddr);
     mathint budsOtherBefore = buds(other);
-    mathint numBefore; mathint hopBefore; mathint zzzBefore; mathint lotBefore;
-    numBefore, hopBefore, zzzBefore, lotBefore = configs(anyAddr, anyAddr_2, anyAddr_3);
 
     kiss(e, usr);
 
-    mathint wardsAfter = wards(anyAddr);
     mathint budsUsrAfter = buds(usr);
     mathint budsOtherAfter = buds(other);
-    mathint numAfter; mathint hopAfter; mathint zzzAfter; mathint lotAfter;
-    numAfter, hopAfter, zzzAfter, lotAfter = configs(anyAddr, anyAddr_2, anyAddr_3);
 
-    assert wardsAfter == wardsBefore, "kiss did not keep unchanged every wards[x]";
     assert budsUsrAfter == 1, "kiss did not set the buds";
     assert budsOtherAfter == budsOtherBefore, "kiss did not keep unchanged the rest of buds[x]";
-    assert numAfter == numBefore, "kiss did not keep unchanged every configs[x][y][z].num";
-    assert hopAfter == hopBefore, "kiss did not keep unchanged every configs[x][y][z].hop";
-    assert zzzAfter == zzzBefore, "kiss did not keep unchanged every configs[x][y][z].zzz";
-    assert lotAfter == lotBefore, "kiss did not keep unchanged every configs[x][y][z].lot";
 }
 
 // Verify revert rules on kiss
@@ -194,30 +181,16 @@ rule diss(address usr) {
 
     address other;
     require other != usr;
-    address anyAddr;
-    address anyAddr_2;
-    address anyAddr_3;
 
-    mathint wardsBefore = wards(anyAddr);
     mathint budsOtherBefore = buds(other);
-    mathint numBefore; mathint hopBefore; mathint zzzBefore; mathint lotBefore;
-    numBefore, hopBefore, zzzBefore, lotBefore = configs(anyAddr, anyAddr_2, anyAddr_3);
 
     diss(e, usr);
 
-    mathint wardsAfter = wards(anyAddr);
     mathint budsUsrAfter = buds(usr);
     mathint budsOtherAfter = buds(other);
-    mathint numAfter; mathint hopAfter; mathint zzzAfter; mathint lotAfter;
-    numAfter, hopAfter, zzzAfter, lotAfter = configs(anyAddr, anyAddr_2, anyAddr_3);
 
-    assert wardsAfter == wardsBefore, "diss did not keep unchanged every wards[x]";
     assert budsUsrAfter == 0, "diss did not set the buds";
     assert budsOtherAfter == budsOtherBefore, "diss did not keep unchanged the rest of buds[x]";
-    assert numAfter == numBefore, "diss did not keep unchanged every configs[x][y][z].num";
-    assert hopAfter == hopBefore, "diss did not keep unchanged every configs[x][y][z].hop";
-    assert zzzAfter == zzzBefore, "diss did not keep unchanged every configs[x][y][z].zzz";
-    assert lotAfter == lotBefore, "diss did not keep unchanged every configs[x][y][z].lot";
 }
 
 // Verify revert rules on diss
@@ -240,28 +213,21 @@ rule diss_revert(address usr) {
 rule setConfig(address from, address to, address gem, uint64 num, uint32 hop, uint128 lot) {
     env e;
 
-    address anyAddr;
     address otherAddr;
     address otherAddr_2;
     address otherAddr_3;
     require otherAddr != from || otherAddr_2 != to || otherAddr_3 != gem;
 
-    mathint wardsBefore = wards(anyAddr);
-    mathint budsBefore = buds(anyAddr);
     mathint numOtherBefore; mathint hopOtherBefore; mathint zzzOtherBefore; mathint lotOtherBefore;
     numOtherBefore, hopOtherBefore, zzzOtherBefore, lotOtherBefore = configs(otherAddr, otherAddr_2, otherAddr_3);
 
     setConfig(e, from, to, gem, num, hop, lot);
 
-    mathint wardsAfter = wards(anyAddr);
-    mathint budsAfter = buds(anyAddr);
     mathint numFromToGemAfter; mathint hopFromToGemAfter; mathint zzzFromToGemAfter; mathint lotFromToGemAfter;
     numFromToGemAfter, hopFromToGemAfter, zzzFromToGemAfter, lotFromToGemAfter = configs(from, to, gem);
     mathint numOtherAfter; mathint hopOtherAfter; mathint zzzOtherAfter; mathint lotOtherAfter;
     numOtherAfter, hopOtherAfter, zzzOtherAfter, lotOtherAfter = configs(otherAddr, otherAddr_2, otherAddr_3);
 
-    assert wardsAfter == wardsBefore, "setConfig did not keep unchanged every wards[x]";
-    assert budsAfter == budsBefore, "setConfig did not keep unchanged every buds[x]";
     assert numFromToGemAfter == to_mathint(num), "setConfig did not set configs[from][to][gem].num to num";
     assert hopFromToGemAfter == to_mathint(hop), "setConfig did not set configs[from][to][gem].hop to hop";
     assert zzzFromToGemAfter == 0, "setConfig did not set configs[from][to][gem].zzz to 0";
@@ -292,7 +258,6 @@ rule setConfig_revert(address from, address to, address gem, uint64 num, uint32 
 rule move(address from, address to, address gem) {
     env e;
 
-    address anyAddr;
     address otherAddr;
     address otherAddr_2;
     address otherAddr_3;
@@ -302,12 +267,12 @@ rule move(address from, address to, address gem) {
 
     address buffer = buffer();
 
-    mathint wardsBefore = wards(anyAddr);
-    mathint budsBefore = buds(anyAddr);
-    mathint numFromToGemBefore; mathint hopFromToGemBefore; mathint zzzFromToGemBefore; mathint lotFromToGemBefore;
-    numFromToGemBefore, hopFromToGemBefore, zzzFromToGemBefore, lotFromToGemBefore = configs(from, to, gem);
-    mathint numOtherBefore; mathint hopOtherBefore; mathint zzzOtherBefore; mathint lotOtherBefore;
-    numOtherBefore, hopOtherBefore, zzzOtherBefore, lotOtherBefore = configs(otherAddr, otherAddr_2, otherAddr_3);
+    mathint a; mathint b;
+
+    mathint numFromToGemBefore; mathint lotFromToGem;
+    numFromToGemBefore, a, b, lotFromToGem = configs(from, to, gem);
+    mathint numOtherBefore; mathint zzzOtherBefore;
+    numOtherBefore, a, zzzOtherBefore, b = configs(otherAddr, otherAddr_2, otherAddr_3);
 
     bytes32 withdrawIlkBefore = withdrawIlk;
     address withdrawGemBefore = withdrawGem;
@@ -321,28 +286,20 @@ rule move(address from, address to, address gem) {
 
     move(e, from, to, gem);
 
-    mathint wardsAfter = wards(anyAddr);
-    mathint budsAfter = buds(anyAddr);
-    mathint numFromToGemAfter; mathint hopFromToGemAfter; mathint zzzFromToGemAfter; mathint lotFromToGemAfter;
-    numFromToGemAfter, hopFromToGemAfter, zzzFromToGemAfter, lotFromToGemAfter = configs(from, to, gem);
-    mathint numOtherAfter; mathint hopOtherAfter; mathint zzzOtherAfter; mathint lotOtherAfter;
-    numOtherAfter, hopOtherAfter, zzzOtherAfter, lotOtherAfter = configs(otherAddr, otherAddr_2, otherAddr_3);
+    mathint numFromToGemAfter; mathint zzzFromToGemAfter;
+    numFromToGemAfter, a, zzzFromToGemAfter, b = configs(from, to, gem);
+    mathint numOtherAfter; mathint zzzOtherAfter;
+    numOtherAfter, a, zzzOtherAfter, b = configs(otherAddr, otherAddr_2, otherAddr_3);
 
-    assert wardsAfter == wardsBefore, "move did not keep unchanged every wards[x]";
-    assert budsAfter == budsBefore, "move did not keep unchanged every buds[x]";
     assert numFromToGemAfter == numFromToGemBefore - 1, "move did not decrease configs[from][to][gem].num by 1";
-    assert hopFromToGemAfter == hopFromToGemBefore, "move did not keep unchanged configs[from][to][gem].hop";
     assert zzzFromToGemAfter == to_mathint(e.block.timestamp), "move did not set configs[from][to][gem].zzz to block.timestamp";
-    assert lotFromToGemAfter == lotFromToGemBefore, "move did not keep unchanged configs[from][to][gem].lot";
     assert numOtherAfter == numOtherBefore, "move did not keep unchanged the rest of configs[x][y][z].num";
-    assert hopOtherAfter == hopOtherBefore, "move did not keep unchanged the rest of configs[x][y][z].hop";
     assert zzzOtherAfter == zzzOtherBefore, "move did not keep unchanged the rest of configs[x][y][z].zzz";
-    assert lotOtherAfter == lotOtherBefore, "move did not keep unchanged the rest of configs[x][y][z].lot";
     assert from != buffer => withdrawCounter == withdrawCounterBefore + 1, "move did not execute exactly one withdraw external call";
     assert from != buffer => withdrawAddr == from, "move did not execute the withdraw external call to the correct 'from' contract";
     assert from != buffer => withdrawIlk == ilk(), "move did not pass the correct ilk to the withdraw external call";
     assert from != buffer => withdrawGem == gem, "move did not pass the correct gen to the withdraw external call";
-    assert from != buffer => to_mathint(withdrawAmount) == lotFromToGemBefore, "move did not pass the correct amount to the withdraw external call";
+    assert from != buffer => to_mathint(withdrawAmount) == lotFromToGem, "move did not pass the correct amount to the withdraw external call";
     assert from == buffer => withdrawCounter == withdrawCounterBefore, "move did execute one or more withdraw external call when it did not correspond";
     assert from == buffer => withdrawIlk == withdrawIlkBefore, "move did execute the withdraw external call when it did not correspond";
     assert from == buffer => withdrawGem == withdrawGemBefore, "move did execute the withdraw external call when it did not correspond 2";
@@ -351,7 +308,7 @@ rule move(address from, address to, address gem) {
     assert to != buffer => depositAddr == to, "move did not execute the deposit external call to the correct 'to' contract";
     assert to != buffer => depositIlk == ilk(), "move did not pass the correct ilk to the deposit external call";
     assert to != buffer => depositGem == gem, "move did not pass the correct gen to the deposit external call";
-    assert to != buffer => to_mathint(depositAmount) == lotFromToGemBefore, "move did not pass the correct amount to the deposit external call";
+    assert to != buffer => to_mathint(depositAmount) == lotFromToGem, "move did not pass the correct amount to the deposit external call";
     assert to == buffer => depositCounter == depositCounterBefore, "move did execute one or more deposit external call when it did not correspond";
     assert to == buffer => depositIlk == depositIlkBefore, "move did execute the deposit external call when it did not correspond";
     assert to == buffer => depositGem == depositGemBefore, "move did execute the deposit external call when it did not correspond 2";

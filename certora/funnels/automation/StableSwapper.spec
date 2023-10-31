@@ -29,36 +29,51 @@ function swapSummary(address addr, address src, address dst, uint256 lot, uint25
     return swapRetValue;
 }
 
+// Verify that each storage layout is only modified in the corresponding functions
+rule storageAffected(method f) {
+    env e;
+
+    address anyAddr;
+    address anyAddr_2;
+
+    mathint wardsBefore = wards(anyAddr);
+    mathint budsBefore = buds(anyAddr);
+    mathint numBefore; mathint hopBefore; mathint zzzBefore; mathint lotBefore; mathint reqBefore;
+    numBefore, hopBefore, zzzBefore, lotBefore, reqBefore = configs(anyAddr, anyAddr_2);
+
+    calldataarg args;
+    f(e, args);
+
+    mathint wardsAfter = wards(anyAddr);
+    mathint budsAfter = buds(anyAddr);
+    mathint numAfter; mathint hopAfter; mathint zzzAfter; mathint lotAfter; mathint reqAfter;
+    numAfter, hopAfter, zzzAfter, lotAfter, reqAfter = configs(anyAddr, anyAddr_2);
+
+    assert wardsAfter != wardsBefore => f.selector == sig:rely(address).selector || f.selector == sig:deny(address).selector, "wards[x] changed in an unexpected function";
+    assert budsAfter != budsBefore => f.selector == sig:kiss(address).selector || f.selector == sig:diss(address).selector, "buds[x] changed in an unexpected function";
+    assert numAfter != numBefore => f.selector == sig:setConfig(address,address,uint128,uint32,uint96,uint96).selector || f.selector == sig:swap(address,address,uint256,address,bytes).selector, "configs[x][y].num changed in an unexpected function";
+    assert hopAfter != hopBefore => f.selector == sig:setConfig(address,address,uint128,uint32,uint96,uint96).selector, "configs[x][y].hop changed in an unexpected function";
+    assert zzzAfter != zzzBefore => f.selector == sig:setConfig(address,address,uint128,uint32,uint96,uint96).selector || f.selector == sig:swap(address,address,uint256,address,bytes).selector, "configs[x][y].zzz changed in an unexpected function";
+    assert lotAfter != lotBefore => f.selector == sig:setConfig(address,address,uint128,uint32,uint96,uint96).selector, "configs[x][y].lot changed in an unexpected function";
+    assert reqAfter != reqBefore => f.selector == sig:setConfig(address,address,uint128,uint32,uint96,uint96).selector, "configs[x][y].req changed in an unexpected function";
+}
+
 // Verify correct storage changes for non reverting rely
 rule rely(address usr) {
     env e;
 
     address other;
     require other != usr;
-    address anyAddr;
-    address anyAddr_2;
 
     mathint wardsOtherBefore = wards(other);
-    mathint budsBefore = buds(anyAddr);
-    mathint numBefore; mathint hopBefore; mathint zzzBefore; mathint lotBefore; mathint reqBefore;
-    numBefore, hopBefore, zzzBefore, lotBefore, reqBefore = configs(anyAddr, anyAddr_2);
 
     rely(e, usr);
 
     mathint wardsUsrAfter = wards(usr);
     mathint wardsOtherAfter = wards(other);
-    mathint budsAfter = buds(anyAddr);
-    mathint numAfter; mathint hopAfter; mathint zzzAfter; mathint lotAfter; mathint reqAfter;
-    numAfter, hopAfter, zzzAfter, lotAfter, reqAfter = configs(anyAddr, anyAddr_2);
 
     assert wardsUsrAfter == 1, "rely did not set the wards";
     assert wardsOtherAfter == wardsOtherBefore, "rely did not keep unchanged the rest of wards[x]";
-    assert budsAfter == budsBefore, "rely did not keep unchanged every buds[x]";
-    assert numAfter == numBefore, "rely did not keep unchanged every configs[x][y].num";
-    assert hopAfter == hopBefore, "rely did not keep unchanged every configs[x][y].hop";
-    assert zzzAfter == zzzBefore, "rely did not keep unchanged every configs[x][y].zzz";
-    assert lotAfter == lotBefore, "rely did not keep unchanged every configs[x][y].lot";
-    assert reqAfter == reqBefore, "rely did not keep unchanged every configs[x][y].req";
 }
 
 // Verify revert rules on rely
@@ -83,30 +98,16 @@ rule deny(address usr) {
 
     address other;
     require other != usr;
-    address anyAddr;
-    address anyAddr_2;
 
     mathint wardsOtherBefore = wards(other);
-    mathint budsBefore = buds(anyAddr);
-    mathint numBefore; mathint hopBefore; mathint zzzBefore; mathint lotBefore; mathint reqBefore;
-    numBefore, hopBefore, zzzBefore, lotBefore, reqBefore = configs(anyAddr, anyAddr_2);
 
     deny(e, usr);
 
     mathint wardsUsrAfter = wards(usr);
     mathint wardsOtherAfter = wards(other);
-    mathint budsAfter = buds(anyAddr);
-    mathint numAfter; mathint hopAfter; mathint zzzAfter; mathint lotAfter; mathint reqAfter;
-    numAfter, hopAfter, zzzAfter, lotAfter, reqAfter = configs(anyAddr, anyAddr_2);
 
     assert wardsUsrAfter == 0, "deny did not set the wards";
     assert wardsOtherAfter == wardsOtherBefore, "deny did not keep unchanged the rest of wards[x]";
-    assert budsAfter == budsBefore, "deny did not keep unchanged every buds[x]";
-    assert numAfter == numBefore, "deny did not keep unchanged every configs[x][y].num";
-    assert hopAfter == hopBefore, "deny did not keep unchanged every configs[x][y].hop";
-    assert zzzAfter == zzzBefore, "deny did not keep unchanged every configs[x][y].zzz";
-    assert lotAfter == lotBefore, "deny did not keep unchanged every configs[x][y].lot";
-    assert reqAfter == reqBefore, "deny did not keep unchanged every configs[x][y].req";
 }
 
 // Verify revert rules on deny
@@ -131,30 +132,16 @@ rule kiss(address usr) {
 
     address other;
     require other != usr;
-    address anyAddr;
-    address anyAddr_2;
 
-    mathint wardsBefore = wards(anyAddr);
     mathint budsOtherBefore = buds(other);
-    mathint numBefore; mathint hopBefore; mathint zzzBefore; mathint lotBefore; mathint reqBefore;
-    numBefore, hopBefore, zzzBefore, lotBefore, reqBefore = configs(anyAddr, anyAddr_2);
 
     kiss(e, usr);
 
-    mathint wardsAfter = wards(anyAddr);
     mathint budsUsrAfter = buds(usr);
     mathint budsOtherAfter = buds(other);
-    mathint numAfter; mathint hopAfter; mathint zzzAfter; mathint lotAfter; mathint reqAfter;
-    numAfter, hopAfter, zzzAfter, lotAfter, reqAfter = configs(anyAddr, anyAddr_2);
 
-    assert wardsAfter == wardsBefore, "kiss did not keep unchanged every wards[x]";
     assert budsUsrAfter == 1, "kiss did not set the buds";
     assert budsOtherAfter == budsOtherBefore, "kiss did not keep unchanged the rest of buds[x]";
-    assert numAfter == numBefore, "kiss did not keep unchanged every configs[x][y].num";
-    assert hopAfter == hopBefore, "kiss did not keep unchanged every configs[x][y].hop";
-    assert zzzAfter == zzzBefore, "kiss did not keep unchanged every configs[x][y].zzz";
-    assert lotAfter == lotBefore, "kiss did not keep unchanged every configs[x][y].lot";
-    assert reqAfter == reqBefore, "kiss did not keep unchanged every configs[x][y].req";
 }
 
 // Verify revert rules on kiss
@@ -179,30 +166,16 @@ rule diss(address usr) {
 
     address other;
     require other != usr;
-    address anyAddr;
-    address anyAddr_2;
 
-    mathint wardsBefore = wards(anyAddr);
     mathint budsOtherBefore = buds(other);
-    mathint numBefore; mathint hopBefore; mathint zzzBefore; mathint lotBefore; mathint reqBefore;
-    numBefore, hopBefore, zzzBefore, lotBefore, reqBefore = configs(anyAddr, anyAddr_2);
 
     diss(e, usr);
 
-    mathint wardsAfter = wards(anyAddr);
     mathint budsUsrAfter = buds(usr);
     mathint budsOtherAfter = buds(other);
-    mathint numAfter; mathint hopAfter; mathint zzzAfter; mathint lotAfter; mathint reqAfter;
-    numAfter, hopAfter, zzzAfter, lotAfter, reqAfter = configs(anyAddr, anyAddr_2);
 
-    assert wardsAfter == wardsBefore, "diss did not keep unchanged every wards[x]";
     assert budsUsrAfter == 0, "diss did not set the buds";
     assert budsOtherAfter == budsOtherBefore, "diss did not keep unchanged the rest of buds[x]";
-    assert numAfter == numBefore, "diss did not keep unchanged every configs[x][y].num";
-    assert hopAfter == hopBefore, "diss did not keep unchanged every configs[x][y].hop";
-    assert zzzAfter == zzzBefore, "diss did not keep unchanged every configs[x][y].zzz";
-    assert lotAfter == lotBefore, "diss did not keep unchanged every configs[x][y].lot";
-    assert reqAfter == reqBefore, "diss did not keep unchanged every configs[x][y].req";
 }
 
 // Verify revert rules on diss
@@ -225,27 +198,20 @@ rule diss_revert(address usr) {
 rule setConfig(address src, address dst, uint128 num, uint32 hop, uint96 lot, uint96 req) {
     env e;
 
-    address anyAddr;
     address otherAddr;
     address otherAddr_2;
     require otherAddr != src || otherAddr_2 != dst;
 
-    mathint wardsBefore = wards(anyAddr);
-    mathint budsBefore = buds(anyAddr);
     mathint numOtherBefore; mathint hopOtherBefore; mathint zzzOtherBefore; mathint lotOtherBefore; mathint reqOtherBefore;
     numOtherBefore, hopOtherBefore, zzzOtherBefore, lotOtherBefore, reqOtherBefore = configs(otherAddr, otherAddr_2);
 
     setConfig(e, src, dst, num, hop, lot, req);
 
-    mathint wardsAfter = wards(anyAddr);
-    mathint budsAfter = buds(anyAddr);
     mathint numSrcDstAfter; mathint hopSrcDstAfter; mathint zzzSrcDstAfter; mathint lotSrcDstAfter; mathint reqSrcDstAfter;
     numSrcDstAfter, hopSrcDstAfter, zzzSrcDstAfter, lotSrcDstAfter, reqSrcDstAfter = configs(src, dst);
     mathint numOtherAfter; mathint hopOtherAfter; mathint zzzOtherAfter; mathint lotOtherAfter; mathint reqOtherAfter;
     numOtherAfter, hopOtherAfter, zzzOtherAfter, lotOtherAfter, reqOtherAfter = configs(otherAddr, otherAddr_2);
 
-    assert wardsAfter == wardsBefore, "setConfig did not keep unchanged every wards[x]";
-    assert budsAfter == budsBefore, "setConfig did not keep unchanged every buds[x]";
     assert numSrcDstAfter == to_mathint(num), "setConfig did not set configs[src][dst].num to num";
     assert hopSrcDstAfter == to_mathint(hop), "setConfig did not set configs[src][dst].hop to hop";
     assert zzzSrcDstAfter == 0, "setConfig did not set configs[src][dst].zzz to 0";
@@ -278,49 +244,38 @@ rule setConfig_revert(address src, address dst, uint128 num, uint32 hop, uint96 
 rule swap(address src, address dst, uint256 minOut, address callee, bytes data) {
     env e;
 
-    address anyAddr;
     address otherAddr;
     address otherAddr_2;
     require otherAddr != src || otherAddr_2 != dst;
 
     require e.block.timestamp <= max_uint32;
 
-    mathint wardsBefore = wards(anyAddr);
-    mathint budsBefore = buds(anyAddr);
-    mathint numSrcDstBefore; mathint hopSrcDstBefore; mathint zzzSrcDstBefore; mathint lotSrcDstBefore; mathint reqSrcDstBefore;
-    numSrcDstBefore, hopSrcDstBefore, zzzSrcDstBefore, lotSrcDstBefore, reqSrcDstBefore = configs(src, dst);
-    mathint numOtherBefore; mathint hopOtherBefore; mathint zzzOtherBefore; mathint lotOtherBefore; mathint reqOtherBefore;
-    numOtherBefore, hopOtherBefore, zzzOtherBefore, lotOtherBefore, reqOtherBefore = configs(otherAddr, otherAddr_2);
+    mathint a; mathint b; mathint c;
+
+    mathint numSrcDstBefore; mathint lotSrcDst; mathint reqSrcDst;
+    numSrcDstBefore, a, b, lotSrcDst, reqSrcDst = configs(src, dst);
+    mathint numOtherBefore; mathint zzzOtherBefore;
+    numOtherBefore, a, zzzOtherBefore, b, c = configs(otherAddr, otherAddr_2);
 
     mathint swapCounterBefore = swapCounter;
 
     swap(e, src, dst, minOut, callee, data);
 
-    mathint wardsAfter = wards(anyAddr);
-    mathint budsAfter = buds(anyAddr);
-    mathint numSrcDstAfter; mathint hopSrcDstAfter; mathint zzzSrcDstAfter; mathint lotSrcDstAfter; mathint reqSrcDstAfter;
-    numSrcDstAfter, hopSrcDstAfter, zzzSrcDstAfter, lotSrcDstAfter, reqSrcDstAfter = configs(src, dst);
-    mathint numOtherAfter; mathint hopOtherAfter; mathint zzzOtherAfter; mathint lotOtherAfter; mathint reqOtherAfter;
-    numOtherAfter, hopOtherAfter, zzzOtherAfter, lotOtherAfter, reqOtherAfter = configs(otherAddr, otherAddr_2);
+    mathint numSrcDstAfter; mathint zzzSrcDstAfter;
+    numSrcDstAfter, a, zzzSrcDstAfter, b, c = configs(src, dst);
+    mathint numOtherAfter; mathint zzzOtherAfter;
+    numOtherAfter, a, zzzOtherAfter, b, c = configs(otherAddr, otherAddr_2);
 
-    assert wardsAfter == wardsBefore, "swap did not keep unchanged every wards[x]";
-    assert budsAfter == budsBefore, "swap did not keep unchanged every buds[x]";
     assert numSrcDstAfter == numSrcDstBefore - 1, "swap did not decrease configs[src][dst].num by 1";
-    assert hopSrcDstAfter == hopSrcDstBefore, "swap did not keep unchanged configs[src][dst].hop";
     assert zzzSrcDstAfter == to_mathint(e.block.timestamp), "swap did not set configs[src][dst].zzz to block.timestamp";
-    assert lotSrcDstAfter == lotSrcDstBefore, "swap did not keep unchanged configs[src][dst].lot";
-    assert reqSrcDstAfter == reqSrcDstBefore, "swap did not keep unchanged configs[src][dst].req";
     assert numOtherAfter == numOtherBefore, "swap did not keep unchanged the rest of configs[x][y].num";
-    assert hopOtherAfter == hopOtherBefore, "swap did not keep unchanged the rest of configs[x][y].hop";
     assert zzzOtherAfter == zzzOtherBefore, "swap did not keep unchanged the rest of configs[x][y].zzz";
-    assert lotOtherAfter == lotOtherBefore, "swap did not keep unchanged the rest of configs[x][y].lot";
-    assert reqOtherAfter == reqOtherBefore, "swap did not keep unchanged the rest of configs[x][y].req";
     assert swapCounter == swapCounterBefore + 1, "swap did not execute exactly one swap external call";
     assert swapAddr == swapper(), "swap did not execute the swap external call to the correct 'swapper()' contract";
     assert swapSrc == src, "swap did not not pass the correct src to the external call";
     assert swapDst == dst, "swap did not not pass the correct dst to the external call";
-    assert to_mathint(swapLot) == lotSrcDstBefore, "swap did not not pass the correct lot to the external call";
-    assert to_mathint(swapMinOut) == (minOut == 0 ? reqSrcDstBefore : to_mathint(minOut)), "swap did not not pass the correct minOut to the external call";
+    assert to_mathint(swapLot) == lotSrcDst, "swap did not not pass the correct lot to the external call";
+    assert to_mathint(swapMinOut) == (minOut == 0 ? reqSrcDst : to_mathint(minOut)), "swap did not not pass the correct minOut to the external call";
     assert swapCallee == callee, "swap did not not pass the correct callee to the external call";
     assert swapDataLength == data.length, "swap did not not pass the correct data to the external call";
 }

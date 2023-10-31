@@ -18,32 +18,47 @@ methods {
     function _.transferFrom(address, address, uint256) external => DISPATCHER(true) UNRESOLVED;
 }
 
+// Verify that each storage layout is only modified in the corresponding functions
+rule storageAffected(method f) {
+    env e;
+
+    address anyAddr;
+    address anyAddr_2;
+
+    mathint wardsBefore = wards(anyAddr);
+    mathint capBefore; mathint eraBefore; mathint dueBefore; mathint endBefore;
+    capBefore, eraBefore, dueBefore, endBefore = limits(anyAddr, anyAddr_2);
+
+    calldataarg args;
+    f(e, args);
+
+    mathint wardsAfter = wards(anyAddr);
+    mathint capAfter; mathint eraAfter; mathint dueAfter; mathint endAfter;
+    capAfter, eraAfter, dueAfter, endAfter = limits(anyAddr, anyAddr_2);
+
+    assert wardsAfter != wardsBefore => f.selector == sig:rely(address).selector || f.selector == sig:deny(address).selector, "wards[x] changed in an unexpected function";
+    assert capAfter != capBefore => f.selector == sig:setLimits(address,address,uint96,uint32).selector, "limits[x][y].cap changed in an unexpected function";
+    assert eraAfter != eraBefore => f.selector == sig:setLimits(address,address,uint96,uint32).selector, "limits[x][y].era changed in an unexpected function";
+    assert dueAfter != dueBefore => f.selector == sig:setLimits(address,address,uint96,uint32).selector || f.selector == sig:swap(address,address,uint256,uint256,address,bytes).selector, "limits[x][y].due changed in an unexpected function";
+    assert endAfter != endBefore => f.selector == sig:setLimits(address,address,uint96,uint32).selector || f.selector == sig:swap(address,address,uint256,uint256,address,bytes).selector, "limits[x][y].end changed in an unexpected function";
+}
+
 // Verify correct storage changes for non reverting rely
 rule rely(address usr) {
     env e;
 
     address other;
     require other != usr;
-    address anyAddr;
-    address anyAddr_2;
 
     mathint wardsOtherBefore = wards(other);
-    mathint capBefore; mathint eraBefore; mathint dueBefore; mathint endBefore;
-    capBefore, eraBefore, dueBefore, endBefore = limits(anyAddr, anyAddr_2);
 
     rely(e, usr);
 
     mathint wardsUsrAfter = wards(usr);
     mathint wardsOtherAfter = wards(other);
-    mathint capAfter; mathint eraAfter; mathint dueAfter; mathint endAfter;
-    capAfter, eraAfter, dueAfter, endAfter = limits(anyAddr, anyAddr_2);
 
     assert wardsUsrAfter == 1, "rely did not set the wards";
     assert wardsOtherAfter == wardsOtherBefore, "rely did not keep unchanged the rest of wards[x]";
-    assert capAfter == capBefore, "rely did not keep unchanged every limits[x][y].cap";
-    assert eraAfter == eraBefore, "rely did not keep unchanged every limits[x][y].era";
-    assert dueAfter == dueBefore, "rely did not keep unchanged every limits[x][y].due";
-    assert endAfter == endBefore, "rely did not keep unchanged every limits[x][y].end";
 }
 
 // Verify revert rules on rely
@@ -69,26 +84,16 @@ rule deny(address usr) {
 
     address other;
     require other != usr;
-    address anyAddr;
-    address anyAddr_2;
 
     mathint wardsOtherBefore = wards(other);
-    mathint capBefore; mathint eraBefore; mathint dueBefore; mathint endBefore;
-    capBefore, eraBefore, dueBefore, endBefore = limits(anyAddr, anyAddr_2);
 
     deny(e, usr);
 
     mathint wardsUsrAfter = wards(usr);
     mathint wardsOtherAfter = wards(other);
-    mathint capAfter; mathint eraAfter; mathint dueAfter; mathint endAfter;
-    capAfter, eraAfter, dueAfter, endAfter = limits(anyAddr, anyAddr_2);
 
     assert wardsUsrAfter == 0, "deny did not set the wards";
     assert wardsOtherAfter == wardsOtherBefore, "deny did not keep unchanged the rest of wards[x]";
-    assert capAfter == capBefore, "deny did not keep unchanged every limits[x][y].cap";
-    assert eraAfter == eraBefore, "deny did not keep unchanged every limits[x][y].era";
-    assert dueAfter == dueBefore, "deny did not keep unchanged every limits[x][y].due";
-    assert endAfter == endBefore, "deny did not keep unchanged every limits[x][y].end";
 }
 
 // Verify revert rules on deny
@@ -112,24 +117,20 @@ rule deny_revert(address usr) {
 rule setLimits(address src, address dst, uint96 cap, uint32 era) {
     env e;
 
-    address anyAddr;
     address otherAddr;
     address otherAddr_2;
     require otherAddr != src || otherAddr_2 != dst;
 
-    mathint wardsBefore = wards(anyAddr);
     mathint capOtherBefore; mathint eraOtherBefore; mathint dueOtherBefore; mathint endOtherBefore;
     capOtherBefore, eraOtherBefore, dueOtherBefore, endOtherBefore = limits(otherAddr, otherAddr_2);
 
     setLimits(e, src, dst, cap, era);
 
-    mathint wardsAfter = wards(anyAddr);
     mathint capSrcDstAfter; mathint eraSrcDstAfter; mathint dueSrcDstAfter; mathint endSrcDstAfter;
     capSrcDstAfter, eraSrcDstAfter, dueSrcDstAfter, endSrcDstAfter = limits(src, dst);
     mathint capOtherAfter; mathint eraOtherAfter; mathint dueOtherAfter; mathint endOtherAfter;
     capOtherAfter, eraOtherAfter, dueOtherAfter, endOtherAfter = limits(otherAddr, otherAddr_2);
 
-    assert wardsAfter == wardsBefore, "setLimits did not keep unchanged every wards[x]";
     assert capSrcDstAfter == to_mathint(cap), "setLimits did not set limits[src][dst].cap to cap";
     assert eraSrcDstAfter == to_mathint(era), "setLimits did not set limits[src][dst].era to era";
     assert dueSrcDstAfter == 0, "setLimits did not set limits[src][dst].due to 0";
@@ -176,11 +177,13 @@ rule swap(address src, address dst, uint256 amt, uint256 minOut, address callee,
     require buffer != currentContract;
     require buffer != callee;
 
+    mathint a; mathint b;
+
     mathint wardsBefore = wards(anyAddr);
-    mathint capBefore; mathint eraBefore; mathint dueBefore; mathint endBefore;
-    capBefore, eraBefore, dueBefore, endBefore = limits(src, dst);
-    mathint capOtherBefore; mathint eraOtherBefore; mathint dueOtherBefore; mathint endOtherBefore;
-    capOtherBefore, eraOtherBefore, dueOtherBefore, endOtherBefore = limits(otherAddr, otherAddr_2);
+    mathint cap; mathint era; mathint dueBefore; mathint endBefore;
+    cap, era, dueBefore, endBefore = limits(src, dst);
+    mathint dueOtherBefore; mathint endOtherBefore;
+    a, b, dueOtherBefore, endOtherBefore = limits(otherAddr, otherAddr_2);
     mathint srcBalanceOfBufferBefore = srcCon.balanceOf(e, buffer);
     mathint dstBalanceOfBufferBefore = dstCon.balanceOf(e, buffer);
 
@@ -188,24 +191,18 @@ rule swap(address src, address dst, uint256 amt, uint256 minOut, address callee,
 
     swap(e, src, dst, amt, minOut, callee, data);
 
-    mathint wardsAfter = wards(anyAddr);
-    mathint capAfter; mathint eraAfter; mathint dueAfter; mathint endAfter;
-    capAfter, eraAfter, dueAfter, endAfter = limits(src, dst);
-    mathint capOtherAfter; mathint eraOtherAfter; mathint dueOtherAfter; mathint endOtherAfter;
-    capOtherAfter, eraOtherAfter, dueOtherAfter, endOtherAfter = limits(otherAddr, otherAddr_2);
+    mathint dueAfter; mathint endAfter;
+    a, b, dueAfter, endAfter = limits(src, dst);
+    mathint dueOtherAfter; mathint endOtherAfter;
+    a, b, dueOtherAfter, endOtherAfter = limits(otherAddr, otherAddr_2);
 
-    mathint expectedDue = (to_mathint(e.block.timestamp) >= endBefore ? capBefore : dueBefore) - amt;
-    mathint expectedEnd = to_mathint(e.block.timestamp) >= endBefore ? e.block.timestamp + eraBefore : endBefore;
+    mathint expectedDue = (to_mathint(e.block.timestamp) >= endBefore ? cap : dueBefore) - amt;
+    mathint expectedEnd = to_mathint(e.block.timestamp) >= endBefore ? e.block.timestamp + era : endBefore;
     mathint srcBalanceOfBufferAfter = srcCon.balanceOf(e, buffer);
     mathint dstBalanceOfBufferAfter = dstCon.balanceOf(e, buffer);
 
-    assert wardsAfter == wardsBefore, "swap did not keep unchanged every wards[x]";
-    assert capAfter == capBefore, "swap did not keep unchanged limits[src][dst].cap";
-    assert eraAfter == eraBefore, "swap did not keep unchanged limits[src][dst].era";
     assert dueAfter == expectedDue, "swap did not set limits[src][dst].due to expected value";
     assert endAfter == expectedEnd, "swap did not set limits[src][dst].end to expected value";
-    assert capOtherAfter == capOtherBefore, "swap did not keep unchanged the rest of limits[x][y].cap";
-    assert eraOtherAfter == eraOtherBefore, "swap did not keep unchanged the rest of limits[x][y].era";
     assert dueOtherAfter == dueOtherBefore, "swap did not keep unchanged the rest of limits[x][y].due";
     assert endOtherAfter == endOtherBefore, "swap did not keep unchanged the rest of limits[x][y].end";
     assert srcBalanceOfBufferAfter == srcBalanceOfBufferBefore - amt, "swap did not decrease src.balanceOf(buffer) by amt";
