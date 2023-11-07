@@ -2,7 +2,7 @@
 pragma solidity ^0.8.16;
 
 interface GemLike {
-    function approve(address spender, uint256 value) external;
+    function approve(address, uint256) external;
     function transfer(address, uint256) external;
     function transferFrom(address, address, uint256) external;
     function decimals() external view returns (uint8);
