@@ -49,9 +49,7 @@ The allocation system includes several actor types:
 
 Each AllocatorDAO has a unique `ilk` (collateral type) with one VAT vault set up for it.
 
-- Each `ilk` supports a 1 trillion NST max debt ceiling.
-- The collateral amount of each vault is 1 million WAD (10^6 * 10^18 indivisible units of collateral).
-- All the `ilk`s have a shared simple [oracle](https://github.com/makerdao/dss-allocator/blob/dev/src/AllocatorOracle.sol) that just returns a fixed price of 1 Million (which multiplied by the collateral amount makes sure the max debt ceiling can indeed be reached).
+- All the `ilk`s have a shared simple [oracle](https://github.com/makerdao/dss-allocator/blob/dev/src/AllocatorOracle.sol) that just returns a fixed price of 1:1 (which multiplied by a huge amount of collateral makes sure the max debt ceiling can indeed be reached).
 
 ### AllocatorVault
 

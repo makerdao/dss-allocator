@@ -17,9 +17,7 @@
 pragma solidity ^0.8.16;
 
 contract AllocatorOracle {
-    // 1M price together with 1M supply, allows up to 1T DAI minting
-    // and it is a good balance for collateral redemption in Global Shutdown
-    uint256 internal constant PRICE = 10**6 * 10**18; // 1M in WAD
+    uint256 internal constant PRICE = 10**18; // 1:1 price in WAD
 
     /**
         @notice Return value and status of the oracle

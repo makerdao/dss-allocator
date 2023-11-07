@@ -14,15 +14,15 @@ contract AllocatorOracleTest is DssTest {
 
     function testOracle() public {
         (bytes32 val, bool ok) = oracle.peek();
-        assertEq(val, bytes32(uint256(10**6 * 10**18)));
+        assertEq(val, bytes32(uint256(10**18)));
         assertTrue(ok);
-        assertEq(oracle.read(), bytes32(uint256(10**6 * 10**18)));
+        assertEq(oracle.read(), bytes32(uint256(10**18)));
     }
 
     function testPricing() public {
         uint256 par = 1 * 10**27;
-        uint256 price = uint256(oracle.read()); // 1 * 10**6 * 10**18;
-        uint256 colSupply = 1 * 10**6 * 10**18;
+        uint256 price = uint256(oracle.read()); // 1 * 10**18;
+        uint256 colSupply = 1 * 10**12 * 10**18;
         uint256 colDebt = 1 * 10**6 * 10**45; // Imagine a scenario where the ilk only has 1M debt
         uint256 totDebt = 50 * 10**9 * 10**45; // Imagine a scenario where the tot Supply of DAI is 50B
 
@@ -52,6 +52,6 @@ contract AllocatorOracleTest is DssTest {
         console.log("1 = wad * fix / 10^27 => wad = 10^27 / fix");
         uint256 amtDaiNeeded = 10**27 / fix;
         console.log("Amount of wei DAI needed to get 1 wei of gem =", amtDaiNeeded);
-        assertEq(amtDaiNeeded, 0.00000005 * 10**18);
+        assertEq(amtDaiNeeded, 0.00000000000005 * 10**18);
     }
 }
