@@ -8,19 +8,12 @@ interface GemLike {
     function decimals() external view returns (uint8);
 }
 
-contract PocketMock {
-    constructor(address gem) {
-        GemLike(gem).approve(msg.sender, type(uint256).max);
-    }
-}
-
 contract PsmMock {
     mapping(address => uint256) public wards;
 
     address public immutable dai;
     address public immutable gem;
     uint256 public immutable to18ConversionFactor;
-    address public immutable pocket;
 
     event Rely(address indexed usr);
     event Deny(address indexed usr);
@@ -36,7 +29,6 @@ contract PsmMock {
         dai = dai_;
         gem = gem_;
         to18ConversionFactor = 10**(18 - GemLike(gem_).decimals());
-        pocket = address(new PocketMock(gem_));
 
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
@@ -52,10 +44,14 @@ contract PsmMock {
         emit Deny(usr);
     }
 
+    function pocket() external view returns (address) {
+        return address(this);
+    }
+
     function sellGemNoFee(address usr, uint256 gemAmt) external auth returns (uint256 daiOutWad) {
         daiOutWad = gemAmt * to18ConversionFactor;
 
-        GemLike(gem).transferFrom(msg.sender, pocket, gemAmt);
+        GemLike(gem).transferFrom(msg.sender, address(this), gemAmt);
         GemLike(dai).transfer(usr, daiOutWad);
 
         emit SellGem(usr, gemAmt, 0);
@@ -65,7 +61,7 @@ contract PsmMock {
         daiInWad = gemAmt * to18ConversionFactor;
 
         GemLike(dai).transferFrom(msg.sender, address(this), daiInWad);
-        GemLike(gem).transferFrom(pocket, usr, gemAmt);
+        GemLike(gem).transfer(usr, gemAmt);
 
         emit BuyGem(usr, gemAmt, 0);
     }
