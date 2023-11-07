@@ -39,9 +39,9 @@ contract SwapperCalleePsmTest is DssTest {
         deal(DAI,  address(psm),  1_000_000 * WAD,   true);
         deal(DAI,  address(psmUSDT),  1_000_000 * WAD,   true);
         deal(USDC, address(this), 1_000_000 * 10**6, true);
-        deal(USDC, psm.keg(),     1_000_000 * 10**6, true);
+        deal(USDC, psm.pocket(),     1_000_000 * 10**6, true);
         deal(USDT, address(this), 1_000_000 * 10**6, true);
-        deal(USDT, psmUSDT.keg(),     1_000_000 * 10**6, true);
+        deal(USDT, psmUSDT.pocket(),     1_000_000 * 10**6, true);
     }
 
     function testConstructor() public {
