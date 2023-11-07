@@ -22,8 +22,8 @@ interface GemLike {
 }
 
 interface PsmLike {
-    function sellGemNoFee(address usr, uint256 gemAmt) external returns (uint256 daiOutWad);
-    function buyGemNoFee(address usr, uint256 gemAmt) external returns (uint256 daiInWad);
+    function sellGemNoFee(address, uint256) external returns (uint256);
+    function buyGemNoFee(address, uint256) external returns (uint256);
     function dai() external returns (address);
     function gem() external returns (address);
 }
