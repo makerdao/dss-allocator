@@ -17,7 +17,7 @@
 pragma solidity ^0.8.16;
 
 contract AllocatorOracle {
-    uint256 internal constant PRICE = 10**18; // 1:1 price in WAD
+    uint256 internal constant WAD = 10**18; // For 1:1 price
 
     /**
         @notice Return value and status of the oracle
@@ -25,7 +25,7 @@ contract AllocatorOracle {
         @return ok always true
     */
     function peek() public pure returns (bytes32 val, bool ok) {
-        val = bytes32(PRICE);
+        val = bytes32(WAD);
         ok  = true;
     }
 
@@ -34,6 +34,6 @@ contract AllocatorOracle {
         @return val PRICE constant
     */
     function read() external pure returns (bytes32 val) {
-        val = bytes32(PRICE);
+        val = bytes32(WAD);
     }
 }
