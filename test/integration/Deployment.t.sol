@@ -253,10 +253,10 @@ contract DeploymentTest is DssTest {
         assertEq(AllocatorRegistry(sharedInst.registry).buffers(ILK), ilkInst.buffer);
         assertEq(address(AllocatorVault(ilkInst.vault).jug()), address(dss.jug));
 
-        assertEq(GemLike(nst).allowance(ilkInst.buffer,  ilkInst.vault),          type(uint256).max);
-        assertEq(GemLike(address(dss.dai)).allowance(ilkInst.buffer,  ilkInst.swapper),        type(uint256).max);
-        assertEq(GemLike(address(dss.dai)).allowance(ilkInst.buffer,  ilkInst.depositorUniV3), type(uint256).max);
-        assertEq(GemLike(USDC).allowance(ilkInst.buffer, ilkInst.depositorUniV3), type(uint256).max);
+        assertEq(GemLike(nst).allowance(ilkInst.buffer, ilkInst.vault),                       type(uint256).max);
+        assertEq(GemLike(address(dss.dai)).allowance(ilkInst.buffer, ilkInst.swapper),        type(uint256).max);
+        assertEq(GemLike(address(dss.dai)).allowance(ilkInst.buffer, ilkInst.depositorUniV3), type(uint256).max);
+        assertEq(GemLike(USDC).allowance(ilkInst.buffer, ilkInst.depositorUniV3),             type(uint256).max);
 
         assertEq(AllocatorRoles(sharedInst.roles).ilkAdmins(ILK), allocatorProxy);
 
