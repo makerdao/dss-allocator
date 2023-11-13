@@ -431,6 +431,7 @@ contract DeploymentTest is DssTest {
         (ink, art) = dss.vat.urns(ILK, address(ilkInst.vault));
         assertEq(ink, 1_000_000_000_000 * WAD);
         assertEq(art, 1_000_000 * WAD);
+        assertEq(dss.vat.gem(ILK, address(dss.end)), 0);
 
         vm.prank(PAUSE_PROXY); dss.end.cage();
         dss.end.cage(ILK);
@@ -440,6 +441,7 @@ contract DeploymentTest is DssTest {
         (ink, art) = dss.vat.urns(ILK, address(ilkInst.vault));
         assertEq(ink, (1_000_000_000_000 - 1_000_000) * WAD);
         assertEq(art, 0);
+        assertEq(dss.vat.gem(ILK, address(dss.end)), 1_000_000 * WAD);
 
         stdstore.target(address(dss.vat)).sig("dai(address)").with_key(address(dss.vow)).depth(0).checked_write(uint256(0));
         vm.warp(block.timestamp + dss.end.wait());
