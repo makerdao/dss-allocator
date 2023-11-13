@@ -49,7 +49,7 @@ The allocation system includes several actor types:
 
 Each AllocatorDAO has a unique `ilk` (collateral type) with one VAT vault set up for it.
 
-- All the `ilk`s have a shared simple [oracle](https://github.com/makerdao/dss-allocator/blob/dev/src/AllocatorOracle.sol) that just returns a fixed price of 1:1 (which multiplied by a huge amount of collateral makes sure the max debt ceiling can indeed be reached).
+- All the `ilk`s have a shared simple [oracle](https://github.com/makerdao/dss-allocator/blob/dev/src/AllocatorOracle.sol) that just returns a fixed price of 1:1 (which multiplied by a huge amount of collateral makes sure the max debt ceiling can indeed be reached). In case it is necessary a governance spell could also increase it further.
 
 ### AllocatorVault
 
