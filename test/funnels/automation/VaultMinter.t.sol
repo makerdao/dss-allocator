@@ -11,9 +11,6 @@ import { VatMock } from "test/mocks/VatMock.sol";
 import { JugMock } from "test/mocks/JugMock.sol";
 import { GemMock } from "test/mocks/GemMock.sol";
 import { NstJoinMock } from "test/mocks/NstJoinMock.sol";
-interface GemLike {
-    function balanceOf(address) external view returns (uint256);
-}
 
 contract VaultMinterTest is DssTest {
     using stdStorage for StdStorage;
@@ -52,9 +49,6 @@ contract VaultMinterTest is DssTest {
         vat.slip(ILK, address(vault), int256(1_000_000 * WAD));
         vat.grab(ILK, address(vault), address(vault), address(0), int256(1_000_000 * WAD), 0);
 
-        // Add some existing DAI assigned to nstJoin to avoid a particular error
-        stdstore.target(address(vat)).sig("dai(address)").with_key(address(nstJoin)).depth(0).checked_write(100_000 * RAD);
-
         minter = new VaultMinter(address(vault));
 
         // Allow minter to perform operations in the vault
@@ -67,17 +61,8 @@ contract VaultMinterTest is DssTest {
         minter.rely(FACILITATOR);
         vm.startPrank(FACILITATOR);
         minter.kiss(KEEPER);
-        minter.setConfig(10, 1 hours, uint128(1_000 * WAD));
         vm.stopPrank();
 
-        // Confirm initial parameters and amounts
-        (int64 num, uint32 hop, uint32 zzz, uint128 lot) = minter.config();
-        assertEq(num, 10);
-        assertEq(hop, 1 hours);
-        assertEq(zzz, 0);
-        assertEq(lot, 1_000 * WAD);
-
-        assertEq(nst.balanceOf(address(buffer)), 0);
         vm.warp(1 hours);
     }
 
@@ -148,12 +133,21 @@ contract VaultMinterTest is DssTest {
     }
 
     function testMintBurnByKeeper() public {
+        minter.setConfig(int64(10), uint32(1 hours), uint128(1_000 * WAD));
+
+        assertEq(nst.balanceOf(address(buffer)), 0);
+        (int64 num, uint32 hop, uint32 zzz, uint128 lot) = minter.config();
+        assertEq(num, 10);
+        assertEq(hop, 1 hours);
+        assertEq(zzz, 0);
+        assertEq(lot, 1_000 * WAD);
+
         vm.expectEmit(true, true, true, true);
         emit Mint(uint128(1_000 * WAD));
         vm.prank(KEEPER); minter.mint();
 
         assertEq(nst.balanceOf(address(buffer)), 1_000 * WAD);
-        (int64 num, uint32 hop, uint32 zzz, uint128 lot) = minter.config();
+        (num, hop, zzz, lot) = minter.config();
         assertEq(num, 9);
         assertEq(hop, 1 hours);
         assertEq(zzz, block.timestamp);
@@ -208,7 +202,6 @@ contract VaultMinterTest is DssTest {
     }
 
     function testMintBurnExceedingNum() public {
-        minter.setConfig(0, 1, 1);
         vm.expectRevert("VaultMinter/exceeds-num");
         vm.prank(KEEPER); minter.mint();
         vm.expectRevert("VaultMinter/exceeds-num");
