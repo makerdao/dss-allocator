@@ -423,6 +423,7 @@ contract DeploymentTest is DssTest {
     }
 
     function testEndCage() public {
+        // This test doesn't mean ES is supported, just aims to check that in case of planned governance shutdown is needed, the End could handle well a huge number of ink
         emulateSpell();
 
         vm.prank(facilitator1); AllocatorVault(ilkInst.vault).draw(1_000_000 * WAD);
