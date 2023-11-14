@@ -52,6 +52,6 @@ contract AllocatorOracleTest is DssTest {
         console.log("1 = wad * fix / 10^27 => wad = 10^27 / fix");
         uint256 amtDaiNeeded = 10**27 / fix;
         console.log("Amount of wei DAI needed to get 1 wei of gem =", amtDaiNeeded);
-        assertEq(amtDaiNeeded, 0.00000000000005 * 10**18);
+        assertEq(amtDaiNeeded, 50_000);
     }
 }
