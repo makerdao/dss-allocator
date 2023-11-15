@@ -25,6 +25,7 @@ import { AllocatorBuffer }      from "src/AllocatorBuffer.sol";
 import { AllocatorVault }       from "src/AllocatorVault.sol";
 import { Swapper }              from "src/funnels/Swapper.sol";
 import { DepositorUniV3 }       from "src/funnels/DepositorUniV3.sol";
+import { VaultMinter }          from "src/funnels/automation/VaultMinter.sol";
 import { StableSwapper }        from "src/funnels/automation/StableSwapper.sol";
 import { StableDepositorUniV3 } from "src/funnels/automation/StableDepositorUniV3.sol";
 import { ConduitMover }         from "src/funnels/automation/ConduitMover.sol";
@@ -77,17 +78,29 @@ library AllocatorDeploy {
         ScriptTools.switchOwner(_depositorUniV3, deployer, owner);
         ilkInstance.depositorUniV3 = _depositorUniV3;
 
+        {
+        address _vaultMinter = address(new VaultMinter(_vault));
+        ScriptTools.switchOwner(_vaultMinter, deployer, owner);
+        ilkInstance.vaultMinter = _vaultMinter;
+        }
+
+        {
         address _stableSwapper = address(new StableSwapper(_swapper));
         ScriptTools.switchOwner(_stableSwapper, deployer, owner);
         ilkInstance.stableSwapper = _stableSwapper;
+        }
 
+        {
         address _stableDepositorUniV3 = address(new StableDepositorUniV3(_depositorUniV3));
         ScriptTools.switchOwner(_stableDepositorUniV3, deployer, owner);
         ilkInstance.stableDepositorUniV3 = _stableDepositorUniV3;
+        }
 
+        {
         address _conduitMover = address(new ConduitMover(ilk, _buffer));
         ScriptTools.switchOwner(_conduitMover, deployer, owner);
         ilkInstance.conduitMover = _conduitMover;
+        }
 
         ilkInstance.owner = owner;
     }
