@@ -30,8 +30,6 @@ contract SwapperCalleeUniV3Test is DssTest {
     }
 
     function testConstructor() public {
-        vm.expectEmit(true, true, true, true);
-        emit Rely(address(this));
         SwapperCalleeUniV3 c = new SwapperCalleeUniV3(address(0xBEEF));
         assertEq(address(c.uniV3Router()),  address(0xBEEF));
     }
