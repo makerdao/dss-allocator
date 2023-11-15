@@ -102,6 +102,10 @@ interface DepositorUniV3Like {
     function collect(CollectParams memory) external returns (uint256, uint256);
 }
 
+interface VaultMinterLike {
+    function vault() external view returns (address);
+}
+
 interface StableSwapperLike {
     function swapper() external view returns (address);
 }
@@ -133,6 +137,7 @@ struct AllocatorIlkConfig {
     uint8 facilitatorRole;
     uint8 automationRole;
     address[] facilitators;
+    address[] vaultMinterKeepers;
     address[] stableSwapperKeepers;
     address[] stableDepositorUniV3Keepers;
     address[] conduitMoverKeepers;
@@ -191,6 +196,8 @@ library AllocatorInit {
         require(DepositorUniV3Like(ilkInstance.depositorUniV3).uniV3Factory() == cfg.uniV3Factory,     "AllocatorInit/depositorUniV3-uniV3Factory-mismatch");
         require(DepositorUniV3Like(ilkInstance.depositorUniV3).buffer()       == ilkInstance.buffer,   "AllocatorInit/depositorUniV3-buffer-mismatch");
 
+        require(VaultMinterLike(ilkInstance.vaultMinter).vault() == ilkInstance.vault, "AllocatorInit/vaultMinter-vault-mismatch");
+
         require(StableSwapperLike(ilkInstance.stableSwapper).swapper()                 == ilkInstance.swapper,        "AllocatorInit/stableSwapper-swapper-mismatch");
         require(StableDepositorUniV3Like(ilkInstance.stableDepositorUniV3).depositor() == ilkInstance.depositorUniV3, "AllocatorInit/stableDepositorUniV3-depositorUniV3-mismatch");
 
@@ -246,9 +253,12 @@ library AllocatorInit {
         RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, ilkInstance.depositorUniV3, DepositorUniV3Like.collect.selector,  true);
 
         // Allow the automation contracts to operate on the funnels
+        RolesLike(sharedInstance.roles).setUserRole(ilk, ilkInstance.vaultMinter,          cfg.automationRole, true);
         RolesLike(sharedInstance.roles).setUserRole(ilk, ilkInstance.stableSwapper,        cfg.automationRole, true);
         RolesLike(sharedInstance.roles).setUserRole(ilk, ilkInstance.stableDepositorUniV3, cfg.automationRole, true);
 
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, ilkInstance.vault,          VaultLike.draw.selector,              true);
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, ilkInstance.vault,          VaultLike.wipe.selector,              true);
         RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, ilkInstance.swapper,        SwapperLike.swap.selector,            true);
         RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, ilkInstance.depositorUniV3, DepositorUniV3Like.deposit.selector,  true);
         RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, ilkInstance.depositorUniV3, DepositorUniV3Like.withdraw.selector, true);
@@ -259,12 +269,16 @@ library AllocatorInit {
 
         // Allow facilitator to set configurations in the automation contracts
         for(uint256 i = 0; i < cfg.facilitators.length; i++) {
+            WardsLike(ilkInstance.vaultMinter).rely(cfg.facilitators[i]);
             WardsLike(ilkInstance.stableSwapper).rely(cfg.facilitators[i]);
             WardsLike(ilkInstance.stableDepositorUniV3).rely(cfg.facilitators[i]);
             WardsLike(ilkInstance.conduitMover).rely(cfg.facilitators[i]);
         }
 
         // Add keepers to the automation contracts
+        for(uint256 i = 0; i < cfg.vaultMinterKeepers.length; i++) {
+            KissLike(ilkInstance.vaultMinter).kiss(cfg.vaultMinterKeepers[i]);
+        }
         for(uint256 i = 0; i < cfg.stableSwapperKeepers.length; i++) {
             KissLike(ilkInstance.stableSwapper).kiss(cfg.stableSwapperKeepers[i]);
         }
@@ -280,6 +294,7 @@ library AllocatorInit {
         ScriptTools.switchOwner(ilkInstance.buffer,               ilkInstance.owner, cfg.allocatorProxy);
         ScriptTools.switchOwner(ilkInstance.swapper,              ilkInstance.owner, cfg.allocatorProxy);
         ScriptTools.switchOwner(ilkInstance.depositorUniV3,       ilkInstance.owner, cfg.allocatorProxy);
+        ScriptTools.switchOwner(ilkInstance.vaultMinter,          ilkInstance.owner, cfg.allocatorProxy);
         ScriptTools.switchOwner(ilkInstance.stableSwapper,        ilkInstance.owner, cfg.allocatorProxy);
         ScriptTools.switchOwner(ilkInstance.stableDepositorUniV3, ilkInstance.owner, cfg.allocatorProxy);
         ScriptTools.switchOwner(ilkInstance.conduitMover,         ilkInstance.owner, cfg.allocatorProxy);

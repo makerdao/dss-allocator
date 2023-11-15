@@ -28,6 +28,7 @@ struct AllocatorIlkInstance {
     address buffer;
     address swapper;
     address depositorUniV3;
+    address vaultMinter;
     address stableSwapper;
     address stableDepositorUniV3;
     address conduitMover;
