@@ -19,6 +19,13 @@ contract AllocatorBufferTest is DssTest {
         buffer = new AllocatorBuffer();
     }
 
+    function testConstructor() public {
+        vm.expectEmit(true, true, true, true);
+        emit Rely(address(this));
+        AllocatorBuffer b = new AllocatorBuffer();
+        assertEq(b.wards(address(this)), 1);
+    }
+
     function testAuth() public {
         checkAuth(address(buffer), "AllocatorBuffer");
     }

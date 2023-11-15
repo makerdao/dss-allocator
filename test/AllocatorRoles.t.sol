@@ -21,6 +21,13 @@ contract AllocatorRolesTest is DssTest {
         authed = new AuthedMock(address(roles), ilk);
     }
 
+    function testConstructor() public {
+        vm.expectEmit(true, true, true, true);
+        emit Rely(address(this));
+        AllocatorRoles r = new AllocatorRoles();
+        assertEq(r.wards(address(this)), 1);
+    }
+
     function testAuth() public {
         checkAuth(address(roles), "AllocatorRoles");
     }

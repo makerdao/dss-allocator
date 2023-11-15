@@ -75,6 +75,8 @@ contract DepositorUniV3Test is DssTest {
     }
 
     function testConstructor() public {
+        vm.expectEmit(true, true, true, true);
+        emit Rely(address(this));
         DepositorUniV3 d = new DepositorUniV3(address(0xBEEF), "SubDAO 1", address(0xAAA), address(0xCCC));
         assertEq(address(d.roles()),  address(0xBEEF));
         assertEq(d.ilk(), "SubDAO 1");

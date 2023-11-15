@@ -76,6 +76,8 @@ contract ConduitMoverTest is DssTest {
     }
 
     function testConstructor() public {
+        vm.expectEmit(true, true, true, true);
+        emit Rely(address(this));
         ConduitMover m = new ConduitMover("xyz", address(0xABC));
         assertEq(m.ilk(), "xyz");
         assertEq(m.buffer(), address(0xABC));
@@ -94,6 +96,13 @@ contract ConduitMoverTest is DssTest {
 
         vm.startPrank(address(0xBEEF));
         checkModifier(address(mover), "ConduitMover/not-authorized", authedMethods);
+        vm.stopPrank();
+
+        bytes4[] memory keeperMethods = new bytes4[](1);
+        keeperMethods[0] = ConduitMover.move.selector;
+
+        vm.startPrank(address(0xBEEF));
+        checkModifier(address(mover), "ConduitMover/non-keeper", keeperMethods);
         vm.stopPrank();
     }
 
@@ -185,12 +194,6 @@ contract ConduitMoverTest is DssTest {
         assertEq(hop, 1 hours);
         assertEq(zzz, block.timestamp);
         assertEq(lot, 1_000 * 10**6);
-    }
-
-    function testMoveNonKeeper() public {
-        assertEq(mover.buds(address(this)), 0);
-        vm.expectRevert("ConduitMover/non-keeper");
-        mover.move(conduit1, conduit2, USDC);
     }
 
     function testMoveExceedingNum() public {
