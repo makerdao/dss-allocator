@@ -18,8 +18,8 @@ contract VaultMinterTest is DssTest {
     event Kiss(address indexed usr);
     event Diss(address indexed usr);
     event SetConfig(int64 num, uint32 hop, uint128 lot);
-    event Mint(uint128 lot);
-    event Burn(uint128 lot);
+    event Draw(uint128 lot);
+    event Wipe(uint128 lot);
 
     VatMock         public vat;
     JugMock         public jug;
@@ -143,7 +143,7 @@ contract VaultMinterTest is DssTest {
         assertEq(lot, 1_000 * WAD);
 
         vm.expectEmit(true, true, true, true);
-        emit Mint(uint128(1_000 * WAD));
+        emit Draw(uint128(1_000 * WAD));
         vm.prank(KEEPER); minter.draw();
 
         assertEq(nst.balanceOf(address(buffer)), 1_000 * WAD);
@@ -176,7 +176,7 @@ contract VaultMinterTest is DssTest {
         assertEq(lot, 100 * WAD);
 
         vm.expectEmit(true, true, true, true);
-        emit Burn(uint128(100 * WAD));
+        emit Wipe(uint128(100 * WAD));
         vm.prank(KEEPER); minter.wipe();
 
         assertEq(nst.balanceOf(address(buffer)), 1_900 * WAD);

@@ -40,8 +40,8 @@ contract VaultMinter {
     event Kiss(address indexed usr);
     event Diss(address indexed usr);
     event SetConfig(int64 num, uint32 hop, uint128 lot);
-    event Mint(uint128 lot);
-    event Burn(uint128 lot);
+    event Draw(uint128 lot);
+    event Wipe(uint128 lot);
 
     constructor(address vault_) {
         vault  = vault_;
@@ -100,7 +100,7 @@ contract VaultMinter {
 
         AllocatorVaultLike(vault).draw(cfg.lot);
 
-        emit Mint(cfg.lot);
+        emit Draw(cfg.lot);
     }
 
     function wipe() toll external {
@@ -113,6 +113,6 @@ contract VaultMinter {
 
         AllocatorVaultLike(vault).wipe(cfg.lot);
 
-        emit Burn(cfg.lot);
+        emit Wipe(cfg.lot);
     }
 }
