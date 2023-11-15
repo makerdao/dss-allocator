@@ -71,17 +71,17 @@ interface AutoLineLike {
 
 contract DeploymentTest is DssTest {
 
+    using stdStorage for StdStorage;
+
     // existing contracts
     address constant LOG           = 0xdA0Ab1e0017DEbCd72Be8599041a2aa3bA7e740F;
     address constant UNIV3_FACTORY = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
     address constant UNIV3_ROUTER  = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
 
     // existing contracts to be fetched from chainlog
-    address VAT;
-    address JUG;
+    DssInstance dss;
     address ILK_REGISTRY;
     address PAUSE_PROXY;
-    address DAI;
     address USDC;
 
     // actors
@@ -121,19 +121,17 @@ contract DeploymentTest is DssTest {
     function setUp() public {
         vm.createSelectFork(vm.envString("ETH_RPC_URL"));
 
-        VAT          = ChainlogLike(LOG).getAddress("MCD_VAT");
-        JUG          = ChainlogLike(LOG).getAddress("MCD_JUG");
+        dss          = MCD.loadFromChainlog(LOG);
         PAUSE_PROXY  = ChainlogLike(LOG).getAddress("MCD_PAUSE_PROXY");
         ILK_REGISTRY = ChainlogLike(LOG).getAddress("ILK_REGISTRY");
         USDC         = ChainlogLike(LOG).getAddress("USDC");
-        DAI          = ChainlogLike(LOG).getAddress("MCD_DAI");
 
         nst         = address(new GemMock(0));
-        nstJoin     = address(new NstJoinMock(VatMock(VAT), GemMock(nst)));
+        nstJoin     = address(new NstJoinMock(VatMock(address(dss.vat)), GemMock(nst)));
         uniV3Callee = address(new SwapperCalleeUniV3(UNIV3_ROUTER));
 
-        usdcDaiPath = abi.encodePacked(USDC, uint24(100), DAI);
-        daiUsdcPath = abi.encodePacked(DAI,  uint24(100), USDC);
+        usdcDaiPath = abi.encodePacked(USDC, uint24(100), address(dss.dai));
+        daiUsdcPath = abi.encodePacked(address(dss.dai),  uint24(100), USDC);
 
         sharedInst = AllocatorDeploy.deployShared(address(this), PAUSE_PROXY);
         ilkInst = AllocatorDeploy.deployIlk({
@@ -151,16 +149,14 @@ contract DeploymentTest is DssTest {
     }
 
     function emulateSpell() internal {
-        DssInstance memory dss = MCD.loadFromChainlog(LOG);
-
         vm.startPrank(PAUSE_PROXY);
         AllocatorInit.initShared(dss, sharedInst);
 
         address[] memory swapTokens = new address[](1);
-        swapTokens[0] = DAI;
+        swapTokens[0] = address(dss.dai);
 
         address[] memory depositTokens = new address[](2);
-        depositTokens[0] = DAI;
+        depositTokens[0] = address(dss.dai);
         depositTokens[1] = USDC;
 
         address[] memory facilitators = new address[](2);
@@ -228,8 +224,6 @@ contract DeploymentTest is DssTest {
     }
 
     function testInitIlkValues() public {
-        DssInstance memory dss = MCD.loadFromChainlog(LOG);
-
         uint256 previousLine = dss.vat.Line();
         uint256 previousIlkRegistryCount = IlkRegistryLike(ILK_REGISTRY).count();
 
@@ -237,7 +231,7 @@ contract DeploymentTest is DssTest {
 
         (, uint256 rate, uint256 spot, uint256 line,) = dss.vat.ilks(ILK);
         assertEq(rate, RAY);
-        assertEq(spot, 10**6 * 10**18 * RAY * 10**9 / dss.spotter.par());
+        assertEq(spot, 10**18 * RAY * 10**9 / dss.spotter.par());
         assertEq(line, 10_000_000 * RAD);
         assertEq(dss.vat.Line(), previousLine + 10_000_000 * RAD);
 
@@ -261,16 +255,16 @@ contract DeploymentTest is DssTest {
 
         assertEq(dss.vat.gem(ILK, ilkInst.vault), 0);
         (uint256 ink, uint256 art) = dss.vat.urns(ILK, ilkInst.vault);
-        assertEq(ink, 1_000_000 * WAD);
+        assertEq(ink, 1_000_000_000_000 * WAD);
         assertEq(art, 0);
 
         assertEq(AllocatorRegistry(sharedInst.registry).buffers(ILK), ilkInst.buffer);
         assertEq(address(AllocatorVault(ilkInst.vault).jug()), address(dss.jug));
 
-        assertEq(GemLike(nst).allowance(ilkInst.buffer,  ilkInst.vault),          type(uint256).max);
-        assertEq(GemLike(DAI).allowance(ilkInst.buffer,  ilkInst.swapper),        type(uint256).max);
-        assertEq(GemLike(DAI).allowance(ilkInst.buffer,  ilkInst.depositorUniV3), type(uint256).max);
-        assertEq(GemLike(USDC).allowance(ilkInst.buffer, ilkInst.depositorUniV3), type(uint256).max);
+        assertEq(GemLike(nst).allowance(ilkInst.buffer, ilkInst.vault),                       type(uint256).max);
+        assertEq(GemLike(address(dss.dai)).allowance(ilkInst.buffer, ilkInst.swapper),        type(uint256).max);
+        assertEq(GemLike(address(dss.dai)).allowance(ilkInst.buffer, ilkInst.depositorUniV3), type(uint256).max);
+        assertEq(GemLike(USDC).allowance(ilkInst.buffer, ilkInst.depositorUniV3),             type(uint256).max);
 
         assertEq(AllocatorRoles(sharedInst.roles).ilkAdmins(ILK), allocatorProxy);
 
@@ -370,31 +364,31 @@ contract DeploymentTest is DssTest {
     function testSwapFromFacilitator() public {
         emulateSpell();
 
-        deal(DAI, ilkInst.buffer, 1_000 * WAD);
+        deal(address(dss.dai), ilkInst.buffer, 1_000 * WAD);
 
-        vm.prank(allocatorProxy); Swapper(ilkInst.swapper).setLimits(DAI, USDC, uint96(1_000 * WAD), 1 hours);
-        vm.prank(facilitator1); Swapper(ilkInst.swapper).swap(DAI, USDC, 1_000 * WAD, 990 * 10**6 , uniV3Callee, daiUsdcPath);
+        vm.prank(allocatorProxy); Swapper(ilkInst.swapper).setLimits(address(dss.dai), USDC, uint96(1_000 * WAD), 1 hours);
+        vm.prank(facilitator1); Swapper(ilkInst.swapper).swap(address(dss.dai), USDC, 1_000 * WAD, 990 * 10**6 , uniV3Callee, daiUsdcPath);
     }
 
     function testSwapFromKeeper() public {
         emulateSpell();
 
-        deal(DAI, ilkInst.buffer, 1_000 * WAD);
+        deal(address(dss.dai), ilkInst.buffer, 1_000 * WAD);
 
-        vm.prank(allocatorProxy); Swapper(ilkInst.swapper).setLimits(DAI, USDC, uint96(1_000 * WAD), 1 hours);
-        vm.prank(facilitator1); StableSwapper(ilkInst.stableSwapper).setConfig(DAI, USDC, 1, 1 hours, uint96(1_000 * WAD), uint96(990 * 10**6));
-        vm.prank(stableSwapperKeeper1); StableSwapper(ilkInst.stableSwapper).swap(DAI, USDC, 990 * 10**6, uniV3Callee, daiUsdcPath);
+        vm.prank(allocatorProxy); Swapper(ilkInst.swapper).setLimits(address(dss.dai), USDC, uint96(1_000 * WAD), 1 hours);
+        vm.prank(facilitator1); StableSwapper(ilkInst.stableSwapper).setConfig(address(dss.dai), USDC, 1, 1 hours, uint96(1_000 * WAD), uint96(990 * 10**6));
+        vm.prank(stableSwapperKeeper1); StableSwapper(ilkInst.stableSwapper).swap(address(dss.dai), USDC, 990 * 10**6, uniV3Callee, daiUsdcPath);
     }
 
     function testDepositWithdrawCollectFromFacilitator() public {
         emulateSpell();
 
-        deal(DAI,  ilkInst.buffer, 1_000 * WAD);
+        deal(address(dss.dai), ilkInst.buffer, 1_000 * WAD);
         deal(USDC, ilkInst.buffer, 1_000 * 10**6);
 
-        vm.prank(allocatorProxy); DepositorUniV3(ilkInst.depositorUniV3).setLimits(DAI, USDC, uint24(100), uint96(2_000 * WAD), uint96(2_000 * 10**6), 1 hours);
+        vm.prank(allocatorProxy); DepositorUniV3(ilkInst.depositorUniV3).setLimits(address(dss.dai), USDC, uint24(100), uint96(2_000 * WAD), uint96(2_000 * 10**6), 1 hours);
         DepositorUniV3.LiquidityParams memory dp = DepositorUniV3.LiquidityParams({
-            gem0       : DAI,
+            gem0       : address(dss.dai),
             gem1       : USDC,
             fee        : uint24(100),
             tickLower  : REF_TICK - 100,
@@ -410,7 +404,7 @@ contract DeploymentTest is DssTest {
         vm.prank(facilitator1); DepositorUniV3(ilkInst.depositorUniV3).withdraw(dp, false);
 
         DepositorUniV3.CollectParams memory cp = DepositorUniV3.CollectParams({
-            gem0     : DAI,
+            gem0     : address(dss.dai),
             gem1     : USDC,
             fee      : uint24(100),
             tickLower: REF_TICK - 100,
@@ -424,19 +418,19 @@ contract DeploymentTest is DssTest {
     function testDepositWithdrawCollectFromKeeper() public {
         emulateSpell();
 
-        deal(DAI,  ilkInst.buffer, 1_000 * WAD);
+        deal(address(dss.dai), ilkInst.buffer, 1_000 * WAD);
         deal(USDC, ilkInst.buffer, 1_000 * 10**6);
 
-        vm.prank(allocatorProxy); DepositorUniV3(ilkInst.depositorUniV3).setLimits(DAI, USDC, uint24(100), uint96(2_000 * WAD), uint96(2_000 * 10**6), 1 hours);
+        vm.prank(allocatorProxy); DepositorUniV3(ilkInst.depositorUniV3).setLimits(address(dss.dai), USDC, uint24(100), uint96(2_000 * WAD), uint96(2_000 * 10**6), 1 hours);
 
-        vm.prank(facilitator1); StableDepositorUniV3(ilkInst.stableDepositorUniV3).setConfig(DAI, USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, 1, 1 hours, uint96(1_000 * WAD), uint96(1000 * 10**6), 0, 0);
-        vm.prank(stableDepositorUniV3Keeper1); StableDepositorUniV3(ilkInst.stableDepositorUniV3).deposit(DAI, USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, 0, 0);
+        vm.prank(facilitator1); StableDepositorUniV3(ilkInst.stableDepositorUniV3).setConfig(address(dss.dai), USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, 1, 1 hours, uint96(1_000 * WAD), uint96(1000 * 10**6), 0, 0);
+        vm.prank(stableDepositorUniV3Keeper1); StableDepositorUniV3(ilkInst.stableDepositorUniV3).deposit(address(dss.dai), USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, 0, 0);
 
-        vm.prank(facilitator1); StableDepositorUniV3(ilkInst.stableDepositorUniV3).setConfig(DAI, USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, -1, 1 hours, uint96(1_000 * WAD), uint96(1000 * 10**6), 0, 0);
-        vm.prank(stableDepositorUniV3Keeper1); StableDepositorUniV3(ilkInst.stableDepositorUniV3).withdraw(DAI, USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, 0, 0);
+        vm.prank(facilitator1); StableDepositorUniV3(ilkInst.stableDepositorUniV3).setConfig(address(dss.dai), USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, -1, 1 hours, uint96(1_000 * WAD), uint96(1000 * 10**6), 0, 0);
+        vm.prank(stableDepositorUniV3Keeper1); StableDepositorUniV3(ilkInst.stableDepositorUniV3).withdraw(address(dss.dai), USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, 0, 0);
 
         vm.expectRevert(bytes("NP")); // Reverts since no fees to collect and not because the call is unauthorized
-        vm.prank(stableDepositorUniV3Keeper1); StableDepositorUniV3(ilkInst.stableDepositorUniV3).collect(DAI, USDC, uint24(100), REF_TICK - 100, REF_TICK + 100);
+        vm.prank(stableDepositorUniV3Keeper1); StableDepositorUniV3(ilkInst.stableDepositorUniV3).collect(address(dss.dai), USDC, uint24(100), REF_TICK - 100, REF_TICK + 100);
     }
 
     function testMoveFromKeeper() public {
@@ -451,5 +445,35 @@ contract DeploymentTest is DssTest {
 
         vm.prank(facilitator1); ConduitMover(ilkInst.conduitMover).setConfig(conduit1, conduit2, USDC, 1, 1 hours, 3_000 * 10**6);
         vm.prank(conduitMoverKeeper1); ConduitMover(ilkInst.conduitMover).move(conduit1, conduit2, USDC);
+    }
+
+    function testEndCage() public {
+        // This test doesn't mean ES is supported, just aims to check that in case of planned governance shutdown is needed, the End could handle well a huge number of ink
+        emulateSpell();
+
+        vm.prank(facilitator1); AllocatorVault(ilkInst.vault).draw(1_000_000 * WAD);
+
+        uint256 ink; uint256 art;
+        (ink, art) = dss.vat.urns(ILK, address(ilkInst.vault));
+        assertEq(ink, 1_000_000_000_000 * WAD);
+        assertEq(art, 1_000_000 * WAD);
+        assertEq(dss.vat.gem(ILK, address(dss.end)), 0);
+
+        vm.prank(PAUSE_PROXY); dss.end.cage();
+        dss.end.cage(ILK);
+        assertEq(dss.end.tag(ILK), RAY);
+        dss.end.skim(ILK, address(ilkInst.vault));
+
+        (ink, art) = dss.vat.urns(ILK, address(ilkInst.vault));
+        assertEq(ink, (1_000_000_000_000 - 1_000_000) * WAD);
+        assertEq(art, 0);
+        assertEq(dss.vat.gem(ILK, address(dss.end)), 1_000_000 * WAD);
+
+        stdstore.target(address(dss.vat)).sig("dai(address)").with_key(address(dss.vow)).depth(0).checked_write(uint256(0));
+        vm.warp(block.timestamp + dss.end.wait());
+        dss.end.thaw();
+
+        dss.end.flow(ILK);
+        assertEq(dss.end.fix(ILK), 1_000_000 * RAD / (dss.vat.debt() / RAY));
     }
 }
