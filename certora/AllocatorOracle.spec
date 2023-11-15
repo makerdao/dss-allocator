@@ -11,7 +11,7 @@ rule peek() {
     bool ok;
     val, ok = peek();
 
-    assert val == to_bytes32(10^6 * 10^18), "peek did not return the expected val result";
+    assert val == to_bytes32(10^18), "peek did not return the expected val result";
     assert ok, "peek did not return the expected ok result";
 }
 
@@ -19,5 +19,5 @@ rule peek() {
 rule read() {
     bytes32 val = read();
 
-    assert val == to_bytes32(10^6 * 10^18), "read did not return the expected result";
+    assert val == to_bytes32(10^18), "read did not return the expected result";
 }
