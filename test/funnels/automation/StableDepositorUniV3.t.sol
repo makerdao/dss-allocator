@@ -91,6 +91,8 @@ contract StableDepositorUniV3Test is DssTest {
     }
 
     function testConstructor() public {
+        vm.expectEmit(true, true, true, true);
+        emit Rely(address(this));
         StableDepositorUniV3 s = new StableDepositorUniV3(address(0xABC));
         assertEq(address(s.depositor()),  address(0xABC));
         assertEq(s.wards(address(this)), 1);
@@ -102,12 +104,21 @@ contract StableDepositorUniV3Test is DssTest {
 
     function testModifiers() public {
         bytes4[] memory authedMethods = new bytes4[](3);
-        authedMethods[0] = stableDepositor.kiss.selector;
-        authedMethods[1] = stableDepositor.diss.selector;
-        authedMethods[2] = stableDepositor.setConfig.selector;
+        authedMethods[0] = StableDepositorUniV3.kiss.selector;
+        authedMethods[1] = StableDepositorUniV3.diss.selector;
+        authedMethods[2] = StableDepositorUniV3.setConfig.selector;
 
         vm.startPrank(address(0xBEEF));
         checkModifier(address(stableDepositor), "StableDepositorUniV3/not-authorized", authedMethods);
+        vm.stopPrank();
+
+        bytes4[] memory keeperMethods = new bytes4[](3);
+        keeperMethods[0] = StableDepositorUniV3.deposit.selector;
+        keeperMethods[1] = StableDepositorUniV3.withdraw.selector;
+        keeperMethods[2] = StableDepositorUniV3.collect.selector;
+
+        vm.startPrank(address(0xBEEF));
+        checkModifier(address(stableDepositor), "StableDepositorUniV3/non-keeper", keeperMethods);
         vm.stopPrank();
     }
 
@@ -283,18 +294,5 @@ contract StableDepositorUniV3Test is DssTest {
         assertTrue(fees0 > 0 || fees1 > 0);
         assertEq(GemLike(DAI).balanceOf(address(buffer)), prevDai + fees0);
         assertEq(GemLike(USDC).balanceOf(address(buffer)), prevUsdc + fees1);
-    }
-
-    function testOperationsNonKeeper() public {
-        assertEq(stableDepositor.buds(address(this)), 0);
-
-        vm.expectRevert("StableDepositorUniV3/non-keeper");
-        stableDepositor.deposit(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, 0, 0);
-
-        vm.expectRevert("StableDepositorUniV3/non-keeper");
-        stableDepositor.withdraw(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100, 0, 0);
-
-        vm.expectRevert("StableDepositorUniV3/non-keeper");
-        vm.prank(address(0x123)); stableDepositor.collect(DAI, USDC, uint24(100), REF_TICK-100, REF_TICK+100);
     }
 }

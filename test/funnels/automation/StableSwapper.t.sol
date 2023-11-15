@@ -64,6 +64,8 @@ contract StableSwapperTest is DssTest {
     }
 
     function testConstructor() public {
+        vm.expectEmit(true, true, true, true);
+        emit Rely(address(this));
         StableSwapper s = new StableSwapper(address(0xABC));
         assertEq(address(s.swapper()),  address(0xABC));
         assertEq(s.wards(address(this)), 1);
@@ -75,12 +77,19 @@ contract StableSwapperTest is DssTest {
 
     function testModifiers() public {
         bytes4[] memory authedMethods = new bytes4[](3);
-        authedMethods[0] = stableSwapper.kiss.selector;
-        authedMethods[1] = stableSwapper.diss.selector;
-        authedMethods[2] = stableSwapper.setConfig.selector;
+        authedMethods[0] = StableSwapper.kiss.selector;
+        authedMethods[1] = StableSwapper.diss.selector;
+        authedMethods[2] = StableSwapper.setConfig.selector;
 
         vm.startPrank(address(0xBEEF));
         checkModifier(address(stableSwapper), "StableSwapper/not-authorized", authedMethods);
+        vm.stopPrank();
+
+        bytes4[] memory keeperMethods = new bytes4[](1);
+        keeperMethods[0] = StableSwapper.swap.selector;
+
+        vm.startPrank(address(0xBEEF));
+        checkModifier(address(stableSwapper), "StableSwapper/non-keeper", keeperMethods);
         vm.stopPrank();
     }
 
@@ -171,12 +180,6 @@ contract StableSwapperTest is DssTest {
         vm.expectEmit(true, true, true, false);
         emit Swap(address(stableSwapper), USDC, DAI, 0, 0);
         vm.prank(KEEPER); stableSwapper.swap(USDC, DAI, 0, address(uniV3Callee), USDC_DAI_PATH);
-    }
-
-    function testSwapNonKeeper() public {
-        assertEq(stableSwapper.buds(address(this)), 0);
-        vm.expectRevert("StableSwapper/non-keeper");
-        stableSwapper.swap(USDC, DAI, 9900 * WAD, address(uniV3Callee), USDC_DAI_PATH);
     }
 
     function testSwapExceedingNum() public {

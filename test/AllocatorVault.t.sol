@@ -52,6 +52,18 @@ contract AllocatorVaultTest is DssTest {
         stdstore.target(address(vat)).sig("dai(address)").with_key(address(nstJoin)).depth(0).checked_write(100_000 * RAD);
     }
 
+    function testConstructor() public {
+        vm.expectEmit(true, true, true, true);
+        emit Rely(address(this));
+        address join = address(new NstJoinMock(vat, nst));
+        AllocatorVault v = new AllocatorVault(address(0xBEEF), address(0xCCC), "SubDAO 1", join);
+        assertEq(address(v.roles()),  address(0xBEEF));
+        assertEq(v.buffer(), address(0xCCC));
+        assertEq(v.ilk(), "SubDAO 1");
+        assertEq(address(v.nstJoin()), join);
+        assertEq(v.wards(address(this)), 1);
+    }
+
     function testAuth() public {
         checkAuth(address(vault), "AllocatorVault");
     }
