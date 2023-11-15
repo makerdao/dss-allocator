@@ -295,8 +295,8 @@ contract DeploymentTest is DssTest {
         assertEq(WardsLike(ilkInst.conduitMover).wards(facilitator1), 1);
         assertEq(WardsLike(ilkInst.conduitMover).wards(facilitator2), 1);
 
-        assertEq(ConduitMover(ilkInst.vaultMinter).buds(vaultMinterKeeper1), 1);
-        assertEq(ConduitMover(ilkInst.vaultMinter).buds(vaultMinterKeeper2), 1);
+        assertEq(VaultMinter(ilkInst.vaultMinter).buds(vaultMinterKeeper1), 1);
+        assertEq(VaultMinter(ilkInst.vaultMinter).buds(vaultMinterKeeper2), 1);
         assertEq(StableSwapper(ilkInst.stableSwapper).buds(stableSwapperKeeper1), 1);
         assertEq(StableSwapper(ilkInst.stableSwapper).buds(stableSwapperKeeper2), 1);
         assertEq(StableDepositorUniV3(ilkInst.stableDepositorUniV3).buds(stableDepositorUniV3Keeper1), 1);
