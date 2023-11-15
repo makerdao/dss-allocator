@@ -216,8 +216,8 @@ library AllocatorInit {
         RegistryLike(sharedInstance.registry).file(ilk, "buffer", ilkInstance.buffer);
 
         // Initiate the allocator vault
-        dss.vat.slip(ilk, ilkInstance.vault, int256(1_000_000 * WAD));
-        dss.vat.grab(ilk, ilkInstance.vault, ilkInstance.vault, address(0), int256(1_000_000 * WAD), 0);
+        dss.vat.slip(ilk, ilkInstance.vault, int256(10**12 * WAD));
+        dss.vat.grab(ilk, ilkInstance.vault, ilkInstance.vault, address(0), int256(10**12 * WAD), 0);
 
         VaultLike(ilkInstance.vault).file("jug", address(dss.jug));
 
