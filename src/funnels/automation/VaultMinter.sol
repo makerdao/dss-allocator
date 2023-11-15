@@ -90,7 +90,7 @@ contract VaultMinter {
         emit SetConfig(num, hop, lot);
     }
 
-    function mint() toll external {
+    function draw() toll external {
         MinterConfig memory cfg = config;
 
         require(cfg.num > 0, "VaultMinter/exceeds-num");
@@ -103,7 +103,7 @@ contract VaultMinter {
         emit Mint(cfg.lot);
     }
 
-    function burn() toll external {
+    function wipe() toll external {
         MinterConfig memory cfg = config;
 
         require(cfg.num < 0, "VaultMinter/exceeds-num");

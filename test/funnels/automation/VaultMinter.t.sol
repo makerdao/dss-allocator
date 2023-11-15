@@ -59,14 +59,14 @@ contract VaultMinterTest is DssTest {
 
         // Set up keeper to mint and burn
         minter.rely(FACILITATOR);
-        vm.startPrank(FACILITATOR);
-        minter.kiss(KEEPER);
-        vm.stopPrank();
+        vm.prank(FACILITATOR); minter.kiss(KEEPER);
 
         vm.warp(1 hours);
     }
 
     function testConstructor() public {
+        vm.expectEmit(true, true, true, true);
+        emit Rely(address(this));
         VaultMinter m = new VaultMinter(address(0xABC));
         assertEq(m.vault(), address(0xABC));
         assertEq(m.wards(address(this)), 1);
@@ -87,8 +87,8 @@ contract VaultMinterTest is DssTest {
         vm.stopPrank();
 
         bytes4[] memory keeperMethods = new bytes4[](2);
-        keeperMethods[0] = VaultMinter.mint.selector;
-        keeperMethods[1] = VaultMinter.burn.selector;
+        keeperMethods[0] = VaultMinter.draw.selector;
+        keeperMethods[1] = VaultMinter.wipe.selector;
 
         vm.startPrank(address(0xBEEF));
         checkModifier(address(minter), "VaultMinter/non-keeper", keeperMethods);
@@ -132,7 +132,7 @@ contract VaultMinterTest is DssTest {
         assertEq(lot, 411);
     }
 
-    function testMintBurnByKeeper() public {
+    function testDrawWipeByKeeper() public {
         minter.setConfig(int64(10), uint32(1 hours), uint128(1_000 * WAD));
 
         assertEq(nst.balanceOf(address(buffer)), 0);
@@ -144,7 +144,7 @@ contract VaultMinterTest is DssTest {
 
         vm.expectEmit(true, true, true, true);
         emit Mint(uint128(1_000 * WAD));
-        vm.prank(KEEPER); minter.mint();
+        vm.prank(KEEPER); minter.draw();
 
         assertEq(nst.balanceOf(address(buffer)), 1_000 * WAD);
         (num, hop, zzz, lot) = minter.config();
@@ -155,10 +155,10 @@ contract VaultMinterTest is DssTest {
 
         vm.warp(block.timestamp + 1 hours - 1);
         vm.expectRevert("VaultMinter/too-soon");
-        vm.prank(KEEPER); minter.mint();
+        vm.prank(KEEPER); minter.draw();
 
         vm.warp(block.timestamp + 1);
-        vm.prank(KEEPER); minter.mint();
+        vm.prank(KEEPER); minter.draw();
 
         assertEq(nst.balanceOf(address(buffer)), 2_000 * WAD);
         (num, hop, zzz, lot) = minter.config();
@@ -177,7 +177,7 @@ contract VaultMinterTest is DssTest {
 
         vm.expectEmit(true, true, true, true);
         emit Burn(uint128(100 * WAD));
-        vm.prank(KEEPER); minter.burn();
+        vm.prank(KEEPER); minter.wipe();
 
         assertEq(nst.balanceOf(address(buffer)), 1_900 * WAD);
         (num, hop, zzz, lot) = minter.config();
@@ -188,10 +188,10 @@ contract VaultMinterTest is DssTest {
 
         vm.warp(block.timestamp + 1 hours - 1);
         vm.expectRevert("VaultMinter/too-soon");
-        vm.prank(KEEPER); minter.burn();
+        vm.prank(KEEPER); minter.wipe();
 
         vm.warp(block.timestamp + 1);
-        vm.prank(KEEPER); minter.burn();
+        vm.prank(KEEPER); minter.wipe();
 
         assertEq(nst.balanceOf(address(buffer)), 1_800 * WAD);
         (num, hop, zzz, lot) = minter.config();
@@ -203,8 +203,8 @@ contract VaultMinterTest is DssTest {
 
     function testMintBurnExceedingNum() public {
         vm.expectRevert("VaultMinter/exceeds-num");
-        vm.prank(KEEPER); minter.mint();
+        vm.prank(KEEPER); minter.draw();
         vm.expectRevert("VaultMinter/exceeds-num");
-        vm.prank(KEEPER); minter.burn();
+        vm.prank(KEEPER); minter.wipe();
     }
 }

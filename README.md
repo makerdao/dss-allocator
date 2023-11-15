@@ -101,6 +101,11 @@ A primitive for depositing liquidity to Uniswap V3 in a fixed range.
 
 As the Swapper, it includes rate limit protection and is designed so facilitators and automation contracts can use it.
 
+### VaultMinter
+
+An automation contract sample, which can be used by the AllocatorDAOs to `draw` or `wipe` from/to the `AllocatorVault`.
+- It can be useful for automating generation of funds from the vault to the buffer or repayment from the buffer to the vault.
+
 ### StableSwapper
 
 An automation contract, which can be used by the AllocatorDAOs to set up recurring swaps of stable tokens (e.g NST to USDC).

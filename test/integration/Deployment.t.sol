@@ -35,6 +35,7 @@ import { AllocatorVault } from "src/AllocatorVault.sol";
 import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
 import { Swapper } from "src/funnels/Swapper.sol";
 import { DepositorUniV3 } from "src/funnels/DepositorUniV3.sol";
+import { VaultMinter } from "src/funnels/automation/VaultMinter.sol";
 import { StableSwapper } from "src/funnels/automation/StableSwapper.sol";
 import { StableDepositorUniV3 } from "src/funnels/automation/StableDepositorUniV3.sol";
 import { ConduitMover } from "src/funnels/automation/ConduitMover.sol";
@@ -87,12 +88,14 @@ contract DeploymentTest is DssTest {
     address constant allocatorProxy              = address(0x1);
     address constant facilitator1                = address(0x2);
     address constant facilitator2                = address(0x3);
-    address constant stableSwapperKeeper1        = address(0x4);
-    address constant stableSwapperKeeper2        = address(0x5);
-    address constant stableDepositorUniV3Keeper1 = address(0x6);
-    address constant stableDepositorUniV3Keeper2 = address(0x7);
-    address constant conduitMoverKeeper1         = address(0x8);
-    address constant conduitMoverKeeper2         = address(0x9);
+    address constant vaultMinterKeeper1          = address(0x4);
+    address constant vaultMinterKeeper2          = address(0x5);
+    address constant stableSwapperKeeper1        = address(0x6);
+    address constant stableSwapperKeeper2        = address(0x7);
+    address constant stableDepositorUniV3Keeper1 = address(0x8);
+    address constant stableDepositorUniV3Keeper2 = address(0x9);
+    address constant conduitMoverKeeper1         = address(0xA);
+    address constant conduitMoverKeeper2         = address(0xB);
 
     // roles
     uint8 constant facilitatorRole = uint8(1);
@@ -164,6 +167,10 @@ contract DeploymentTest is DssTest {
         facilitators[0] = facilitator1;
         facilitators[1] = facilitator2;
 
+        address[] memory vaultMinterKeepers = new address[](2);
+        vaultMinterKeepers[0] = vaultMinterKeeper1;
+        vaultMinterKeepers[1] = vaultMinterKeeper2;
+
         address[] memory stableSwapperKeepers = new address[](2);
         stableSwapperKeepers[0] = stableSwapperKeeper1;
         stableSwapperKeepers[1] = stableSwapperKeeper2;
@@ -186,6 +193,7 @@ contract DeploymentTest is DssTest {
             facilitatorRole             : facilitatorRole,
             automationRole              : automationRole,
             facilitators                : facilitators,
+            vaultMinterKeepers          : vaultMinterKeepers,
             stableSwapperKeepers        : stableSwapperKeepers,
             stableDepositorUniV3Keepers : stableDepositorUniV3Keepers,
             conduitMoverKeepers         : conduitMoverKeepers,
@@ -284,6 +292,8 @@ contract DeploymentTest is DssTest {
         assertEq(AllocatorRoles(sharedInst.roles).hasActionRole(ILK, ilkInst.depositorUniV3, DepositorUniV3.withdraw.selector, automationRole), true);
         assertEq(AllocatorRoles(sharedInst.roles).hasActionRole(ILK, ilkInst.depositorUniV3, DepositorUniV3.collect.selector,  automationRole), true);
 
+        assertEq(WardsLike(ilkInst.vaultMinter).wards(facilitator1), 1);
+        assertEq(WardsLike(ilkInst.vaultMinter).wards(facilitator2), 1);
         assertEq(WardsLike(ilkInst.stableSwapper).wards(facilitator1), 1);
         assertEq(WardsLike(ilkInst.stableSwapper).wards(facilitator2), 1);
         assertEq(WardsLike(ilkInst.stableDepositorUniV3).wards(facilitator1), 1);
@@ -291,6 +301,8 @@ contract DeploymentTest is DssTest {
         assertEq(WardsLike(ilkInst.conduitMover).wards(facilitator1), 1);
         assertEq(WardsLike(ilkInst.conduitMover).wards(facilitator2), 1);
 
+        assertEq(ConduitMover(ilkInst.vaultMinter).buds(vaultMinterKeeper1), 1);
+        assertEq(ConduitMover(ilkInst.vaultMinter).buds(vaultMinterKeeper2), 1);
         assertEq(StableSwapper(ilkInst.stableSwapper).buds(stableSwapperKeeper1), 1);
         assertEq(StableSwapper(ilkInst.stableSwapper).buds(stableSwapperKeeper2), 1);
         assertEq(StableDepositorUniV3(ilkInst.stableDepositorUniV3).buds(stableDepositorUniV3Keeper1), 1);
@@ -309,6 +321,9 @@ contract DeploymentTest is DssTest {
 
         assertEq(WardsLike(ilkInst.depositorUniV3).wards(PAUSE_PROXY), 0);
         assertEq(WardsLike(ilkInst.depositorUniV3).wards(allocatorProxy), 1);
+
+        assertEq(WardsLike(ilkInst.vaultMinter).wards(PAUSE_PROXY), 0);
+        assertEq(WardsLike(ilkInst.vaultMinter).wards(allocatorProxy), 1);
 
         assertEq(WardsLike(ilkInst.stableSwapper).wards(PAUSE_PROXY), 0);
         assertEq(WardsLike(ilkInst.stableSwapper).wards(allocatorProxy), 1);
@@ -335,11 +350,21 @@ contract DeploymentTest is DssTest {
         assertEq(IlkRegistryLike(ILK_REGISTRY).symbol(ILK), string("ILK-A"));
     }
 
-    function testVaultDrawWipe() public {
+    function testVaultDrawWipeFromFacilitator() public {
         emulateSpell();
 
         vm.prank(facilitator1); AllocatorVault(ilkInst.vault).draw(1_000 * WAD);
         vm.prank(facilitator1); AllocatorVault(ilkInst.vault).wipe(1_000 * WAD);
+    }
+
+    function testVaultDrawWipeFromFromKeeper() public {
+        emulateSpell();
+
+        vm.prank(facilitator1); VaultMinter(ilkInst.vaultMinter).setConfig(1, 1 hours, uint96(1_000 * WAD));
+        vm.prank(vaultMinterKeeper1); VaultMinter(ilkInst.vaultMinter).draw();
+
+        vm.prank(facilitator1); VaultMinter(ilkInst.vaultMinter).setConfig(-1, 1 hours, uint96(1_000 * WAD));
+        vm.prank(vaultMinterKeeper1); VaultMinter(ilkInst.vaultMinter).wipe();
     }
 
     function testSwapFromFacilitator() public {
