@@ -67,6 +67,8 @@ contract SwapperTest is DssTest {
     }
 
     function testConstructor() public {
+        vm.expectEmit(true, true, true, true);
+        emit Rely(address(this));
         Swapper s = new Swapper(address(0xBEEF), "SubDAO 1", address(0xAAA));
         assertEq(address(s.roles()),  address(0xBEEF));
         assertEq(s.ilk(), "SubDAO 1");

@@ -45,6 +45,8 @@ contract SwapperCalleePsmTest is DssTest {
     }
 
     function testConstructor() public {
+        vm.expectEmit(true, true, true, true);
+        emit Rely(address(this));
         SwapperCalleePsm c = new SwapperCalleePsm(address(psm));
         assertEq(c.psm(), address(psm));
         assertEq(c.gem(), USDC);

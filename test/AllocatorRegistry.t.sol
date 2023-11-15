@@ -14,6 +14,13 @@ contract AllocatorRegistryTest is DssTest {
         registry = new AllocatorRegistry();
     }
 
+    function testConstructor() public {
+        vm.expectEmit(true, true, true, true);
+        emit Rely(address(this));
+        AllocatorRegistry r = new AllocatorRegistry();
+        assertEq(r.wards(address(this)), 1);
+    }
+
     function testAuth() public {
         checkAuth(address(registry), "AllocatorRegistry");
     }
