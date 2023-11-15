@@ -29,10 +29,10 @@ contract VaultMinter {
     address public immutable vault; // The address of the vault contract
 
     struct MinterConfig {
-        int64    num; // The remaining number of times that a mint or burn can be executed by keepers (> 0: mint, < 0: burn)
+        int64    num; // The remaining number of times that a draw or wipe can be executed by keepers (> 0: draw, < 0: wipe)
         uint32   hop; // Cooldown period it has to wait between each action
         uint32   zzz; // Timestamp of the last action
-        uint128  lot; // The amount to mint or burn every hop
+        uint128  lot; // The amount to draw or wipe every hop
     }
 
     event Rely(address indexed usr);
