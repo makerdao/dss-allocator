@@ -49,35 +49,50 @@ function getPoolSummary(address gem0, address gem1, uint24 fee) returns address 
     return _poolMap[gem0][gem1][fee];
 }
 
+// Verify that each storage layout is only modified in the corresponding functions
+rule storageAffected(method f) {
+    env e;
+
+    address anyAddr;
+    address anyAddr_2;
+    uint24 anyUint24;
+
+    mathint wardsBefore = wards(anyAddr);
+    mathint cap0Before; mathint cap1Before; mathint eraBefore; mathint due0Before; mathint due1Before; mathint endBefore;
+    cap0Before, cap1Before, eraBefore, due0Before, due1Before, endBefore = limits(anyAddr, anyAddr_2, anyUint24);
+
+    calldataarg args;
+    f(e, args);
+
+    mathint wardsAfter = wards(anyAddr);
+    mathint cap0After; mathint cap1After; mathint eraAfter; mathint due0After; mathint due1After; mathint endAfter;
+    cap0After, cap1After, eraAfter, due0After, due1After, endAfter = limits(anyAddr, anyAddr_2, anyUint24);
+
+    assert wardsAfter != wardsBefore => f.selector == sig:rely(address).selector || f.selector == sig:deny(address).selector, "wards[x] changed in an unexpected function";
+    assert cap0After != cap0Before => f.selector == sig:setLimits(address,address,uint24,uint96,uint96,uint32).selector, "limits[x][y][z].cap0 changed in an unexpected function";
+    assert cap1After != cap1Before => f.selector == sig:setLimits(address,address,uint24,uint96,uint96,uint32).selector, "limits[x][y][z].cap1 changed in an unexpected function";
+    assert eraAfter != eraBefore => f.selector == sig:setLimits(address,address,uint24,uint96,uint96,uint32).selector, "limits[x][y][z].era changed in an unexpected function";
+    assert due0After != due0Before => f.selector == sig:setLimits(address,address,uint24,uint96,uint96,uint32).selector || f.selector == sig:deposit(DepositorUniV3.LiquidityParams).selector || f.selector == sig:withdraw(DepositorUniV3.LiquidityParams,bool).selector, "limits[x][y][z].due0 changed in an unexpected function";
+    assert due1After != due1Before => f.selector == sig:setLimits(address,address,uint24,uint96,uint96,uint32).selector || f.selector == sig:deposit(DepositorUniV3.LiquidityParams).selector || f.selector == sig:withdraw(DepositorUniV3.LiquidityParams,bool).selector, "limits[x][y][z].due1 changed in an unexpected function";
+    assert endAfter != endBefore => f.selector == sig:setLimits(address,address,uint24,uint96,uint96,uint32).selector || f.selector == sig:deposit(DepositorUniV3.LiquidityParams).selector || f.selector == sig:withdraw(DepositorUniV3.LiquidityParams,bool).selector, "limits[x][y][z].end changed in an unexpected function";
+}
+
 // Verify correct storage changes for non reverting rely
 rule rely(address usr) {
     env e;
 
     address other;
     require other != usr;
-    address anyAddr;
-    address anyAddr_2;
-    uint24 anyUint24;
 
     mathint wardsOtherBefore = wards(other);
-    mathint cap0Before; mathint cap1Before; mathint eraBefore; mathint due0Before; mathint due1Before; mathint endBefore;
-    cap0Before, cap1Before, eraBefore, due0Before, due1Before, endBefore = limits(anyAddr, anyAddr_2, anyUint24);
 
     rely(e, usr);
 
     mathint wardsUsrAfter = wards(usr);
     mathint wardsOtherAfter = wards(other);
-    mathint cap0After; mathint cap1After; mathint eraAfter; mathint due0After; mathint due1After; mathint endAfter;
-    cap0After, cap1After, eraAfter, due0After, due1After, endAfter = limits(anyAddr, anyAddr_2, anyUint24);
 
     assert wardsUsrAfter == 1, "rely did not set the wards";
     assert wardsOtherAfter == wardsOtherBefore, "rely did not keep unchanged the rest of wards[x]";
-    assert cap0After == cap0Before, "rely did not keep unchanged every limits[x][y][z].cap0";
-    assert cap1After == cap1Before, "rely did not keep unchanged every limits[x][y][z].cap1";
-    assert eraAfter == eraBefore, "rely did not keep unchanged every limits[x][y][z].era";
-    assert due0After == due0Before, "rely did not keep unchanged every limits[x][y][z].due0";
-    assert due1After == due1Before, "rely did not keep unchanged every limits[x][y][z].due1";
-    assert endAfter == endBefore, "rely did not keep unchanged every limits[x][y][z].end";
 }
 
 // Verify revert rules on rely
@@ -103,29 +118,16 @@ rule deny(address usr) {
 
     address other;
     require other != usr;
-    address anyAddr;
-    address anyAddr_2;
-    uint24 anyUint24;
 
     mathint wardsOtherBefore = wards(other);
-    mathint cap0Before; mathint cap1Before; mathint eraBefore; mathint due0Before; mathint due1Before; mathint endBefore;
-    cap0Before, cap1Before, eraBefore, due0Before, due1Before, endBefore = limits(anyAddr, anyAddr_2, anyUint24);
 
     deny(e, usr);
 
     mathint wardsUsrAfter = wards(usr);
     mathint wardsOtherAfter = wards(other);
-    mathint cap0After; mathint cap1After; mathint eraAfter; mathint due0After; mathint due1After; mathint endAfter;
-    cap0After, cap1After, eraAfter, due0After, due1After, endAfter = limits(anyAddr, anyAddr_2, anyUint24);
 
     assert wardsUsrAfter == 0, "deny did not set the wards";
     assert wardsOtherAfter == wardsOtherBefore, "deny did not keep unchanged the rest of wards[x]";
-    assert cap0After == cap0Before, "deny did not keep unchanged every limits[x][y][z].cap0";
-    assert cap1After == cap1Before, "deny did not keep unchanged every limits[x][y][z].cap1";
-    assert eraAfter == eraBefore, "deny did not keep unchanged every limits[x][y][z].era";
-    assert due0After == due0Before, "deny did not keep unchanged every limits[x][y][z].due0";
-    assert due1After == due1Before, "deny did not keep unchanged every limits[x][y][z].due1";
-    assert endAfter == endBefore, "deny did not keep unchanged every limits[x][y][z].end";
 }
 
 // Verify revert rules on deny
@@ -149,25 +151,21 @@ rule deny_revert(address usr) {
 rule setLimits(address gem0, address gem1, uint24 fee, uint96 cap0, uint96 cap1, uint32 era) {
     env e;
 
-    address anyAddr;
     address otherAddr;
     address otherAddr_2;
     uint24 otherUint24;
     require otherAddr != gem0 || otherAddr_2 != gem1 || otherUint24 != fee;
 
-    mathint wardsBefore = wards(anyAddr);
     mathint cap0OtherBefore; mathint cap1OtherBefore; mathint eraOtherBefore; mathint due0OtherBefore; mathint due1OtherBefore; mathint endOtherBefore;
     cap0OtherBefore, cap1OtherBefore, eraOtherBefore, due0OtherBefore, due1OtherBefore, endOtherBefore = limits(otherAddr, otherAddr_2, otherUint24);
 
     setLimits(e, gem0, gem1, fee, cap0, cap1, era);
 
-    mathint wardsAfter = wards(anyAddr);
     mathint cap0Gem0Gem1FeeAfter; mathint cap1Gem0Gem1FeeAfter; mathint eraGem0Gem1FeeAfter; mathint due0Gem0Gem1FeeAfter; mathint due1Gem0Gem1FeeAfter; mathint endGem0Gem1FeeAfter;
     cap0Gem0Gem1FeeAfter, cap1Gem0Gem1FeeAfter, eraGem0Gem1FeeAfter, due0Gem0Gem1FeeAfter, due1Gem0Gem1FeeAfter, endGem0Gem1FeeAfter = limits(gem0, gem1, fee);
     mathint cap0OtherAfter; mathint cap1OtherAfter; mathint eraOtherAfter; mathint due0OtherAfter; mathint due1OtherAfter; mathint endOtherAfter;
     cap0OtherAfter, cap1OtherAfter, eraOtherAfter, due0OtherAfter, due1OtherAfter, endOtherAfter = limits(otherAddr, otherAddr_2, otherUint24);
 
-    assert wardsAfter == wardsBefore, "setLimits did not keep unchanged every wards[x]";
     assert cap0Gem0Gem1FeeAfter == to_mathint(cap0), "setLimits did not set limits[gem0][gem1][fee].cap0 to cap0";
     assert cap1Gem0Gem1FeeAfter == to_mathint(cap1), "setLimits did not set limits[gem0][gem1][fee].cap1 to cap1";
     assert eraGem0Gem1FeeAfter == to_mathint(era), "setLimits did not set limits[gem0][gem1][fee].era to era";
@@ -229,16 +227,9 @@ rule uniswapV3MintCallback(uint256 amt0Owed, uint256 amt1Owed, bytes data) {
     require gem0 == gem0Con;
     require gem1 == gem1Con;
 
-    address anyAddr;
-    address anyAddr_2;
-    uint24 anyUint24;
-
     address buffer = buffer();
     require buffer != e.msg.sender;
 
-    mathint wardsBefore = wards(anyAddr);
-    mathint cap0Before; mathint cap1Before; mathint eraBefore; mathint due0Before; mathint due1Before; mathint endBefore;
-    cap0Before, cap1Before, eraBefore, due0Before, due1Before, endBefore = limits(anyAddr, anyAddr_2, anyUint24);
     mathint gem0BalanceOfBufferBefore = gem0Con.balanceOf(buffer);
     mathint gem1BalanceOfBufferBefore = gem1Con.balanceOf(buffer);
     mathint gem0BalanceOfSenderBefore = gem0Con.balanceOf(e.msg.sender);
@@ -249,21 +240,11 @@ rule uniswapV3MintCallback(uint256 amt0Owed, uint256 amt1Owed, bytes data) {
 
     uniswapV3MintCallback(e, amt0Owed, amt1Owed, data);
 
-    mathint wardsAfter = wards(anyAddr);
-    mathint cap0After; mathint cap1After; mathint eraAfter; mathint due0After; mathint due1After; mathint endAfter;
-    cap0After, cap1After, eraAfter, due0After, due1After, endAfter = limits(anyAddr, anyAddr_2, anyUint24);
     mathint gem0BalanceOfBufferAfter = gem0Con.balanceOf(buffer);
     mathint gem1BalanceOfBufferAfter = gem1Con.balanceOf(buffer);
     mathint gem0BalanceOfSenderAfter = gem0Con.balanceOf(e.msg.sender);
     mathint gem1BalanceOfSenderAfter = gem1Con.balanceOf(e.msg.sender);
 
-    assert wardsAfter == wardsBefore, "uniswapV3MintCallback did not keep unchanged every wards[x]";
-    assert cap0After == cap0Before, "uniswapV3MintCallback did not keep unchanged every limits[x][y][z].cap0";
-    assert cap1After == cap1Before, "uniswapV3MintCallback did not keep unchanged every limits[x][y][z].cap1";
-    assert eraAfter == eraBefore, "uniswapV3MintCallback did not keep unchanged every limits[x][y][z].era";
-    assert due0After == due0Before, "uniswapV3MintCallback did not keep unchanged every limits[x][y][z].due0";
-    assert due1After == due1Before, "uniswapV3MintCallback did not keep unchanged every limits[x][y][z].due1";
-    assert endAfter == endBefore, "uniswapV3MintCallback did not keep unchanged every limits[x][y][z].end";
     assert gem0BalanceOfBufferAfter == gem0BalanceOfBufferBefore - amt0Owed, "uniswapV3MintCallback did not decrease gem0.balanceOf(buffer) by amt0Owed";
     assert gem1BalanceOfBufferAfter == gem1BalanceOfBufferBefore - amt1Owed, "uniswapV3MintCallback did not decrease gem1.balanceOf(buffer) by amt1Owed";
     assert gem0BalanceOfSenderAfter == gem0BalanceOfSenderBefore + amt0Owed, "uniswapV3MintCallback did not increase gem0.balanceOf(pool) by amt0Owed";
@@ -323,7 +304,6 @@ rule deposit(DepositorUniV3.LiquidityParams p) {
     require p.gem1 == poolCon.gem1();
     require p.fee  == poolCon.fee();
 
-    address anyAddr;
     address otherAddr;
     address otherAddr_2;
     uint24 otherUint24;
@@ -334,11 +314,12 @@ rule deposit(DepositorUniV3.LiquidityParams p) {
     address buffer = buffer();
     require buffer != poolCon;
 
-    mathint wardsBefore = wards(anyAddr);
-    mathint cap0Gem0Gem1FeeBefore; mathint cap1Gem0Gem1FeeBefore; mathint eraGem0Gem1FeeBefore; mathint due0Gem0Gem1FeeBefore; mathint due1Gem0Gem1FeeBefore; mathint endGem0Gem1FeeBefore;
-    cap0Gem0Gem1FeeBefore, cap1Gem0Gem1FeeBefore, eraGem0Gem1FeeBefore, due0Gem0Gem1FeeBefore, due1Gem0Gem1FeeBefore, endGem0Gem1FeeBefore = limits(p.gem0, p.gem1, p.fee);
-    mathint cap0OtherBefore; mathint cap1OtherBefore; mathint eraOtherBefore; mathint due0OtherBefore; mathint due1OtherBefore; mathint endOtherBefore;
-    cap0OtherBefore, cap1OtherBefore, eraOtherBefore, due0OtherBefore, due1OtherBefore, endOtherBefore = limits(otherAddr, otherAddr_2, otherUint24);
+    mathint a; mathint b; mathint c;
+
+    mathint cap0Gem0Gem1Fee; mathint cap1Gem0Gem1Fee; mathint eraGem0Gem1Fee; mathint due0Gem0Gem1FeeBefore; mathint due1Gem0Gem1FeeBefore; mathint endGem0Gem1FeeBefore;
+    cap0Gem0Gem1Fee, cap1Gem0Gem1Fee, eraGem0Gem1Fee, due0Gem0Gem1FeeBefore, due1Gem0Gem1FeeBefore, endGem0Gem1FeeBefore = limits(p.gem0, p.gem1, p.fee);
+    mathint due0OtherBefore; mathint due1OtherBefore; mathint endOtherBefore;
+    a, b, c, due0OtherBefore, due1OtherBefore, endOtherBefore = limits(otherAddr, otherAddr_2, otherUint24);
     mathint gem0BalanceOfBufferBefore = gem0Con.balanceOf(buffer);
     mathint gem1BalanceOfBufferBefore = gem1Con.balanceOf(buffer);
     mathint gem0BalanceOfPoolBefore   = gem0Con.balanceOf(poolCon);
@@ -355,30 +336,22 @@ rule deposit(DepositorUniV3.LiquidityParams p) {
     mathint retLiq; mathint retAmt0; mathint retAmt1;
     retLiq, retAmt0, retAmt1 = deposit(e, p);
 
-    mathint wardsAfter = wards(anyAddr);
-    mathint cap0Gem0Gem1FeeAfter; mathint cap1Gem0Gem1FeeAfter; mathint eraGem0Gem1FeeAfter; mathint due0Gem0Gem1FeeAfter; mathint due1Gem0Gem1FeeAfter; mathint endGem0Gem1FeeAfter;
-    cap0Gem0Gem1FeeAfter, cap1Gem0Gem1FeeAfter, eraGem0Gem1FeeAfter, due0Gem0Gem1FeeAfter, due1Gem0Gem1FeeAfter, endGem0Gem1FeeAfter = limits(p.gem0, p.gem1, p.fee);
-    mathint cap0OtherAfter; mathint cap1OtherAfter; mathint eraOtherAfter; mathint due0OtherAfter; mathint due1OtherAfter; mathint endOtherAfter;
-    cap0OtherAfter, cap1OtherAfter, eraOtherAfter, due0OtherAfter, due1OtherAfter, endOtherAfter = limits(otherAddr, otherAddr_2, otherUint24);
+    mathint due0Gem0Gem1FeeAfter; mathint due1Gem0Gem1FeeAfter; mathint endGem0Gem1FeeAfter;
+    a, b, c, due0Gem0Gem1FeeAfter, due1Gem0Gem1FeeAfter, endGem0Gem1FeeAfter = limits(p.gem0, p.gem1, p.fee);
+    mathint due0OtherAfter; mathint due1OtherAfter; mathint endOtherAfter;
+    a, b, c, due0OtherAfter, due1OtherAfter, endOtherAfter = limits(otherAddr, otherAddr_2, otherUint24);
     mathint gem0BalanceOfBufferAfter = gem0Con.balanceOf(buffer);
     mathint gem1BalanceOfBufferAfter = gem1Con.balanceOf(buffer);
     mathint gem0BalanceOfPoolAfter   = gem0Con.balanceOf(poolCon);
     mathint gem1BalanceOfPoolAfter   = gem1Con.balanceOf(poolCon);
 
-    mathint expectedDue0 = (to_mathint(e.block.timestamp) >= endGem0Gem1FeeBefore ? cap0Gem0Gem1FeeBefore : due0Gem0Gem1FeeBefore) - amt0;
-    mathint expectedDue1 = (to_mathint(e.block.timestamp) >= endGem0Gem1FeeBefore ? cap1Gem0Gem1FeeBefore : due1Gem0Gem1FeeBefore) - amt1;
-    mathint expectedEnd = to_mathint(e.block.timestamp) >= endGem0Gem1FeeBefore ? e.block.timestamp + eraGem0Gem1FeeBefore : endGem0Gem1FeeBefore;
+    mathint expectedDue0 = (to_mathint(e.block.timestamp) >= endGem0Gem1FeeBefore ? cap0Gem0Gem1Fee : due0Gem0Gem1FeeBefore) - amt0;
+    mathint expectedDue1 = (to_mathint(e.block.timestamp) >= endGem0Gem1FeeBefore ? cap1Gem0Gem1Fee : due1Gem0Gem1FeeBefore) - amt1;
+    mathint expectedEnd = to_mathint(e.block.timestamp) >= endGem0Gem1FeeBefore ? e.block.timestamp + eraGem0Gem1Fee : endGem0Gem1FeeBefore;
 
-    assert wardsAfter == wardsBefore, "deposit did not keep unchanged every wards[x]";
-    assert cap0Gem0Gem1FeeAfter == cap0Gem0Gem1FeeBefore, "deposit did not keep unchanged limits[gem0][gem1][fee].cap0";
-    assert cap1Gem0Gem1FeeAfter == cap1Gem0Gem1FeeBefore, "deposit did not keep unchanged limits[gem0][gem1][fee].cap1";
-    assert eraGem0Gem1FeeAfter == eraGem0Gem1FeeBefore, "deposit did not keep unchanged limits[gem0][gem1][fee].era";
     assert due0Gem0Gem1FeeAfter == expectedDue0, "deposit did not set limits[gem0][gem1][fee].due0 to the expected value";
     assert due1Gem0Gem1FeeAfter == expectedDue1, "deposit did not set limits[gem0][gem1][fee].due1 to the expected value";
     assert endGem0Gem1FeeAfter == expectedEnd, "deposit did not set limits[gem0][gem1][fee].end to the expected value";
-    assert cap0OtherAfter == cap0OtherBefore, "deposit did not keep unchanged the rest of limits[x][y][z].cap0";
-    assert cap1OtherAfter == cap1OtherBefore, "deposit did not keep unchanged the rest of limits[x][y][z].cap1";
-    assert eraOtherAfter == eraOtherBefore, "deposit did not keep unchanged the rest of limits[x][y][z].era";
     assert due0OtherAfter == due0OtherBefore, "deposit did not keep unchanged the rest of limits[x][y][z].due0";
     assert due1OtherAfter == due1OtherBefore, "deposit did not keep unchanged the rest of limits[x][y][z].due1";
     assert endOtherAfter == endOtherBefore, "deposit did not keep unchanged the rest of limits[x][y][z].end";
@@ -462,7 +435,6 @@ rule withdraw(DepositorUniV3.LiquidityParams p, bool takeFees) {
     require poolCon.random2() >= poolCon.random0();
     require poolCon.random3() >= poolCon.random1();
 
-    address anyAddr;
     address otherAddr;
     address otherAddr_2;
     uint24 otherUint24;
@@ -473,11 +445,12 @@ rule withdraw(DepositorUniV3.LiquidityParams p, bool takeFees) {
     address buffer = buffer();
     require buffer != poolCon;
 
-    mathint wardsBefore = wards(anyAddr);
-    mathint cap0Gem0Gem1FeeBefore; mathint cap1Gem0Gem1FeeBefore; mathint eraGem0Gem1FeeBefore; mathint due0Gem0Gem1FeeBefore; mathint due1Gem0Gem1FeeBefore; mathint endGem0Gem1FeeBefore;
-    cap0Gem0Gem1FeeBefore, cap1Gem0Gem1FeeBefore, eraGem0Gem1FeeBefore, due0Gem0Gem1FeeBefore, due1Gem0Gem1FeeBefore, endGem0Gem1FeeBefore = limits(p.gem0, p.gem1, p.fee);
+    mathint a; mathint b; mathint c;
+
+    mathint cap0Gem0Gem1Fee; mathint cap1Gem0Gem1Fee; mathint eraGem0Gem1Fee; mathint due0Gem0Gem1FeeBefore; mathint due1Gem0Gem1FeeBefore; mathint endGem0Gem1FeeBefore;
+    cap0Gem0Gem1Fee, cap1Gem0Gem1Fee, eraGem0Gem1Fee, due0Gem0Gem1FeeBefore, due1Gem0Gem1FeeBefore, endGem0Gem1FeeBefore = limits(p.gem0, p.gem1, p.fee);
     mathint cap0OtherBefore; mathint cap1OtherBefore; mathint eraOtherBefore; mathint due0OtherBefore; mathint due1OtherBefore; mathint endOtherBefore;
-    cap0OtherBefore, cap1OtherBefore, eraOtherBefore, due0OtherBefore, due1OtherBefore, endOtherBefore = limits(otherAddr, otherAddr_2, otherUint24);
+    a, b, c, due0OtherBefore, due1OtherBefore, endOtherBefore = limits(otherAddr, otherAddr_2, otherUint24);
     mathint gem0BalanceOfBufferBefore = gem0Con.balanceOf(buffer);
     mathint gem1BalanceOfBufferBefore = gem1Con.balanceOf(buffer);
     mathint gem0BalanceOfPoolBefore   = gem0Con.balanceOf(poolCon);
@@ -496,30 +469,22 @@ rule withdraw(DepositorUniV3.LiquidityParams p, bool takeFees) {
     mathint retLiq; mathint retAmt0; mathint retAmt1; mathint retFees0; mathint retFees1;
     retLiq, retAmt0, retAmt1, retFees0, retFees1 = withdraw(e, p, takeFees);
 
-    mathint wardsAfter = wards(anyAddr);
-    mathint cap0Gem0Gem1FeeAfter; mathint cap1Gem0Gem1FeeAfter; mathint eraGem0Gem1FeeAfter; mathint due0Gem0Gem1FeeAfter; mathint due1Gem0Gem1FeeAfter; mathint endGem0Gem1FeeAfter;
-    cap0Gem0Gem1FeeAfter, cap1Gem0Gem1FeeAfter, eraGem0Gem1FeeAfter, due0Gem0Gem1FeeAfter, due1Gem0Gem1FeeAfter, endGem0Gem1FeeAfter = limits(p.gem0, p.gem1, p.fee);
-    mathint cap0OtherAfter; mathint cap1OtherAfter; mathint eraOtherAfter; mathint due0OtherAfter; mathint due1OtherAfter; mathint endOtherAfter;
-    cap0OtherAfter, cap1OtherAfter, eraOtherAfter, due0OtherAfter, due1OtherAfter, endOtherAfter = limits(otherAddr, otherAddr_2, otherUint24);
+    mathint due0Gem0Gem1FeeAfter; mathint due1Gem0Gem1FeeAfter; mathint endGem0Gem1FeeAfter;
+    a, b, c, due0Gem0Gem1FeeAfter, due1Gem0Gem1FeeAfter, endGem0Gem1FeeAfter = limits(p.gem0, p.gem1, p.fee);
+    mathint due0OtherAfter; mathint due1OtherAfter; mathint endOtherAfter;
+    a, b, c, due0OtherAfter, due1OtherAfter, endOtherAfter = limits(otherAddr, otherAddr_2, otherUint24);
     mathint gem0BalanceOfBufferAfter = gem0Con.balanceOf(buffer);
     mathint gem1BalanceOfBufferAfter = gem1Con.balanceOf(buffer);
     mathint gem0BalanceOfPoolAfter   = gem0Con.balanceOf(poolCon);
     mathint gem1BalanceOfPoolAfter   = gem1Con.balanceOf(poolCon);
 
-    mathint expectedDue0 = (to_mathint(e.block.timestamp) >= endGem0Gem1FeeBefore ? cap0Gem0Gem1FeeBefore : due0Gem0Gem1FeeBefore) - amt0;
-    mathint expectedDue1 = (to_mathint(e.block.timestamp) >= endGem0Gem1FeeBefore ? cap1Gem0Gem1FeeBefore : due1Gem0Gem1FeeBefore) - amt1;
-    mathint expectedEnd = to_mathint(e.block.timestamp) >= endGem0Gem1FeeBefore ? e.block.timestamp + eraGem0Gem1FeeBefore : endGem0Gem1FeeBefore;
+    mathint expectedDue0 = (to_mathint(e.block.timestamp) >= endGem0Gem1FeeBefore ? cap0Gem0Gem1Fee : due0Gem0Gem1FeeBefore) - amt0;
+    mathint expectedDue1 = (to_mathint(e.block.timestamp) >= endGem0Gem1FeeBefore ? cap1Gem0Gem1Fee : due1Gem0Gem1FeeBefore) - amt1;
+    mathint expectedEnd = to_mathint(e.block.timestamp) >= endGem0Gem1FeeBefore ? e.block.timestamp + eraGem0Gem1Fee : endGem0Gem1FeeBefore;
 
-    assert wardsAfter == wardsBefore, "withdraw did not keep unchanged every wards[x]";
-    assert cap0Gem0Gem1FeeAfter == cap0Gem0Gem1FeeBefore, "withdraw did not keep unchanged limits[gem0][gem1][fee].cap0";
-    assert cap1Gem0Gem1FeeAfter == cap1Gem0Gem1FeeBefore, "withdraw did not keep unchanged limits[gem0][gem1][fee].cap1";
-    assert eraGem0Gem1FeeAfter == eraGem0Gem1FeeBefore, "withdraw did not keep unchanged limits[gem0][gem1][fee].era";
     assert due0Gem0Gem1FeeAfter == expectedDue0, "withdraw did not set limits[gem0][gem1][fee].due0 to the expected value";
     assert due1Gem0Gem1FeeAfter == expectedDue1, "withdraw did not set limits[gem0][gem1][fee].due1 to the expected value";
     assert endGem0Gem1FeeAfter == expectedEnd, "withdraw did not set limits[gem0][gem1][fee].end to the expected value";
-    assert cap0OtherAfter == cap0OtherBefore, "withdraw did not keep unchanged the rest of limits[x][y][z].cap0";
-    assert cap1OtherAfter == cap1OtherBefore, "withdraw did not keep unchanged the rest of limits[x][y][z].cap1";
-    assert eraOtherAfter == eraOtherBefore, "withdraw did not keep unchanged the rest of limits[x][y][z].era";
     assert due0OtherAfter == due0OtherBefore, "withdraw did not keep unchanged the rest of limits[x][y][z].due0";
     assert due1OtherAfter == due1OtherBefore, "withdraw did not keep unchanged the rest of limits[x][y][z].due1";
     assert endOtherAfter == endOtherBefore, "withdraw did not keep unchanged the rest of limits[x][y][z].end";
@@ -600,18 +565,11 @@ rule collect(DepositorUniV3.CollectParams p) {
     require poolCon.random2() >= poolCon.random0();
     require poolCon.random3() >= poolCon.random1();
 
-    address anyAddr;
-    address anyAddr_2;
-    uint24 anyUint24;
-
     require e.block.timestamp <= max_uint32;
 
     address buffer = buffer();
     require buffer != poolCon;
 
-    mathint wardsBefore = wards(anyAddr);
-    mathint cap0Before; mathint cap1Before; mathint eraBefore; mathint due0Before; mathint due1Before; mathint endBefore;
-    cap0Before, cap1Before, eraBefore, due0Before, due1Before, endBefore = limits(anyAddr, anyAddr_2, anyUint24);
     mathint gem0BalanceOfBufferBefore = gem0Con.balanceOf(buffer);
     mathint gem1BalanceOfBufferBefore = gem1Con.balanceOf(buffer);
     mathint gem0BalanceOfPoolBefore   = gem0Con.balanceOf(poolCon);
@@ -626,21 +584,11 @@ rule collect(DepositorUniV3.CollectParams p) {
     mathint retFees0; mathint retFees1;
     retFees0, retFees1 = collect(e, p);
 
-    mathint wardsAfter = wards(anyAddr);
-    mathint cap0After; mathint cap1After; mathint eraAfter; mathint due0After; mathint due1After; mathint endAfter;
-    cap0After, cap1After, eraAfter, due0After, due1After, endAfter = limits(anyAddr, anyAddr_2, anyUint24);
     mathint gem0BalanceOfBufferAfter = gem0Con.balanceOf(buffer);
     mathint gem1BalanceOfBufferAfter = gem1Con.balanceOf(buffer);
     mathint gem0BalanceOfPoolAfter   = gem0Con.balanceOf(poolCon);
     mathint gem1BalanceOfPoolAfter   = gem1Con.balanceOf(poolCon);
 
-    assert wardsAfter == wardsBefore, "collect did not keep unchanged every wards[x]";
-    assert cap0After == cap0Before, "collect did not keep unchanged every limits[x][y][z].cap0";
-    assert cap1After == cap1Before, "collect did not keep unchanged every limits[x][y][z].cap1";
-    assert eraAfter == eraBefore, "collect did not keep unchanged every limits[x][y][z].era";
-    assert due0After == due0Before, "collect did not keep unchanged every limits[x][y][z].due0";
-    assert due1After == due1Before, "collect did not keep unchanged every limits[x][y][z].due1";
-    assert endAfter == endBefore, "collect did not keep unchanged every limits[x][y][z].end";
     assert gem0BalanceOfBufferAfter == gem0BalanceOfBufferBefore + fees0, "collect did not increase gem0.balanceOf(buffer) by fees0";
     assert gem1BalanceOfBufferAfter == gem1BalanceOfBufferBefore + fees1, "collect did not increase gem1.balanceOf(buffer) by fees1";
     assert gem0BalanceOfPoolAfter == gem0BalanceOfPoolBefore - fees0, "collect did not decrease gem0.balanceOf(pool) by fees0";

@@ -29,6 +29,25 @@ definition RAY() returns mathint = 10^27;
 definition max_int256() returns mathint = 2^255 - 1;
 definition divUp(mathint x, mathint y) returns mathint = x != 0 ? ((x - 1) / y) + 1 : 0;
 
+// Verify that each storage layout is only modified in the corresponding functions
+rule storageAffected(method f) {
+    env e;
+
+    address anyAddr;
+
+    mathint wardsBefore = wards(anyAddr);
+    address jugBefore = jug();
+
+    calldataarg args;
+    f(e, args);
+
+    mathint wardsAfter = wards(anyAddr);
+    address jugAfter = jug();
+
+    assert wardsAfter != wardsBefore => f.selector == sig:rely(address).selector || f.selector == sig:deny(address).selector, "wards[x] changed in an unexpected function";
+    assert jugAfter != jugBefore => f.selector == sig:file(bytes32,address).selector, "jug changed in an unexpected function";
+}
+
 // Verify correct storage changes for non reverting rely
 rule rely(address usr) {
     env e;
@@ -37,17 +56,14 @@ rule rely(address usr) {
     require other != usr;
 
     mathint wardsOtherBefore = wards(other);
-    address jugBefore = jug();
 
     rely(e, usr);
 
     mathint wardsUsrAfter = wards(usr);
     mathint wardsOtherAfter = wards(other);
-    address jugAfter = jug();
 
     assert wardsUsrAfter == 1, "rely did not set the wards";
     assert wardsOtherAfter == wardsOtherBefore, "rely did not keep unchanged the rest of wards[x]";
-    assert jugAfter == jugBefore, "rely did not keep unchanged jug";
 }
 
 // Verify revert rules on rely
@@ -75,17 +91,14 @@ rule deny(address usr) {
     require other != usr;
 
     mathint wardsOtherBefore = wards(other);
-    address jugBefore = jug();
 
     deny(e, usr);
 
     mathint wardsUsrAfter = wards(usr);
     mathint wardsOtherAfter = wards(other);
-    address jugAfter = jug();
 
     assert wardsUsrAfter == 0, "deny did not set the wards";
     assert wardsOtherAfter == wardsOtherBefore, "deny did not keep unchanged the rest of wards[x]";
-    assert jugAfter == jugBefore, "deny did not keep unchanged jug";
 }
 
 // Verify revert rules on deny
@@ -109,16 +122,10 @@ rule deny_revert(address usr) {
 rule file(bytes32 what, address data) {
     env e;
 
-    address any;
-
-    mathint wardsBefore = wards(any);
-
     file(e, what, data);
 
-    mathint wardsAfter = wards(any);
     address jugAfter = jug();
 
-    assert wardsAfter == wardsBefore, "file did not keep unchanged every wards[x]";
     assert jugAfter == data, "file did not set jug";
 }
 
@@ -145,10 +152,6 @@ rule file_revert(bytes32 what, address data) {
 rule draw(uint256 wad) {
     env e;
 
-    address any;
-
-    mathint wardsBefore = wards(any);
-    address jugBefore = jug();
     mathint nstTotalSupplyBefore = nst.totalSupply();
     mathint nstBalanceOfBufferBefore = nst.balanceOf(buffer());
     require nstBalanceOfBufferBefore <= nstTotalSupplyBefore;
@@ -160,15 +163,11 @@ rule draw(uint256 wad) {
 
     draw(e, wad);
 
-    mathint wardsAfter = wards(any);
-    address jugAfter = jug();
     mathint nstTotalSupplyAfter = nst.totalSupply();
     mathint nstBalanceOfBufferAfter = nst.balanceOf(buffer());
     mathint vatInkVaultAfter; mathint vatArtVaultAfter;
     vatInkVaultAfter, vatArtVaultAfter = vat.urns(ilk(), currentContract);
 
-    assert wardsAfter == wardsBefore, "draw did not keep unchanged every wards[x]";
-    assert jugAfter == jugBefore, "draw did not keep unchanged jug";
     assert vatInkVaultAfter == vatInkVaultBefore, "draw did not keep vat.urns(ilk,vault).ink unchanged";
     assert vatArtVaultAfter == vatArtVaultBefore + dart, "draw did not increase vat.urns(ilk,vault).art by dart";
     assert nstBalanceOfBufferAfter == nstBalanceOfBufferBefore + wad, "draw did not increase nst.balanceOf(buffer) by wad";
@@ -230,10 +229,6 @@ rule draw_revert(uint256 wad) {
 rule wipe(uint256 wad) {
     env e;
 
-    address any;
-
-    mathint wardsBefore = wards(any);
-    address jugBefore = jug();
     mathint nstTotalSupplyBefore = nst.totalSupply();
     mathint nstBalanceOfBufferBefore = nst.balanceOf(buffer());
     require nstBalanceOfBufferBefore <= nstTotalSupplyBefore;
@@ -245,15 +240,11 @@ rule wipe(uint256 wad) {
 
     wipe(e, wad);
 
-    mathint wardsAfter = wards(any);
-    address jugAfter = jug();
     mathint nstTotalSupplyAfter = nst.totalSupply();
     mathint nstBalanceOfBufferAfter = nst.balanceOf(buffer());
     mathint vatInkVaultAfter; mathint vatArtVaultAfter;
     vatInkVaultAfter, vatArtVaultAfter = vat.urns(ilk(), currentContract);
 
-    assert wardsAfter == wardsBefore, "wipe did not keep unchanged every wards[x]";
-    assert jugAfter == jugBefore, "wipe did not keep unchanged jug";
     assert vatInkVaultAfter == vatInkVaultBefore, "wipe did not keep vat.urns(ilk,vault).ink unchanged";
     assert vatArtVaultAfter == vatArtVaultBefore - dart, "wipe did not decrease vat.urns(ilk,vault).art by dart";
     assert nstBalanceOfBufferAfter == nstBalanceOfBufferBefore - wad, "wipe did not decrease nst.balanceOf(buffer) by wad";

@@ -5,26 +5,42 @@ methods {
     function buffers(bytes32) external returns (address) envfree;
 }
 
+// Verify that each storage layout is only modified in the corresponding functions
+rule storageAffected(method f) {
+    env e;
+
+    address anyAddr;
+    bytes32 anyBytes32;
+
+    mathint wardsBefore = wards(anyAddr);
+    address buffersBefore = buffers(anyBytes32);
+
+    calldataarg args;
+    f(e, args);
+
+    mathint wardsAfter = wards(anyAddr);
+    address buffersAfter = buffers(anyBytes32);
+
+    assert wardsAfter != wardsBefore => f.selector == sig:rely(address).selector || f.selector == sig:deny(address).selector, "wards[x] changed in an unexpected function";
+    assert buffersAfter != buffersBefore => f.selector == sig:file(bytes32,bytes32,address).selector, "buffers[x] changed in an unexpected function";
+}
+
 // Verify correct storage changes for non reverting rely
 rule rely(address usr) {
     env e;
 
     address other;
     require other != usr;
-    bytes32 anyBytes32;
 
     mathint wardsOtherBefore = wards(other);
-    address buffersBefore = buffers(anyBytes32);
 
     rely(e, usr);
 
     mathint wardsUsrAfter = wards(usr);
     mathint wardsOtherAfter = wards(other);
-    address buffersAfter = buffers(anyBytes32);
 
     assert wardsUsrAfter == 1, "rely did not set the wards";
     assert wardsOtherAfter == wardsOtherBefore, "rely did not keep unchanged the rest of wards[x]";
-    assert buffersAfter == buffersBefore, "rely did not keep unchanged every buffers[x]";
 }
 
 // Verify revert rules on rely
@@ -49,20 +65,16 @@ rule deny(address usr) {
 
     address other;
     require other != usr;
-    bytes32 anyBytes32;
 
     mathint wardsOtherBefore = wards(other);
-    address buffersBefore = buffers(anyBytes32);
 
     deny(e, usr);
 
     mathint wardsUsrAfter = wards(usr);
     mathint wardsOtherAfter = wards(other);
-    address buffersAfter = buffers(anyBytes32);
 
     assert wardsUsrAfter == 0, "deny did not set the wards";
     assert wardsOtherAfter == wardsOtherBefore, "deny did not keep unchanged the rest of wards[x]";
-    assert buffersAfter == buffersBefore, "deny did not keep unchanged every buffers[x]";
 }
 
 // Verify revert rules on deny
@@ -85,20 +97,16 @@ rule deny_revert(address usr) {
 rule file(bytes32 ilk, bytes32 what, address data) {
     env e;
 
-    address anyAddr;
     bytes32 otherBytes32;
     require otherBytes32 != ilk;
 
-    mathint wardsBefore = wards(anyAddr);
     address buffersOtherBefore = buffers(otherBytes32);
 
     file(e, ilk, what, data);
 
-    mathint wardsAfter = wards(anyAddr);
     address buffersIlkAfter = buffers(ilk);
     address buffersOtherAfter = buffers(otherBytes32);
 
-    assert wardsAfter == wardsBefore, "file did not keep unchanged every wards[x]";
     assert buffersIlkAfter == data, "file did not set buffers[ilk] to data";
     assert buffersOtherAfter == buffersOtherBefore, "file did not keep unchanged the rest of buffers[x]";
 }
