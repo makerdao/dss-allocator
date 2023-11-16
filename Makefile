@@ -6,6 +6,7 @@ certora-oracle                :; PATH=${PATH} certoraRun certora/AllocatorOracle
 certora-registry              :; PATH=${PATH} certoraRun certora/AllocatorRegistry.conf$(if $(rule), --rule $(rule),)
 certora-swapper               :; PATH=${PATH} certoraRun certora/funnels/Swapper.conf$(if $(rule), --rule $(rule),)
 certora-depositoruniv3        :; PATH=${PATH} certoraRun certora/funnels/DepositorUniV3.conf$(if $(rule), --rule $(rule),)
+certora-vault-minter          :; PATH=${PATH} certoraRun certora/funnels/automation/VaultMinter.conf$(if $(rule), --rule $(rule),)
 certora-stable-swapper        :; PATH=${PATH} certoraRun certora/funnels/automation/StableSwapper.conf$(if $(rule), --rule $(rule),)
 certora-stable-depositoruniv3 :; PATH=${PATH} certoraRun certora/funnels/automation/StableDepositorUniV3.conf$(if $(rule), --rule $(rule),)
 certora-conduit-mover         :; PATH=${PATH} certoraRun certora/funnels/automation/ConduitMover.conf$(if $(rule), --rule $(rule),)
