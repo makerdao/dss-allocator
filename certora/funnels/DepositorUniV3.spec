@@ -107,9 +107,7 @@ rule rely_revert(address usr) {
     bool revert1 = e.msg.value > 0;
     bool revert2 = !canCall && wardsSender != 1;
 
-    assert revert1 => lastReverted, "revert1 failed";
-    assert revert2 => lastReverted, "revert2 failed";
-    assert lastReverted => revert1 || revert2, "Revert rules are not covering all the cases";
+    assert lastReverted <=> revert1 || revert2, "Revert rules failed";
 }
 
 // Verify correct storage changes for non reverting deny
@@ -142,9 +140,7 @@ rule deny_revert(address usr) {
     bool revert1 = e.msg.value > 0;
     bool revert2 = !canCall && wardsSender != 1;
 
-    assert revert1 => lastReverted, "revert1 failed";
-    assert revert2 => lastReverted, "revert2 failed";
-    assert lastReverted => revert1 || revert2, "Revert rules are not covering all the cases";
+    assert lastReverted <=> revert1 || revert2, "Revert rules failed";
 }
 
 // Verify correct storage changes for non reverting setLimits
@@ -193,10 +189,7 @@ rule setLimits_revert(address gem0, address gem1, uint24 fee, uint96 cap0, uint9
     bool revert2 = !canCall && wardsSender != 1;
     bool revert3 = gem0 >= gem1;
 
-    assert revert1 => lastReverted, "revert1 failed";
-    assert revert2 => lastReverted, "revert2 failed";
-    assert revert3 => lastReverted, "revert3 failed";
-    assert lastReverted => revert1 || revert2 || revert3, "Revert rules are not covering all the cases";
+    assert lastReverted <=> revert1 || revert2 || revert3, "Revert rules failed";
 }
 
 // Verify correct response from getPosition
@@ -284,14 +277,8 @@ rule uniswapV3MintCallback_revert(uint256 amt0Owed, uint256 amt1Owed, bytes data
     bool revert5 = gem1BalanceOfBuffer < to_mathint(amt1Owed);
     bool revert6 = gem1AllowanceBufferDepositor < to_mathint(amt1Owed);
 
-    assert revert1 => lastReverted, "revert1 failed";
-    assert revert2 => lastReverted, "revert2 failed";
-    assert revert3 => lastReverted, "revert3 failed";
-    assert revert4 => lastReverted, "revert4 failed";
-    assert revert5 => lastReverted, "revert5 failed";
-    assert revert6 => lastReverted, "revert6 failed";
-    assert lastReverted => revert1 || revert2 || revert3 ||
-                           revert4 || revert5 || revert6, "Revert rules are not covering all the cases";
+    assert lastReverted <=> revert1 || revert2 || revert3 ||
+                            revert4 || revert5 || revert6, "Revert rules failed";
 }
 
 // Verify correct storage changes for non reverting deposit
@@ -406,20 +393,10 @@ rule deposit_revert(DepositorUniV3.LiquidityParams p) {
     bool revert9  = amt0 < to_mathint(p.amt0Min) || amt1 < to_mathint(p.amt1Min);
     bool revert10 = amt0 > due0Updated || amt1 > due1Updated;
 
-    assert revert1  => lastReverted, "revert1 failed";
-    assert revert2  => lastReverted, "revert2 failed";
-    assert revert3  => lastReverted, "revert3 failed";
-    assert revert4  => lastReverted, "revert4 failed";
-    assert revert5  => lastReverted, "revert5 failed";
-    assert revert6  => lastReverted, "revert6 failed";
-    assert revert7  => lastReverted, "revert7 failed";
-    assert revert8  => lastReverted, "revert8 failed";
-    assert revert9  => lastReverted, "revert9 failed";
-    assert revert10 => lastReverted, "revert10 failed";
-    assert lastReverted => revert1  || revert2 || revert3 ||
-                           revert4  || revert5 || revert6 ||
-                           revert7  || revert8 || revert9 ||
-                           revert10, "Revert rules are not covering all the cases";
+    assert lastReverted <=> revert1 || revert2 || revert3 ||
+                            revert4 || revert5 || revert6 ||
+                            revert7 || revert8 || revert9 ||
+                            revert10, "Revert rules failed";
 }
 
 // Verify correct storage changes for non reverting withdraw
@@ -542,14 +519,8 @@ rule withdraw_revert(DepositorUniV3.LiquidityParams p, bool takeFees) {
     bool revert5 = amt0 < to_mathint(p.amt0Min) || amt1 < to_mathint(p.amt1Min);
     bool revert6 = amt0 > due0Updated || amt1 > due1Updated;
 
-    assert revert1 => lastReverted, "revert1 failed";
-    assert revert2 => lastReverted, "revert2 failed";
-    assert revert3 => lastReverted, "revert3 failed";
-    assert revert4 => lastReverted, "revert4 failed";
-    assert revert5 => lastReverted, "revert5 failed";
-    assert revert6 => lastReverted, "revert6 failed";
-    assert lastReverted => revert1  || revert2 || revert3 ||
-                           revert4  || revert5 || revert6, "Revert rules are not covering all the cases";
+    assert lastReverted <=> revert1 || revert2 || revert3 ||
+                            revert4 || revert5 || revert6, "Revert rules failed";
 }
 
 // Verify correct storage changes for non reverting collect
@@ -631,8 +602,5 @@ rule collect_revert(DepositorUniV3.CollectParams p) {
     bool revert2 = !canCall && wardsSender != 1;
     bool revert3 = p.gem0 >= p.gem1;
 
-    assert revert1 => lastReverted, "revert1 failed";
-    assert revert2 => lastReverted, "revert2 failed";
-    assert revert3 => lastReverted, "revert3 failed";
-    assert lastReverted => revert1  || revert2 || revert3, "Revert rules are not covering all the cases";
+    assert lastReverted <=> revert1 || revert2 || revert3, "Revert rules failed";
 }

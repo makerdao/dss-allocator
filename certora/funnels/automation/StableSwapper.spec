@@ -87,9 +87,7 @@ rule rely_revert(address usr) {
     bool revert1 = e.msg.value > 0;
     bool revert2 = wardsSender != 1;
 
-    assert revert1 => lastReverted, "revert1 failed";
-    assert revert2 => lastReverted, "revert2 failed";
-    assert lastReverted => revert1 || revert2, "Revert rules are not covering all the cases";
+    assert lastReverted <=> revert1 || revert2, "Revert rules failed";
 }
 
 // Verify correct storage changes for non reverting deny
@@ -121,9 +119,7 @@ rule deny_revert(address usr) {
     bool revert1 = e.msg.value > 0;
     bool revert2 = wardsSender != 1;
 
-    assert revert1 => lastReverted, "revert1 failed";
-    assert revert2 => lastReverted, "revert2 failed";
-    assert lastReverted => revert1 || revert2, "Revert rules are not covering all the cases";
+    assert lastReverted <=> revert1 || revert2, "Revert rules failed";
 }
 
 // Verify correct storage changes for non reverting kiss
@@ -157,7 +153,7 @@ rule kiss_revert(address usr) {
 
     assert revert1 => lastReverted, "revert1 failed";
     assert revert2 => lastReverted, "revert2 failed";
-    assert lastReverted => revert1 || revert2, "Revert rules are not covering all the cases";
+    assert lastReverted <=> revert1 || revert2, "Revert rules failed";
 }
 
 // Verify correct storage changes for non reverting diss
@@ -189,9 +185,7 @@ rule diss_revert(address usr) {
     bool revert1 = e.msg.value > 0;
     bool revert2 = wardsSender != 1;
 
-    assert revert1 => lastReverted, "revert1 failed";
-    assert revert2 => lastReverted, "revert2 failed";
-    assert lastReverted => revert1 || revert2, "Revert rules are not covering all the cases";
+    assert lastReverted <=> revert1 || revert2, "Revert rules failed";
 }
 
 // Verify correct storage changes for non reverting setConfig
@@ -235,9 +229,7 @@ rule setConfig_revert(address src, address dst, uint128 num, uint32 hop, uint96 
     bool revert1 = e.msg.value > 0;
     bool revert2 = wardsSender != 1;
 
-    assert revert1 => lastReverted, "revert1 failed";
-    assert revert2 => lastReverted, "revert2 failed";
-    assert lastReverted => revert1 || revert2, "Revert rules are not covering all the cases";
+    assert lastReverted <=> revert1 || revert2, "Revert rules failed";
 }
 
 // Verify correct storage changes for non reverting swap
@@ -299,11 +291,6 @@ rule swap_revert(address src, address dst, uint256 minOut, address callee, bytes
     bool revert4 = to_mathint(e.block.timestamp) < zzzSrcDst + hopSrcDst;
     bool revert5 = to_mathint(minOut) > 0 && to_mathint(minOut) < reqSrcDst;
 
-    assert revert1 => lastReverted, "revert1 failed";
-    assert revert2 => lastReverted, "revert2 failed";
-    assert revert3 => lastReverted, "revert3 failed";
-    assert revert4 => lastReverted, "revert4 failed";
-    assert revert5 => lastReverted, "revert5 failed";
-    assert lastReverted => revert1 || revert2 || revert3 ||
-                           revert4 || revert5, "Revert rules are not covering all the cases";
+    assert lastReverted <=> revert1 || revert2 || revert3 ||
+                            revert4 || revert5, "Revert rules failed";
 }

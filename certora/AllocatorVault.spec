@@ -78,9 +78,7 @@ rule rely_revert(address usr) {
     bool revert1 = e.msg.value > 0;
     bool revert2 = !canCall && wardsSender != 1;
 
-    assert revert1 => lastReverted, "revert1 failed";
-    assert revert2 => lastReverted, "revert2 failed";
-    assert lastReverted => revert1 || revert2, "Revert rules are not covering all the cases";
+    assert lastReverted <=> revert1 || revert2, "Revert rules failed";
 }
 
 // Verify correct storage changes for non reverting deny
@@ -113,9 +111,7 @@ rule deny_revert(address usr) {
     bool revert1 = e.msg.value > 0;
     bool revert2 = !canCall && wardsSender != 1;
 
-    assert revert1 => lastReverted, "revert1 failed";
-    assert revert2 => lastReverted, "revert2 failed";
-    assert lastReverted => revert1 || revert2, "Revert rules are not covering all the cases";
+    assert lastReverted <=> revert1 || revert2, "Revert rules failed";
 }
 
 // Verify correct storage changes for non reverting file
@@ -142,10 +138,7 @@ rule file_revert(bytes32 what, address data) {
     bool revert2 = !canCall && wardsSender != 1;
     bool revert3 = what != to_bytes32(0x6a75670000000000000000000000000000000000000000000000000000000000);
 
-    assert revert1 => lastReverted, "revert1 failed";
-    assert revert2 => lastReverted, "revert2 failed";
-    assert revert3 => lastReverted, "revert3 failed";
-    assert lastReverted => revert1 || revert2 || revert3, "Revert rules are not covering all the cases";
+    assert lastReverted <=> revert1 || revert2 || revert3, "Revert rules failed";
 }
 
 // Verify correct storage changes for non reverting draw
@@ -209,20 +202,10 @@ rule draw_revert(uint256 wad) {
     bool revert9  = vatDaiNstJoin + wad * RAY() > max_uint256;
     bool revert10 = nstTotalSupply + wad > max_uint256;
 
-    assert revert1  => lastReverted, "revert1 failed";
-    assert revert2  => lastReverted, "revert2 failed";
-    assert revert3  => lastReverted, "revert3 failed";
-    assert revert4  => lastReverted, "revert4 failed";
-    assert revert5  => lastReverted, "revert5 failed";
-    assert revert6  => lastReverted, "revert6 failed";
-    assert revert7  => lastReverted, "revert7 failed";
-    assert revert8  => lastReverted, "revert8 failed";
-    assert revert9  => lastReverted, "revert9 failed";
-    assert revert10 => lastReverted, "revert10 failed";
-    assert lastReverted => revert1  || revert2 || revert3 ||
-                           revert4  || revert5 || revert6 ||
-                           revert7  || revert8 || revert9 ||
-                           revert10, "Revert rules are not covering all the cases";
+    assert lastReverted <=> revert1 || revert2 || revert3 ||
+                            revert4 || revert5 || revert6 ||
+                            revert7 || revert8 || revert9 ||
+                            revert10, "Revert rules failed";
 }
 
 // Verify correct storage changes for non reverting wipe
@@ -290,18 +273,8 @@ rule wipe_revert(uint256 wad) {
     bool revert9  = vatDaiVault + wad * RAY() > max_uint256;
     bool revert10 = rate * dart > max_int256();
 
-    assert revert1  => lastReverted, "revert1 failed";
-    assert revert2  => lastReverted, "revert2 failed";
-    assert revert3  => lastReverted, "revert3 failed";
-    assert revert4  => lastReverted, "revert4 failed";
-    assert revert5  => lastReverted, "revert5 failed";
-    assert revert6  => lastReverted, "revert6 failed";
-    assert revert7  => lastReverted, "revert7 failed";
-    assert revert8  => lastReverted, "revert8 failed";
-    assert revert9  => lastReverted, "revert9 failed";
-    assert revert10 => lastReverted, "revert10 failed";
-    assert lastReverted => revert1  || revert2 || revert3 ||
-                           revert4  || revert5 || revert6 ||
-                           revert7  || revert8 || revert9 ||
-                           revert10, "Revert rules are not covering all the cases";
+    assert lastReverted <=> revert1 || revert2 || revert3 ||
+                            revert4 || revert5 || revert6 ||
+                            revert7 || revert8 || revert9 ||
+                            revert10, "Revert rules failed";
 }

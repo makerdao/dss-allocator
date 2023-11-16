@@ -86,9 +86,7 @@ rule rely_revert(address usr) {
     bool revert1 = e.msg.value > 0;
     bool revert2 = wardsSender != 1;
 
-    assert revert1 => lastReverted, "revert1 failed";
-    assert revert2 => lastReverted, "revert2 failed";
-    assert lastReverted => revert1 || revert2, "Revert rules are not covering all the cases";
+    assert lastReverted <=> revert1 || revert2, "Revert rules failed";
 }
 
 // Verify correct storage changes for non reverting deny
@@ -120,9 +118,7 @@ rule deny_revert(address usr) {
     bool revert1 = e.msg.value > 0;
     bool revert2 = wardsSender != 1;
 
-    assert revert1 => lastReverted, "revert1 failed";
-    assert revert2 => lastReverted, "revert2 failed";
-    assert lastReverted => revert1 || revert2, "Revert rules are not covering all the cases";
+    assert lastReverted <=> revert1 || revert2, "Revert rules failed";
 }
 
 // Verify correct storage changes for non reverting setIlkAdmin
@@ -154,9 +150,7 @@ rule setIlkAdmin_revert(bytes32 ilk, address usr) {
     bool revert1 = e.msg.value > 0;
     bool revert2 = wardsSender != 1;
 
-    assert revert1 => lastReverted, "revert1 failed";
-    assert revert2 => lastReverted, "revert2 failed";
-    assert lastReverted => revert1 || revert2, "Revert rules are not covering all the cases";
+    assert lastReverted <=> revert1 || revert2, "Revert rules failed";
 }
 
 // Verify correct storage changes for non reverting setUserRole
@@ -192,9 +186,7 @@ rule setUserRole_revert(bytes32 ilk, address who, uint8 role, bool enabled) {
     bool revert1 = e.msg.value > 0;
     bool revert2 = ilkAuthIlk != e.msg.sender;
 
-    assert revert1 => lastReverted, "revert1 failed";
-    assert revert2 => lastReverted, "revert2 failed";
-    assert lastReverted => revert1 || revert2, "Revert rules are not covering all the cases";
+    assert lastReverted <=> revert1 || revert2, "Revert rules failed";
 }
 
 // Verify correct storage changes for non reverting setRoleAction
@@ -231,9 +223,7 @@ rule setRoleAction_revert(bytes32 ilk, uint8 role, address target, bytes4 sign, 
     bool revert1 = e.msg.value > 0;
     bool revert2 = ilkAuthIlk != e.msg.sender;
 
-    assert revert1 => lastReverted, "revert1 failed";
-    assert revert2 => lastReverted, "revert2 failed";
-    assert lastReverted => revert1 || revert2, "Revert rules are not covering all the cases";
+    assert lastReverted <=> revert1 || revert2, "Revert rules failed";
 }
 
 // Verify correct response from canCall

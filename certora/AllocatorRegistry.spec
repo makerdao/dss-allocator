@@ -54,9 +54,7 @@ rule rely_revert(address usr) {
     bool revert1 = e.msg.value > 0;
     bool revert2 = wardsSender != 1;
 
-    assert revert1 => lastReverted, "revert1 failed";
-    assert revert2 => lastReverted, "revert2 failed";
-    assert lastReverted => revert1 || revert2, "Revert rules are not covering all the cases";
+    assert lastReverted <=> revert1 || revert2, "Revert rules failed";
 }
 
 // Verify correct storage changes for non reverting deny
@@ -88,9 +86,7 @@ rule deny_revert(address usr) {
     bool revert1 = e.msg.value > 0;
     bool revert2 = wardsSender != 1;
 
-    assert revert1 => lastReverted, "revert1 failed";
-    assert revert2 => lastReverted, "revert2 failed";
-    assert lastReverted => revert1 || revert2, "Revert rules are not covering all the cases";
+    assert lastReverted <=> revert1 || revert2, "Revert rules failed";
 }
 
 // Verify correct storage changes for non reverting file
@@ -123,8 +119,5 @@ rule file_revert(bytes32 ilk, bytes32 what, address data) {
     bool revert2 = wardsSender != 1;
     bool revert3 = what != to_bytes32(0x6275666665720000000000000000000000000000000000000000000000000000);
 
-    assert revert1 => lastReverted, "revert1 failed";
-    assert revert2 => lastReverted, "revert2 failed";
-    assert revert3 => lastReverted, "revert3 failed";
-    assert lastReverted => revert1 || revert2 || revert3, "Revert rules are not covering all the cases";
+    assert lastReverted <=> revert1 || revert2 || revert3, "Revert rules failed";
 }
