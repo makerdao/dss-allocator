@@ -565,10 +565,6 @@ rule collect(DepositorUniV3.CollectParams p) {
     require poolCon.random2() >= poolCon.random0();
     require poolCon.random3() >= poolCon.random1();
 
-    address anyAddr;
-    address anyAddr_2;
-    uint24 anyUint24;
-
     require e.block.timestamp <= max_uint32;
 
     address buffer = buffer();

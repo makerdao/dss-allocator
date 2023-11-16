@@ -166,7 +166,6 @@ rule swap(address src, address dst, uint256 amt, uint256 minOut, address callee,
     require dst == dstCon;
     require callee == calleeCon;
 
-    address anyAddr;
     address otherAddr;
     address otherAddr_2;
     require otherAddr != src || otherAddr_2 != dst;
@@ -179,7 +178,6 @@ rule swap(address src, address dst, uint256 amt, uint256 minOut, address callee,
 
     mathint a; mathint b;
 
-    mathint wardsBefore = wards(anyAddr);
     mathint cap; mathint era; mathint dueBefore; mathint endBefore;
     cap, era, dueBefore, endBefore = limits(src, dst);
     mathint dueOtherBefore; mathint endOtherBefore;
