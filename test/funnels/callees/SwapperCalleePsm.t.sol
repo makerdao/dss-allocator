@@ -91,4 +91,11 @@ contract SwapperCalleePsmTest is DssTest {
         checkPsmSwap(callee, USDC, DAI);
         checkPsmSwap(calleeUSDT, DAI, USDT);
     }
+
+    function testInvalidSwapAmt() public {
+        uint256 amt = 10_000 * 10**18 + 10**12 - 1;
+        GemLike(DAI).transfer(address(callee), amt);
+        vm.expectRevert("SwapperCalleePsm/invalid-amt");
+        callee.swapCallback(DAI, USDC, amt, 0, address(this), "");
+    }
 }
