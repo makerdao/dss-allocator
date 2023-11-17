@@ -285,7 +285,6 @@ rule wipe() {
     mathint numBefore; mathint lot;
     numBefore, a, b, lot = config();
 
-    mathint wipeAmountBefore = wipeAmount;
     mathint wipeCounterBefore = wipeCounter;
 
     wipe(e);

@@ -151,8 +151,6 @@ rule kiss_revert(address usr) {
     bool revert1 = e.msg.value > 0;
     bool revert2 = wardsSender != 1;
 
-    assert revert1 => lastReverted, "revert1 failed";
-    assert revert2 => lastReverted, "revert2 failed";
     assert lastReverted <=> revert1 || revert2, "Revert rules failed";
 }
 
