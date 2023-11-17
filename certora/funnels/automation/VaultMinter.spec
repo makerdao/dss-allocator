@@ -231,7 +231,6 @@ rule draw() {
     mathint numBefore; mathint lot;
     numBefore, a, b, lot = config();
 
-    mathint drawAmountBefore = drawAmount;
     mathint drawCounterBefore = drawCounter;
 
     draw(e);
