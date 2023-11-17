@@ -5,8 +5,8 @@ methods {
     function buds(address) external returns (uint256) envfree;
     function config() external returns (int64, uint32, uint32, uint128) envfree;
     function vault() external returns (address) envfree;
-    function _.draw(uint256 wad) external => drawSummary(calledContract, wad) expect bool; // Forcing to have a return value
-    function _.wipe(uint256 wad) external => wipeSummary(calledContract, wad) expect bool; // Forcing to have a return value
+    function _.draw(uint256 wad) external => drawSummary(calledContract, wad) expect bool; // Forcing to have a return value as otherwise Certora will throw a compiler error
+    function _.wipe(uint256 wad) external => wipeSummary(calledContract, wad) expect bool; // Forcing to have a return value as otherwise Certora will throw a compiler error
 }
 
 ghost mapping(address => bool) nonZeroExtcodesize;

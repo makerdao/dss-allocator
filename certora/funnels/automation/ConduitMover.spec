@@ -7,7 +7,7 @@ methods {
     function ilk() external returns (bytes32) envfree;
     function buffer() external returns (address) envfree;
     function _.withdraw(bytes32 ilk, address gem, uint256 amount) external => withdrawSummary(calledContract, ilk, gem, amount) expect uint256;
-    function _.deposit(bytes32 ilk, address gem, uint256 amount) external => depositSummary(calledContract, ilk, gem, amount) expect bool; // Forcing to have a return value
+    function _.deposit(bytes32 ilk, address gem, uint256 amount) external => depositSummary(calledContract, ilk, gem, amount) expect bool; // Forcing to have a return value as otherwise Certora will throw a compiler error
 }
 
 ghost mapping(address => bool) nonZeroExtcodesize;
