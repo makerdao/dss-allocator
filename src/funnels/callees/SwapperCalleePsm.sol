@@ -64,12 +64,10 @@ contract SwapperCalleePsm {
         emit Deny(usr);
     }
 
+    // Note: To avoid accumulating dust in this contract, `amt` should be a multiple of `to18ConversionFactor` when `src != gem`.
+    // This constraint is intentionally not enforced in this contract.
     function swapCallback(address src, address /* dst */, uint256 amt, uint256 /* minOut */, address to, bytes calldata /* data */) external auth {
-        if (src == gem) {
-            PsmLike(psm).sellGemNoFee(to, amt);
-        } else {
-            require(amt % to18ConversionFactor == 0, "SwapperCalleePsm/invalid-amt");
-            PsmLike(psm).buyGemNoFee(to, amt / to18ConversionFactor);
-        }
+        if (src == gem) PsmLike(psm).sellGemNoFee(to, amt);
+        else            PsmLike(psm).buyGemNoFee (to, amt / to18ConversionFactor);
     }
 }
