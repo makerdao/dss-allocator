@@ -3,6 +3,12 @@
 Part of this code was inspired by https://github.com/makerdao/rwa-toolkit/blob/master/src/urns/RwaUrn.sol mainly authored by livnev and https://github.com/dapphub/ds-roles/blob/master/src/roles.sol authored by DappHub.
 Since it should belong to the MakerDAO community the Copyright from our additions has been transferred to Dai Foundation.
 
+## Important Update:
+
+**The funnels in this repository and their automation contracts should now be regarded as included for illustrative purposes only. In practice, other use-case specialized funnels are expected to be built.**
+
+**The deployment libraries, tests and the documentation below still use the specific included funnels (e.g DepositorUniV3, Swapper). Those parts should be considered as obsolete.**
+
 ## Overview
 Implementation of the allocation system, based on the [technical specification forum post](https://forum.makerdao.com/t/preliminary-technical-specification-of-the-allocation-system/20921).  
 The conduits are implemented separately. See for example [dss-conduits](https://github.com/makerdao/dss-conduits).
