@@ -26,6 +26,10 @@ struct AllocatorIlkInstance {
     address owner;
     address vault;
     address buffer;
+}
+
+struct AllocatorIlkFunnelInstance {
+    address owner;
     address swapper;
     address depositorUniV3;
     address vaultMinter;

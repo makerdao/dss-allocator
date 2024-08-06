@@ -30,7 +30,7 @@ import { StableSwapper }        from "src/funnels/automation/StableSwapper.sol";
 import { StableDepositorUniV3 } from "src/funnels/automation/StableDepositorUniV3.sol";
 import { ConduitMover }         from "src/funnels/automation/ConduitMover.sol";
 
-import { AllocatorSharedInstance, AllocatorIlkInstance } from "./AllocatorInstances.sol";
+import { AllocatorSharedInstance, AllocatorIlkInstance, AllocatorIlkFunnelInstance } from "./AllocatorInstances.sol";
 
 
 library AllocatorDeploy {
@@ -59,8 +59,7 @@ library AllocatorDeploy {
         address owner,
         address roles,
         bytes32 ilk,
-        address nstJoin,
-        address uniV3Factory
+        address nstJoin
     ) internal returns (AllocatorIlkInstance memory ilkInstance) {
         address _buffer = address(new AllocatorBuffer());
         ScriptTools.switchOwner(_buffer, deployer, owner);
@@ -70,38 +69,51 @@ library AllocatorDeploy {
         ScriptTools.switchOwner(_vault, deployer, owner);
         ilkInstance.vault = _vault;
 
-        address _swapper = address(new Swapper(roles, ilk, _buffer));
-        ScriptTools.switchOwner(_swapper, deployer, owner);
-        ilkInstance.swapper = _swapper;
+        ilkInstance.owner = owner;
+    }
 
-        address _depositorUniV3 = address(new DepositorUniV3(roles, ilk, uniV3Factory, _buffer));
+    // Note: owner is assumed to be the allocator proxy
+    function deployIlkFunnel(
+        address deployer,
+        address owner,
+        address roles,
+        bytes32 ilk,
+        address uniV3Factory,
+        address vault,
+        address buffer
+    ) internal returns (AllocatorIlkFunnelInstance memory ilkFunnelInstance) {
+        address _swapper = address(new Swapper(roles, ilk, buffer));
+        ScriptTools.switchOwner(_swapper, deployer, owner);
+        ilkFunnelInstance.swapper = _swapper;
+
+        address _depositorUniV3 = address(new DepositorUniV3(roles, ilk, uniV3Factory, buffer));
         ScriptTools.switchOwner(_depositorUniV3, deployer, owner);
-        ilkInstance.depositorUniV3 = _depositorUniV3;
+        ilkFunnelInstance.depositorUniV3 = _depositorUniV3;
 
         {
-        address _vaultMinter = address(new VaultMinter(_vault));
+        address _vaultMinter = address(new VaultMinter(vault));
         ScriptTools.switchOwner(_vaultMinter, deployer, owner);
-        ilkInstance.vaultMinter = _vaultMinter;
+        ilkFunnelInstance.vaultMinter = _vaultMinter;
         }
 
         {
         address _stableSwapper = address(new StableSwapper(_swapper));
         ScriptTools.switchOwner(_stableSwapper, deployer, owner);
-        ilkInstance.stableSwapper = _stableSwapper;
+        ilkFunnelInstance.stableSwapper = _stableSwapper;
         }
 
         {
         address _stableDepositorUniV3 = address(new StableDepositorUniV3(_depositorUniV3));
         ScriptTools.switchOwner(_stableDepositorUniV3, deployer, owner);
-        ilkInstance.stableDepositorUniV3 = _stableDepositorUniV3;
+        ilkFunnelInstance.stableDepositorUniV3 = _stableDepositorUniV3;
         }
 
         {
-        address _conduitMover = address(new ConduitMover(ilk, _buffer));
+        address _conduitMover = address(new ConduitMover(ilk, buffer));
         ScriptTools.switchOwner(_conduitMover, deployer, owner);
-        ilkInstance.conduitMover = _conduitMover;
+        ilkFunnelInstance.conduitMover = _conduitMover;
         }
 
-        ilkInstance.owner = owner;
+        ilkFunnelInstance.owner = owner;
     }
 }

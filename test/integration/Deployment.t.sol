@@ -18,9 +18,9 @@ pragma solidity ^0.8.16;
 
 import "dss-test/DssTest.sol";
 
-import { AllocatorSharedInstance, AllocatorIlkInstance } from "deploy/AllocatorInstances.sol";
+import { AllocatorSharedInstance, AllocatorIlkInstance, AllocatorIlkFunnelInstance } from "deploy/AllocatorInstances.sol";
 import { AllocatorDeploy } from "deploy/AllocatorDeploy.sol";
-import { AllocatorInit, AllocatorIlkConfig } from "deploy/AllocatorInit.sol";
+import { AllocatorInit, AllocatorIlkConfig, AllocatorIlkFunnelConfig } from "deploy/AllocatorInit.sol";
 
 import { SwapperCalleeUniV3 } from "src/funnels/callees/SwapperCalleeUniV3.sol";
 
@@ -111,6 +111,7 @@ contract DeploymentTest is DssTest {
     // storage to be initiated on setup
     AllocatorSharedInstance sharedInst;
     AllocatorIlkInstance ilkInst;
+    AllocatorIlkFunnelInstance ilkFunnelInst;
     bytes usdcDaiPath;
     bytes daiUsdcPath;
 
@@ -139,8 +140,16 @@ contract DeploymentTest is DssTest {
             owner        : PAUSE_PROXY,
             roles        : sharedInst.roles,
             ilk          : ILK,
-            nstJoin      : nstJoin,
-            uniV3Factory : UNIV3_FACTORY
+            nstJoin      : nstJoin
+        });
+        ilkFunnelInst = AllocatorDeploy.deployIlkFunnel({
+            deployer     : address(this),
+            owner        : allocatorProxy,
+            roles        : sharedInst.roles,
+            ilk          : ILK,
+            uniV3Factory : UNIV3_FACTORY,
+            vault        : ilkInst.vault,
+            buffer       : ilkInst.buffer
         });
 
         // Deploy conduits (assumed to be done separately than the current allocator ilkInst deploy)
@@ -186,6 +195,17 @@ contract DeploymentTest is DssTest {
             gap                         : 10_000_000 * RAD,
             ttl                         : 1 days,
             allocatorProxy              : allocatorProxy,
+            ilkRegistry                 : ILK_REGISTRY
+        });
+
+        AllocatorInit.initIlk(dss, sharedInst, ilkInst, cfg);
+        vm.stopPrank();
+
+        // Init conduits (assumed to be done separately than the current allocator ilkInst init)
+        vm.startPrank(allocatorProxy);
+        AllocatorIlkFunnelConfig memory funnelCfg = AllocatorIlkFunnelConfig({
+            ilk                         : ILK,
+            allocatorProxy              : allocatorProxy,
             facilitatorRole             : facilitatorRole,
             automationRole              : automationRole,
             facilitators                : facilitators,
@@ -195,16 +215,11 @@ contract DeploymentTest is DssTest {
             conduitMoverKeepers         : conduitMoverKeepers,
             swapTokens                  : swapTokens,
             depositTokens               : depositTokens,
-            ilkRegistry                 : ILK_REGISTRY,
             uniV3Factory                : UNIV3_FACTORY
         });
+        AllocatorInit.initIlkFunnel(dss, sharedInst, ilkInst, ilkFunnelInst, funnelCfg);
 
-        AllocatorInit.initIlk(dss, sharedInst, ilkInst, cfg);
-        vm.stopPrank();
-
-        // Init conduits (assumed to be done separately than the current allocator ilkInst init)
-        vm.startPrank(allocatorProxy);
-        AllocatorRoles(sharedInst.roles).setUserRole(ILK, address(ilkInst.conduitMover), automationRole, true);
+        AllocatorRoles(sharedInst.roles).setUserRole(ILK, address(ilkFunnelInst.conduitMover), automationRole, true);
 
         AllocatorRoles(sharedInst.roles).setRoleAction(ILK, automationRole, conduit1, AllocatorConduitMock.deposit.selector,  true);
         AllocatorRoles(sharedInst.roles).setRoleAction(ILK, automationRole, conduit1, AllocatorConduitMock.withdraw.selector, true);
@@ -261,48 +276,48 @@ contract DeploymentTest is DssTest {
         assertEq(AllocatorRegistry(sharedInst.registry).buffers(ILK), ilkInst.buffer);
         assertEq(address(AllocatorVault(ilkInst.vault).jug()), address(dss.jug));
 
-        assertEq(GemLike(nst).allowance(ilkInst.buffer, ilkInst.vault),                       type(uint256).max);
-        assertEq(GemLike(address(dss.dai)).allowance(ilkInst.buffer, ilkInst.swapper),        type(uint256).max);
-        assertEq(GemLike(address(dss.dai)).allowance(ilkInst.buffer, ilkInst.depositorUniV3), type(uint256).max);
-        assertEq(GemLike(USDC).allowance(ilkInst.buffer, ilkInst.depositorUniV3),             type(uint256).max);
+        assertEq(GemLike(nst).allowance(ilkInst.buffer, ilkInst.vault),                             type(uint256).max);
+        assertEq(GemLike(address(dss.dai)).allowance(ilkInst.buffer, ilkFunnelInst.swapper),        type(uint256).max);
+        assertEq(GemLike(address(dss.dai)).allowance(ilkInst.buffer, ilkFunnelInst.depositorUniV3), type(uint256).max);
+        assertEq(GemLike(USDC).allowance(ilkInst.buffer, ilkFunnelInst.depositorUniV3),             type(uint256).max);
 
         assertEq(AllocatorRoles(sharedInst.roles).ilkAdmins(ILK), allocatorProxy);
 
         assertEq(AllocatorRoles(sharedInst.roles).hasUserRole(ILK, facilitator1, facilitatorRole), true);
         assertEq(AllocatorRoles(sharedInst.roles).hasUserRole(ILK, facilitator2, facilitatorRole), true);
 
-        assertEq(AllocatorRoles(sharedInst.roles).hasActionRole(ILK, ilkInst.vault,          AllocatorVault.draw.selector,     facilitatorRole), true);
-        assertEq(AllocatorRoles(sharedInst.roles).hasActionRole(ILK, ilkInst.vault,          AllocatorVault.wipe.selector,     facilitatorRole), true);
-        assertEq(AllocatorRoles(sharedInst.roles).hasActionRole(ILK, ilkInst.swapper,        Swapper.swap.selector,            facilitatorRole), true);
-        assertEq(AllocatorRoles(sharedInst.roles).hasActionRole(ILK, ilkInst.depositorUniV3, DepositorUniV3.deposit.selector,  facilitatorRole), true);
-        assertEq(AllocatorRoles(sharedInst.roles).hasActionRole(ILK, ilkInst.depositorUniV3, DepositorUniV3.withdraw.selector, facilitatorRole), true);
-        assertEq(AllocatorRoles(sharedInst.roles).hasActionRole(ILK, ilkInst.depositorUniV3, DepositorUniV3.collect.selector,  facilitatorRole), true);
+        assertEq(AllocatorRoles(sharedInst.roles).hasActionRole(ILK, ilkInst.vault,                AllocatorVault.draw.selector,     facilitatorRole), true);
+        assertEq(AllocatorRoles(sharedInst.roles).hasActionRole(ILK, ilkInst.vault,                AllocatorVault.wipe.selector,     facilitatorRole), true);
+        assertEq(AllocatorRoles(sharedInst.roles).hasActionRole(ILK, ilkFunnelInst.swapper,        Swapper.swap.selector,            facilitatorRole), true);
+        assertEq(AllocatorRoles(sharedInst.roles).hasActionRole(ILK, ilkFunnelInst.depositorUniV3, DepositorUniV3.deposit.selector,  facilitatorRole), true);
+        assertEq(AllocatorRoles(sharedInst.roles).hasActionRole(ILK, ilkFunnelInst.depositorUniV3, DepositorUniV3.withdraw.selector, facilitatorRole), true);
+        assertEq(AllocatorRoles(sharedInst.roles).hasActionRole(ILK, ilkFunnelInst.depositorUniV3, DepositorUniV3.collect.selector,  facilitatorRole), true);
 
-        assertEq(AllocatorRoles(sharedInst.roles).hasUserRole(ILK, ilkInst.stableSwapper,        automationRole), true);
-        assertEq(AllocatorRoles(sharedInst.roles).hasUserRole(ILK, ilkInst.stableDepositorUniV3, automationRole), true);
+        assertEq(AllocatorRoles(sharedInst.roles).hasUserRole(ILK, ilkFunnelInst.stableSwapper,        automationRole), true);
+        assertEq(AllocatorRoles(sharedInst.roles).hasUserRole(ILK, ilkFunnelInst.stableDepositorUniV3, automationRole), true);
 
-        assertEq(AllocatorRoles(sharedInst.roles).hasActionRole(ILK, ilkInst.swapper,        Swapper.swap.selector,            automationRole), true);
-        assertEq(AllocatorRoles(sharedInst.roles).hasActionRole(ILK, ilkInst.depositorUniV3, DepositorUniV3.deposit.selector,  automationRole), true);
-        assertEq(AllocatorRoles(sharedInst.roles).hasActionRole(ILK, ilkInst.depositorUniV3, DepositorUniV3.withdraw.selector, automationRole), true);
-        assertEq(AllocatorRoles(sharedInst.roles).hasActionRole(ILK, ilkInst.depositorUniV3, DepositorUniV3.collect.selector,  automationRole), true);
+        assertEq(AllocatorRoles(sharedInst.roles).hasActionRole(ILK, ilkFunnelInst.swapper,        Swapper.swap.selector,            automationRole), true);
+        assertEq(AllocatorRoles(sharedInst.roles).hasActionRole(ILK, ilkFunnelInst.depositorUniV3, DepositorUniV3.deposit.selector,  automationRole), true);
+        assertEq(AllocatorRoles(sharedInst.roles).hasActionRole(ILK, ilkFunnelInst.depositorUniV3, DepositorUniV3.withdraw.selector, automationRole), true);
+        assertEq(AllocatorRoles(sharedInst.roles).hasActionRole(ILK, ilkFunnelInst.depositorUniV3, DepositorUniV3.collect.selector,  automationRole), true);
 
-        assertEq(WardsLike(ilkInst.vaultMinter).wards(facilitator1), 1);
-        assertEq(WardsLike(ilkInst.vaultMinter).wards(facilitator2), 1);
-        assertEq(WardsLike(ilkInst.stableSwapper).wards(facilitator1), 1);
-        assertEq(WardsLike(ilkInst.stableSwapper).wards(facilitator2), 1);
-        assertEq(WardsLike(ilkInst.stableDepositorUniV3).wards(facilitator1), 1);
-        assertEq(WardsLike(ilkInst.stableDepositorUniV3).wards(facilitator2), 1);
-        assertEq(WardsLike(ilkInst.conduitMover).wards(facilitator1), 1);
-        assertEq(WardsLike(ilkInst.conduitMover).wards(facilitator2), 1);
+        assertEq(WardsLike(ilkFunnelInst.vaultMinter).wards(facilitator1), 1);
+        assertEq(WardsLike(ilkFunnelInst.vaultMinter).wards(facilitator2), 1);
+        assertEq(WardsLike(ilkFunnelInst.stableSwapper).wards(facilitator1), 1);
+        assertEq(WardsLike(ilkFunnelInst.stableSwapper).wards(facilitator2), 1);
+        assertEq(WardsLike(ilkFunnelInst.stableDepositorUniV3).wards(facilitator1), 1);
+        assertEq(WardsLike(ilkFunnelInst.stableDepositorUniV3).wards(facilitator2), 1);
+        assertEq(WardsLike(ilkFunnelInst.conduitMover).wards(facilitator1), 1);
+        assertEq(WardsLike(ilkFunnelInst.conduitMover).wards(facilitator2), 1);
 
-        assertEq(VaultMinter(ilkInst.vaultMinter).buds(vaultMinterKeeper1), 1);
-        assertEq(VaultMinter(ilkInst.vaultMinter).buds(vaultMinterKeeper2), 1);
-        assertEq(StableSwapper(ilkInst.stableSwapper).buds(stableSwapperKeeper1), 1);
-        assertEq(StableSwapper(ilkInst.stableSwapper).buds(stableSwapperKeeper2), 1);
-        assertEq(StableDepositorUniV3(ilkInst.stableDepositorUniV3).buds(stableDepositorUniV3Keeper1), 1);
-        assertEq(StableDepositorUniV3(ilkInst.stableDepositorUniV3).buds(stableDepositorUniV3Keeper2), 1);
-        assertEq(ConduitMover(ilkInst.conduitMover).buds(conduitMoverKeeper1), 1);
-        assertEq(ConduitMover(ilkInst.conduitMover).buds(conduitMoverKeeper2), 1);
+        assertEq(VaultMinter(ilkFunnelInst.vaultMinter).buds(vaultMinterKeeper1), 1);
+        assertEq(VaultMinter(ilkFunnelInst.vaultMinter).buds(vaultMinterKeeper2), 1);
+        assertEq(StableSwapper(ilkFunnelInst.stableSwapper).buds(stableSwapperKeeper1), 1);
+        assertEq(StableSwapper(ilkFunnelInst.stableSwapper).buds(stableSwapperKeeper2), 1);
+        assertEq(StableDepositorUniV3(ilkFunnelInst.stableDepositorUniV3).buds(stableDepositorUniV3Keeper1), 1);
+        assertEq(StableDepositorUniV3(ilkFunnelInst.stableDepositorUniV3).buds(stableDepositorUniV3Keeper2), 1);
+        assertEq(ConduitMover(ilkFunnelInst.conduitMover).buds(conduitMoverKeeper1), 1);
+        assertEq(ConduitMover(ilkFunnelInst.conduitMover).buds(conduitMoverKeeper2), 1);
 
         assertEq(WardsLike(ilkInst.vault).wards(PAUSE_PROXY), 0);
         assertEq(WardsLike(ilkInst.vault).wards(allocatorProxy), 1);
@@ -310,23 +325,23 @@ contract DeploymentTest is DssTest {
         assertEq(WardsLike(ilkInst.buffer).wards(PAUSE_PROXY), 0);
         assertEq(WardsLike(ilkInst.buffer).wards(allocatorProxy), 1);
 
-        assertEq(WardsLike(ilkInst.swapper).wards(PAUSE_PROXY), 0);
-        assertEq(WardsLike(ilkInst.swapper).wards(allocatorProxy), 1);
+        assertEq(WardsLike(ilkFunnelInst.swapper).wards(PAUSE_PROXY), 0);
+        assertEq(WardsLike(ilkFunnelInst.swapper).wards(allocatorProxy), 1);
 
-        assertEq(WardsLike(ilkInst.depositorUniV3).wards(PAUSE_PROXY), 0);
-        assertEq(WardsLike(ilkInst.depositorUniV3).wards(allocatorProxy), 1);
+        assertEq(WardsLike(ilkFunnelInst.depositorUniV3).wards(PAUSE_PROXY), 0);
+        assertEq(WardsLike(ilkFunnelInst.depositorUniV3).wards(allocatorProxy), 1);
 
-        assertEq(WardsLike(ilkInst.vaultMinter).wards(PAUSE_PROXY), 0);
-        assertEq(WardsLike(ilkInst.vaultMinter).wards(allocatorProxy), 1);
+        assertEq(WardsLike(ilkFunnelInst.vaultMinter).wards(PAUSE_PROXY), 0);
+        assertEq(WardsLike(ilkFunnelInst.vaultMinter).wards(allocatorProxy), 1);
 
-        assertEq(WardsLike(ilkInst.stableSwapper).wards(PAUSE_PROXY), 0);
-        assertEq(WardsLike(ilkInst.stableSwapper).wards(allocatorProxy), 1);
+        assertEq(WardsLike(ilkFunnelInst.stableSwapper).wards(PAUSE_PROXY), 0);
+        assertEq(WardsLike(ilkFunnelInst.stableSwapper).wards(allocatorProxy), 1);
 
-        assertEq(WardsLike(ilkInst.stableDepositorUniV3).wards(PAUSE_PROXY), 0);
-        assertEq(WardsLike(ilkInst.stableDepositorUniV3).wards(allocatorProxy), 1);
+        assertEq(WardsLike(ilkFunnelInst.stableDepositorUniV3).wards(PAUSE_PROXY), 0);
+        assertEq(WardsLike(ilkFunnelInst.stableDepositorUniV3).wards(allocatorProxy), 1);
 
-        assertEq(WardsLike(ilkInst.conduitMover).wards(PAUSE_PROXY), 0);
-        assertEq(WardsLike(ilkInst.conduitMover).wards(allocatorProxy), 1);
+        assertEq(WardsLike(ilkFunnelInst.conduitMover).wards(PAUSE_PROXY), 0);
+        assertEq(WardsLike(ilkFunnelInst.conduitMover).wards(allocatorProxy), 1);
 
         assertEq(ChainlogLike(LOG).getAddress("ILK_A_VAULT"),  ilkInst.vault);
         assertEq(ChainlogLike(LOG).getAddress("ILK_A_BUFFER"), ilkInst.buffer);
@@ -354,11 +369,11 @@ contract DeploymentTest is DssTest {
     function testVaultDrawWipeFromFromKeeper() public {
         emulateSpell();
 
-        vm.prank(facilitator1); VaultMinter(ilkInst.vaultMinter).setConfig(1, 1 hours, uint96(1_000 * WAD));
-        vm.prank(vaultMinterKeeper1); VaultMinter(ilkInst.vaultMinter).draw();
+        vm.prank(facilitator1); VaultMinter(ilkFunnelInst.vaultMinter).setConfig(1, 1 hours, uint96(1_000 * WAD));
+        vm.prank(vaultMinterKeeper1); VaultMinter(ilkFunnelInst.vaultMinter).draw();
 
-        vm.prank(facilitator1); VaultMinter(ilkInst.vaultMinter).setConfig(-1, 1 hours, uint96(1_000 * WAD));
-        vm.prank(vaultMinterKeeper1); VaultMinter(ilkInst.vaultMinter).wipe();
+        vm.prank(facilitator1); VaultMinter(ilkFunnelInst.vaultMinter).setConfig(-1, 1 hours, uint96(1_000 * WAD));
+        vm.prank(vaultMinterKeeper1); VaultMinter(ilkFunnelInst.vaultMinter).wipe();
     }
 
     function testSwapFromFacilitator() public {
@@ -366,8 +381,8 @@ contract DeploymentTest is DssTest {
 
         deal(address(dss.dai), ilkInst.buffer, 1_000 * WAD);
 
-        vm.prank(allocatorProxy); Swapper(ilkInst.swapper).setLimits(address(dss.dai), USDC, uint96(1_000 * WAD), 1 hours);
-        vm.prank(facilitator1); Swapper(ilkInst.swapper).swap(address(dss.dai), USDC, 1_000 * WAD, 990 * 10**6 , uniV3Callee, daiUsdcPath);
+        vm.prank(allocatorProxy); Swapper(ilkFunnelInst.swapper).setLimits(address(dss.dai), USDC, uint96(1_000 * WAD), 1 hours);
+        vm.prank(facilitator1); Swapper(ilkFunnelInst.swapper).swap(address(dss.dai), USDC, 1_000 * WAD, 990 * 10**6 , uniV3Callee, daiUsdcPath);
     }
 
     function testSwapFromKeeper() public {
@@ -375,9 +390,9 @@ contract DeploymentTest is DssTest {
 
         deal(address(dss.dai), ilkInst.buffer, 1_000 * WAD);
 
-        vm.prank(allocatorProxy); Swapper(ilkInst.swapper).setLimits(address(dss.dai), USDC, uint96(1_000 * WAD), 1 hours);
-        vm.prank(facilitator1); StableSwapper(ilkInst.stableSwapper).setConfig(address(dss.dai), USDC, 1, 1 hours, uint96(1_000 * WAD), uint96(990 * 10**6));
-        vm.prank(stableSwapperKeeper1); StableSwapper(ilkInst.stableSwapper).swap(address(dss.dai), USDC, 990 * 10**6, uniV3Callee, daiUsdcPath);
+        vm.prank(allocatorProxy); Swapper(ilkFunnelInst.swapper).setLimits(address(dss.dai), USDC, uint96(1_000 * WAD), 1 hours);
+        vm.prank(facilitator1); StableSwapper(ilkFunnelInst.stableSwapper).setConfig(address(dss.dai), USDC, 1, 1 hours, uint96(1_000 * WAD), uint96(990 * 10**6));
+        vm.prank(stableSwapperKeeper1); StableSwapper(ilkFunnelInst.stableSwapper).swap(address(dss.dai), USDC, 990 * 10**6, uniV3Callee, daiUsdcPath);
     }
 
     function testDepositWithdrawCollectFromFacilitator() public {
@@ -386,7 +401,7 @@ contract DeploymentTest is DssTest {
         deal(address(dss.dai), ilkInst.buffer, 1_000 * WAD);
         deal(USDC, ilkInst.buffer, 1_000 * 10**6);
 
-        vm.prank(allocatorProxy); DepositorUniV3(ilkInst.depositorUniV3).setLimits(address(dss.dai), USDC, uint24(100), uint96(2_000 * WAD), uint96(2_000 * 10**6), 1 hours);
+        vm.prank(allocatorProxy); DepositorUniV3(ilkFunnelInst.depositorUniV3).setLimits(address(dss.dai), USDC, uint24(100), uint96(2_000 * WAD), uint96(2_000 * 10**6), 1 hours);
         DepositorUniV3.LiquidityParams memory dp = DepositorUniV3.LiquidityParams({
             gem0       : address(dss.dai),
             gem1       : USDC,
@@ -400,8 +415,8 @@ contract DeploymentTest is DssTest {
             amt1Min    : 900 * 10**6
         });
 
-        vm.prank(facilitator1); DepositorUniV3(ilkInst.depositorUniV3).deposit(dp);
-        vm.prank(facilitator1); DepositorUniV3(ilkInst.depositorUniV3).withdraw(dp, false);
+        vm.prank(facilitator1); DepositorUniV3(ilkFunnelInst.depositorUniV3).deposit(dp);
+        vm.prank(facilitator1); DepositorUniV3(ilkFunnelInst.depositorUniV3).withdraw(dp, false);
 
         DepositorUniV3.CollectParams memory cp = DepositorUniV3.CollectParams({
             gem0     : address(dss.dai),
@@ -412,7 +427,7 @@ contract DeploymentTest is DssTest {
         });
 
         vm.expectRevert(bytes("NP")); // we make sure it reverts since no fees to collect and not because the call is unauthorized
-        vm.prank(facilitator1); DepositorUniV3(ilkInst.depositorUniV3).collect(cp);
+        vm.prank(facilitator1); DepositorUniV3(ilkFunnelInst.depositorUniV3).collect(cp);
     }
 
     function testDepositWithdrawCollectFromKeeper() public {
@@ -421,16 +436,16 @@ contract DeploymentTest is DssTest {
         deal(address(dss.dai), ilkInst.buffer, 1_000 * WAD);
         deal(USDC, ilkInst.buffer, 1_000 * 10**6);
 
-        vm.prank(allocatorProxy); DepositorUniV3(ilkInst.depositorUniV3).setLimits(address(dss.dai), USDC, uint24(100), uint96(2_000 * WAD), uint96(2_000 * 10**6), 1 hours);
+        vm.prank(allocatorProxy); DepositorUniV3(ilkFunnelInst.depositorUniV3).setLimits(address(dss.dai), USDC, uint24(100), uint96(2_000 * WAD), uint96(2_000 * 10**6), 1 hours);
 
-        vm.prank(facilitator1); StableDepositorUniV3(ilkInst.stableDepositorUniV3).setConfig(address(dss.dai), USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, 1, 1 hours, uint96(1_000 * WAD), uint96(1000 * 10**6), 0, 0);
-        vm.prank(stableDepositorUniV3Keeper1); StableDepositorUniV3(ilkInst.stableDepositorUniV3).deposit(address(dss.dai), USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, 0, 0);
+        vm.prank(facilitator1); StableDepositorUniV3(ilkFunnelInst.stableDepositorUniV3).setConfig(address(dss.dai), USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, 1, 1 hours, uint96(1_000 * WAD), uint96(1000 * 10**6), 0, 0);
+        vm.prank(stableDepositorUniV3Keeper1); StableDepositorUniV3(ilkFunnelInst.stableDepositorUniV3).deposit(address(dss.dai), USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, 0, 0);
 
-        vm.prank(facilitator1); StableDepositorUniV3(ilkInst.stableDepositorUniV3).setConfig(address(dss.dai), USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, -1, 1 hours, uint96(1_000 * WAD), uint96(1000 * 10**6), 0, 0);
-        vm.prank(stableDepositorUniV3Keeper1); StableDepositorUniV3(ilkInst.stableDepositorUniV3).withdraw(address(dss.dai), USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, 0, 0);
+        vm.prank(facilitator1); StableDepositorUniV3(ilkFunnelInst.stableDepositorUniV3).setConfig(address(dss.dai), USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, -1, 1 hours, uint96(1_000 * WAD), uint96(1000 * 10**6), 0, 0);
+        vm.prank(stableDepositorUniV3Keeper1); StableDepositorUniV3(ilkFunnelInst.stableDepositorUniV3).withdraw(address(dss.dai), USDC, uint24(100), REF_TICK - 100, REF_TICK + 100, 0, 0);
 
         vm.expectRevert(bytes("NP")); // Reverts since no fees to collect and not because the call is unauthorized
-        vm.prank(stableDepositorUniV3Keeper1); StableDepositorUniV3(ilkInst.stableDepositorUniV3).collect(address(dss.dai), USDC, uint24(100), REF_TICK - 100, REF_TICK + 100);
+        vm.prank(stableDepositorUniV3Keeper1); StableDepositorUniV3(ilkFunnelInst.stableDepositorUniV3).collect(address(dss.dai), USDC, uint24(100), REF_TICK - 100, REF_TICK + 100);
     }
 
     function testMoveFromKeeper() public {
@@ -441,10 +456,10 @@ contract DeploymentTest is DssTest {
 
         // Give conduit1 some funds
         deal(USDC, ilkInst.buffer, 3_000 * 10**6, true);
-        vm.prank(ilkInst.conduitMover); AllocatorConduitMock(conduit1).deposit(ILK, USDC, 3_000 * 10**6);
+        vm.prank(ilkFunnelInst.conduitMover); AllocatorConduitMock(conduit1).deposit(ILK, USDC, 3_000 * 10**6);
 
-        vm.prank(facilitator1); ConduitMover(ilkInst.conduitMover).setConfig(conduit1, conduit2, USDC, 1, 1 hours, 3_000 * 10**6);
-        vm.prank(conduitMoverKeeper1); ConduitMover(ilkInst.conduitMover).move(conduit1, conduit2, USDC);
+        vm.prank(facilitator1); ConduitMover(ilkFunnelInst.conduitMover).setConfig(conduit1, conduit2, USDC, 1, 1 hours, 3_000 * 10**6);
+        vm.prank(conduitMoverKeeper1); ConduitMover(ilkFunnelInst.conduitMover).move(conduit1, conduit2, USDC);
     }
 
     function testEndCage() public {

@@ -18,7 +18,7 @@ pragma solidity >=0.8.0;
 
 import { ScriptTools } from "dss-test/ScriptTools.sol";
 import { DssInstance } from "dss-test/MCD.sol";
-import { AllocatorSharedInstance, AllocatorIlkInstance } from "./AllocatorInstances.sol";
+import { AllocatorSharedInstance, AllocatorIlkInstance, AllocatorIlkFunnelInstance } from "./AllocatorInstances.sol";
 
 interface WardsLike {
     function rely(address) external;
@@ -134,6 +134,12 @@ struct AllocatorIlkConfig {
     uint256 maxLine;
     uint256 ttl;
     address allocatorProxy;
+    address ilkRegistry;
+}
+
+struct AllocatorIlkFunnelConfig {
+    bytes32 ilk;
+    address allocatorProxy;
     uint8 facilitatorRole;
     uint8 automationRole;
     address[] facilitators;
@@ -143,7 +149,6 @@ struct AllocatorIlkConfig {
     address[] conduitMoverKeepers;
     address[] swapTokens;
     address[] depositTokens;
-    address ilkRegistry;
     address uniV3Factory;
 }
 
@@ -187,23 +192,6 @@ library AllocatorInit {
         require(VaultLike(ilkInstance.vault).vat()    == address(dss.vat),     "AllocatorInit/vault-vat-mismatch");
         // Once nstJoin is in the chainlog and adapted to dss-test should also check against it
 
-        require(SwapperLike(ilkInstance.swapper).roles()  == sharedInstance.roles, "AllocatorInit/swapper-roles-mismatch");
-        require(SwapperLike(ilkInstance.swapper).ilk()    == ilk,                  "AllocatorInit/swapper-ilk-mismatch");
-        require(SwapperLike(ilkInstance.swapper).buffer() == ilkInstance.buffer,   "AllocatorInit/swapper-buffer-mismatch");
-
-        require(DepositorUniV3Like(ilkInstance.depositorUniV3).roles()        == sharedInstance.roles, "AllocatorInit/depositorUniV3-roles-mismatch");
-        require(DepositorUniV3Like(ilkInstance.depositorUniV3).ilk()          == ilk,                  "AllocatorInit/depositorUniV3-ilk-mismatch");
-        require(DepositorUniV3Like(ilkInstance.depositorUniV3).uniV3Factory() == cfg.uniV3Factory,     "AllocatorInit/depositorUniV3-uniV3Factory-mismatch");
-        require(DepositorUniV3Like(ilkInstance.depositorUniV3).buffer()       == ilkInstance.buffer,   "AllocatorInit/depositorUniV3-buffer-mismatch");
-
-        require(VaultMinterLike(ilkInstance.vaultMinter).vault() == ilkInstance.vault, "AllocatorInit/vaultMinter-vault-mismatch");
-
-        require(StableSwapperLike(ilkInstance.stableSwapper).swapper()                 == ilkInstance.swapper,        "AllocatorInit/stableSwapper-swapper-mismatch");
-        require(StableDepositorUniV3Like(ilkInstance.stableDepositorUniV3).depositor() == ilkInstance.depositorUniV3, "AllocatorInit/stableDepositorUniV3-depositorUniV3-mismatch");
-
-        require(ConduitMoverLike(ilkInstance.conduitMover).ilk()    == ilk,                "AllocatorInit/conduitMover-ilk-mismatch");
-        require(ConduitMoverLike(ilkInstance.conduitMover).buffer() == ilkInstance.buffer, "AllocatorInit/conduitMover-buffer-mismatch");
-
         // Onboard the ilk
         dss.vat.init(ilk);
         dss.jug.init(ilk);
@@ -230,74 +218,13 @@ library AllocatorInit {
 
         // Allow vault and funnels to pull funds from the buffer
         BufferLike(ilkInstance.buffer).approve(VaultLike(ilkInstance.vault).nst(), ilkInstance.vault, type(uint256).max);
-        for(uint256 i = 0; i < cfg.swapTokens.length; i++) {
-            BufferLike(ilkInstance.buffer).approve(cfg.swapTokens[i], ilkInstance.swapper, type(uint256).max);
-        }
-        for(uint256 i = 0; i < cfg.depositTokens.length; i++) {
-            BufferLike(ilkInstance.buffer).approve(cfg.depositTokens[i], ilkInstance.depositorUniV3, type(uint256).max);
-        }
-
-        // Set the pause proxy temporarily as ilk admin so we can set all the roles below
-        RolesLike(sharedInstance.roles).setIlkAdmin(ilk, ilkInstance.owner);
-
-        // Allow the facilitators to operate on the vault and funnels directly
-        for(uint256 i = 0; i < cfg.facilitators.length; i++) {
-            RolesLike(sharedInstance.roles).setUserRole(ilk, cfg.facilitators[i], cfg.facilitatorRole, true);
-        }
-
-        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, ilkInstance.vault,          VaultLike.draw.selector,              true);
-        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, ilkInstance.vault,          VaultLike.wipe.selector,              true);
-        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, ilkInstance.swapper,        SwapperLike.swap.selector,            true);
-        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, ilkInstance.depositorUniV3, DepositorUniV3Like.deposit.selector,  true);
-        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, ilkInstance.depositorUniV3, DepositorUniV3Like.withdraw.selector, true);
-        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, ilkInstance.depositorUniV3, DepositorUniV3Like.collect.selector,  true);
-
-        // Allow the automation contracts to operate on the funnels
-        RolesLike(sharedInstance.roles).setUserRole(ilk, ilkInstance.vaultMinter,          cfg.automationRole, true);
-        RolesLike(sharedInstance.roles).setUserRole(ilk, ilkInstance.stableSwapper,        cfg.automationRole, true);
-        RolesLike(sharedInstance.roles).setUserRole(ilk, ilkInstance.stableDepositorUniV3, cfg.automationRole, true);
-
-        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, ilkInstance.vault,          VaultLike.draw.selector,              true);
-        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, ilkInstance.vault,          VaultLike.wipe.selector,              true);
-        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, ilkInstance.swapper,        SwapperLike.swap.selector,            true);
-        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, ilkInstance.depositorUniV3, DepositorUniV3Like.deposit.selector,  true);
-        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, ilkInstance.depositorUniV3, DepositorUniV3Like.withdraw.selector, true);
-        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, ilkInstance.depositorUniV3, DepositorUniV3Like.collect.selector,  true);
 
         // Set the allocator proxy as the ilk admin instead of the Pause Proxy
         RolesLike(sharedInstance.roles).setIlkAdmin(ilk, cfg.allocatorProxy);
 
-        // Allow facilitator to set configurations in the automation contracts
-        for(uint256 i = 0; i < cfg.facilitators.length; i++) {
-            WardsLike(ilkInstance.vaultMinter).rely(cfg.facilitators[i]);
-            WardsLike(ilkInstance.stableSwapper).rely(cfg.facilitators[i]);
-            WardsLike(ilkInstance.stableDepositorUniV3).rely(cfg.facilitators[i]);
-            WardsLike(ilkInstance.conduitMover).rely(cfg.facilitators[i]);
-        }
-
-        // Add keepers to the automation contracts
-        for(uint256 i = 0; i < cfg.vaultMinterKeepers.length; i++) {
-            KissLike(ilkInstance.vaultMinter).kiss(cfg.vaultMinterKeepers[i]);
-        }
-        for(uint256 i = 0; i < cfg.stableSwapperKeepers.length; i++) {
-            KissLike(ilkInstance.stableSwapper).kiss(cfg.stableSwapperKeepers[i]);
-        }
-        for(uint256 i = 0; i < cfg.stableDepositorUniV3Keepers.length; i++) {
-            KissLike(ilkInstance.stableDepositorUniV3).kiss(cfg.stableDepositorUniV3Keepers[i]);
-        }
-        for(uint256 i = 0; i < cfg.conduitMoverKeepers.length; i++) {
-            KissLike(ilkInstance.conduitMover).kiss(cfg.conduitMoverKeepers[i]);
-        }
-
         // Move ownership of the ilk contracts to the allocator proxy
-        ScriptTools.switchOwner(ilkInstance.vault,                ilkInstance.owner, cfg.allocatorProxy);
-        ScriptTools.switchOwner(ilkInstance.buffer,               ilkInstance.owner, cfg.allocatorProxy);
-        ScriptTools.switchOwner(ilkInstance.swapper,              ilkInstance.owner, cfg.allocatorProxy);
-        ScriptTools.switchOwner(ilkInstance.depositorUniV3,       ilkInstance.owner, cfg.allocatorProxy);
-        ScriptTools.switchOwner(ilkInstance.vaultMinter,          ilkInstance.owner, cfg.allocatorProxy);
-        ScriptTools.switchOwner(ilkInstance.stableSwapper,        ilkInstance.owner, cfg.allocatorProxy);
-        ScriptTools.switchOwner(ilkInstance.stableDepositorUniV3, ilkInstance.owner, cfg.allocatorProxy);
-        ScriptTools.switchOwner(ilkInstance.conduitMover,         ilkInstance.owner, cfg.allocatorProxy);
+        ScriptTools.switchOwner(ilkInstance.vault,  ilkInstance.owner, cfg.allocatorProxy);
+        ScriptTools.switchOwner(ilkInstance.buffer, ilkInstance.owner, cfg.allocatorProxy);
 
         // Add allocator-specific contracts to changelog
         string memory ilkString = ScriptTools.ilkToChainlogFormat(ilk);
@@ -317,5 +244,86 @@ library AllocatorInit {
             _name   : bytes32ToStr(ilk),
             _symbol : bytes32ToStr(ilk)
         });
+    }
+
+    function initIlkFunnel(
+        DssInstance memory dss,
+        AllocatorSharedInstance memory sharedInstance,
+        AllocatorIlkInstance memory ilkInstance,
+        AllocatorIlkFunnelInstance memory ilkFunnelInstance,
+        AllocatorIlkFunnelConfig memory cfg
+    ) internal {
+        bytes32 ilk = cfg.ilk;
+
+        require(SwapperLike(ilkFunnelInstance.swapper).roles()  == sharedInstance.roles, "AllocatorInit/swapper-roles-mismatch");
+        require(SwapperLike(ilkFunnelInstance.swapper).ilk()    == ilk,                  "AllocatorInit/swapper-ilk-mismatch");
+        require(SwapperLike(ilkFunnelInstance.swapper).buffer() == ilkInstance.buffer,   "AllocatorInit/swapper-buffer-mismatch");
+
+        require(DepositorUniV3Like(ilkFunnelInstance.depositorUniV3).roles()        == sharedInstance.roles, "AllocatorInit/depositorUniV3-roles-mismatch");
+        require(DepositorUniV3Like(ilkFunnelInstance.depositorUniV3).ilk()          == ilk,                  "AllocatorInit/depositorUniV3-ilk-mismatch");
+        require(DepositorUniV3Like(ilkFunnelInstance.depositorUniV3).uniV3Factory() == cfg.uniV3Factory,     "AllocatorInit/depositorUniV3-uniV3Factory-mismatch");
+        require(DepositorUniV3Like(ilkFunnelInstance.depositorUniV3).buffer()       == ilkInstance.buffer,   "AllocatorInit/depositorUniV3-buffer-mismatch");
+
+        require(VaultMinterLike(ilkFunnelInstance.vaultMinter).vault() == ilkInstance.vault, "AllocatorInit/vaultMinter-vault-mismatch");
+
+        require(StableSwapperLike(ilkFunnelInstance.stableSwapper).swapper()                 == ilkFunnelInstance.swapper,        "AllocatorInit/stableSwapper-swapper-mismatch");
+        require(StableDepositorUniV3Like(ilkFunnelInstance.stableDepositorUniV3).depositor() == ilkFunnelInstance.depositorUniV3, "AllocatorInit/stableDepositorUniV3-depositorUniV3-mismatch");
+
+        require(ConduitMoverLike(ilkFunnelInstance.conduitMover).ilk()    == ilk,                "AllocatorInit/conduitMover-ilk-mismatch");
+        require(ConduitMoverLike(ilkFunnelInstance.conduitMover).buffer() == ilkInstance.buffer, "AllocatorInit/conduitMover-buffer-mismatch");
+
+        // Allow vault and funnels to pull funds from the buffer
+        for(uint256 i = 0; i < cfg.swapTokens.length; i++) {
+            BufferLike(ilkInstance.buffer).approve(cfg.swapTokens[i], ilkFunnelInstance.swapper, type(uint256).max);
+        }
+        for(uint256 i = 0; i < cfg.depositTokens.length; i++) {
+            BufferLike(ilkInstance.buffer).approve(cfg.depositTokens[i], ilkFunnelInstance.depositorUniV3, type(uint256).max);
+        }
+
+        // Allow the facilitators to operate on the vault and funnels directly
+        for(uint256 i = 0; i < cfg.facilitators.length; i++) {
+            RolesLike(sharedInstance.roles).setUserRole(ilk, cfg.facilitators[i], cfg.facilitatorRole, true);
+        }
+
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, ilkInstance.vault,                VaultLike.draw.selector,              true);
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, ilkInstance.vault,                VaultLike.wipe.selector,              true);
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, ilkFunnelInstance.swapper,        SwapperLike.swap.selector,            true);
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, ilkFunnelInstance.depositorUniV3, DepositorUniV3Like.deposit.selector,  true);
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, ilkFunnelInstance.depositorUniV3, DepositorUniV3Like.withdraw.selector, true);
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.facilitatorRole, ilkFunnelInstance.depositorUniV3, DepositorUniV3Like.collect.selector,  true);
+
+        // Allow the automation contracts to operate on the funnels
+        RolesLike(sharedInstance.roles).setUserRole(ilk, ilkFunnelInstance.vaultMinter,          cfg.automationRole, true);
+        RolesLike(sharedInstance.roles).setUserRole(ilk, ilkFunnelInstance.stableSwapper,        cfg.automationRole, true);
+        RolesLike(sharedInstance.roles).setUserRole(ilk, ilkFunnelInstance.stableDepositorUniV3, cfg.automationRole, true);
+
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, ilkInstance.vault,                VaultLike.draw.selector,              true);
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, ilkInstance.vault,                VaultLike.wipe.selector,              true);
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, ilkFunnelInstance.swapper,        SwapperLike.swap.selector,            true);
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, ilkFunnelInstance.depositorUniV3, DepositorUniV3Like.deposit.selector,  true);
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, ilkFunnelInstance.depositorUniV3, DepositorUniV3Like.withdraw.selector, true);
+        RolesLike(sharedInstance.roles).setRoleAction(ilk, cfg.automationRole, ilkFunnelInstance.depositorUniV3, DepositorUniV3Like.collect.selector,  true);
+
+        // Allow facilitator to set configurations in the automation contracts
+        for(uint256 i = 0; i < cfg.facilitators.length; i++) {
+            WardsLike(ilkFunnelInstance.vaultMinter).rely(cfg.facilitators[i]);
+            WardsLike(ilkFunnelInstance.stableSwapper).rely(cfg.facilitators[i]);
+            WardsLike(ilkFunnelInstance.stableDepositorUniV3).rely(cfg.facilitators[i]);
+            WardsLike(ilkFunnelInstance.conduitMover).rely(cfg.facilitators[i]);
+        }
+
+        // Add keepers to the automation contracts
+        for(uint256 i = 0; i < cfg.vaultMinterKeepers.length; i++) {
+            KissLike(ilkFunnelInstance.vaultMinter).kiss(cfg.vaultMinterKeepers[i]);
+        }
+        for(uint256 i = 0; i < cfg.stableSwapperKeepers.length; i++) {
+            KissLike(ilkFunnelInstance.stableSwapper).kiss(cfg.stableSwapperKeepers[i]);
+        }
+        for(uint256 i = 0; i < cfg.stableDepositorUniV3Keepers.length; i++) {
+            KissLike(ilkFunnelInstance.stableDepositorUniV3).kiss(cfg.stableDepositorUniV3Keepers[i]);
+        }
+        for(uint256 i = 0; i < cfg.conduitMoverKeepers.length; i++) {
+            KissLike(ilkFunnelInstance.conduitMover).kiss(cfg.conduitMoverKeepers[i]);
+        }
     }
 }
