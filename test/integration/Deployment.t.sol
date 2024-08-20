@@ -217,7 +217,7 @@ contract DeploymentTest is DssTest {
             depositTokens               : depositTokens,
             uniV3Factory                : UNIV3_FACTORY
         });
-        AllocatorInit.initIlkFunnel(dss, sharedInst, ilkInst, ilkFunnelInst, funnelCfg);
+        AllocatorInit.initIlkFunnel(sharedInst, ilkInst, ilkFunnelInst, funnelCfg);
 
         AllocatorRoles(sharedInst.roles).setUserRole(ILK, address(ilkFunnelInst.conduitMover), automationRole, true);
 

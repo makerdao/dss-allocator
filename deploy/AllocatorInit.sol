@@ -177,6 +177,7 @@ library AllocatorInit {
         dss.chainlog.setAddress("ALLOCATOR_REGISTRY", sharedInstance.registry);
     }
 
+    // Please note this should be executed by the pause proxy
     function initIlk(
         DssInstance memory dss,
         AllocatorSharedInstance memory sharedInstance,
@@ -216,7 +217,7 @@ library AllocatorInit {
 
         VaultLike(ilkInstance.vault).file("jug", address(dss.jug));
 
-        // Allow vault and funnels to pull funds from the buffer
+        // Allow vault to pull funds from the buffer
         BufferLike(ilkInstance.buffer).approve(VaultLike(ilkInstance.vault).nst(), ilkInstance.vault, type(uint256).max);
 
         // Set the allocator proxy as the ilk admin instead of the Pause Proxy
@@ -246,8 +247,8 @@ library AllocatorInit {
         });
     }
 
+    // Please note this should be executed by the allocator proxy
     function initIlkFunnel(
-        DssInstance memory dss,
         AllocatorSharedInstance memory sharedInstance,
         AllocatorIlkInstance memory ilkInstance,
         AllocatorIlkFunnelInstance memory ilkFunnelInstance,
