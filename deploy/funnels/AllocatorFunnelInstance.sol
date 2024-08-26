@@ -16,14 +16,12 @@
 
 pragma solidity >=0.8.0;
 
-struct AllocatorSharedInstance {
-    address oracle;
-    address roles;
-    address registry;
-}
-
-struct AllocatorIlkInstance {
+struct AllocatorIlkFunnelInstance {
     address owner;
-    address vault;
-    address buffer;
+    address swapper;
+    address depositorUniV3;
+    address vaultMinter;
+    address stableSwapper;
+    address stableDepositorUniV3;
+    address conduitMover;
 }

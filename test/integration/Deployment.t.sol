@@ -18,9 +18,12 @@ pragma solidity ^0.8.16;
 
 import "dss-test/DssTest.sol";
 
-import { AllocatorSharedInstance, AllocatorIlkInstance, AllocatorIlkFunnelInstance } from "deploy/AllocatorInstances.sol";
+import { AllocatorSharedInstance, AllocatorIlkInstance } from "deploy/AllocatorInstances.sol";
+import { AllocatorIlkFunnelInstance } from "deploy/funnels/AllocatorFunnelInstance.sol";
 import { AllocatorDeploy } from "deploy/AllocatorDeploy.sol";
-import { AllocatorInit, AllocatorIlkConfig, AllocatorIlkFunnelConfig } from "deploy/AllocatorInit.sol";
+import { AllocatorFunnelDeploy } from "deploy/funnels/AllocatorFunnelDeploy.sol";
+import { AllocatorInit, AllocatorIlkConfig } from "deploy/AllocatorInit.sol";
+import { AllocatorFunnelInit, AllocatorIlkFunnelConfig } from "deploy/funnels/AllocatorFunnelInit.sol";
 
 import { SwapperCalleeUniV3 } from "src/funnels/callees/SwapperCalleeUniV3.sol";
 
@@ -142,7 +145,7 @@ contract DeploymentTest is DssTest {
             ilk          : ILK,
             nstJoin      : nstJoin
         });
-        ilkFunnelInst = AllocatorDeploy.deployIlkFunnel({
+        ilkFunnelInst = AllocatorFunnelDeploy.deployIlkFunnel({
             deployer     : address(this),
             owner        : allocatorProxy,
             roles        : sharedInst.roles,
@@ -217,7 +220,7 @@ contract DeploymentTest is DssTest {
             depositTokens               : depositTokens,
             uniV3Factory                : UNIV3_FACTORY
         });
-        AllocatorInit.initIlkFunnel(sharedInst, ilkInst, ilkFunnelInst, funnelCfg);
+        AllocatorFunnelInit.initIlkFunnel(sharedInst, ilkInst, ilkFunnelInst, funnelCfg);
 
         AllocatorRoles(sharedInst.roles).setUserRole(ILK, address(ilkFunnelInst.conduitMover), automationRole, true);
 
