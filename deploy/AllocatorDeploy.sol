@@ -52,13 +52,13 @@ library AllocatorDeploy {
         address owner,
         address roles,
         bytes32 ilk,
-        address nstJoin
+        address usdsJoin
     ) internal returns (AllocatorIlkInstance memory ilkInstance) {
         address _buffer = address(new AllocatorBuffer());
         ScriptTools.switchOwner(_buffer, deployer, owner);
         ilkInstance.buffer = _buffer;
 
-        address _vault  = address(new AllocatorVault(roles, _buffer, ilk, nstJoin));
+        address _vault  = address(new AllocatorVault(roles, _buffer, ilk, usdsJoin));
         ScriptTools.switchOwner(_vault, deployer, owner);
         ilkInstance.vault = _vault;
 

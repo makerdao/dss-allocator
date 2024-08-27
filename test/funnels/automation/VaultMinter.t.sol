@@ -10,7 +10,7 @@ import { AllocatorBuffer } from "src/AllocatorBuffer.sol";
 import { VatMock } from "test/mocks/VatMock.sol";
 import { JugMock } from "test/mocks/JugMock.sol";
 import { GemMock } from "test/mocks/GemMock.sol";
-import { NstJoinMock } from "test/mocks/NstJoinMock.sol";
+import { UsdsJoinMock } from "test/mocks/UsdsJoinMock.sol";
 
 contract VaultMinterTest is DssTest {
     using stdStorage for StdStorage;
@@ -23,8 +23,8 @@ contract VaultMinterTest is DssTest {
 
     VatMock         public vat;
     JugMock         public jug;
-    GemMock         public nst;
-    NstJoinMock     public nstJoin;
+    GemMock         public usds;
+    UsdsJoinMock    public usdsJoin;
     AllocatorBuffer public buffer;
     AllocatorRoles  public roles;
     AllocatorVault  public vault;
@@ -36,15 +36,15 @@ contract VaultMinterTest is DssTest {
     uint8   constant MINTER_ROLE  = uint8(1);
 
     function setUp() public {
-        vat     = new VatMock();
-        jug     = new JugMock(vat);
-        nst     = new GemMock(0);
-        nstJoin = new NstJoinMock(vat, nst);
-        buffer  = new AllocatorBuffer();
-        roles   = new AllocatorRoles();
-        vault   = new AllocatorVault(address(roles), address(buffer), ILK, address(nstJoin));
+        vat      = new VatMock();
+        jug      = new JugMock(vat);
+        usds     = new GemMock(0);
+        usdsJoin = new UsdsJoinMock(vat, usds);
+        buffer   = new AllocatorBuffer();
+        roles    = new AllocatorRoles();
+        vault    = new AllocatorVault(address(roles), address(buffer), ILK, address(usdsJoin));
         vault.file("jug", address(jug));
-        buffer.approve(address(nst), address(vault), type(uint256).max);
+        buffer.approve(address(usds), address(vault), type(uint256).max);
 
         vat.slip(ILK, address(vault), int256(1_000_000 * WAD));
         vat.grab(ILK, address(vault), address(vault), address(0), int256(1_000_000 * WAD), 0);
@@ -135,7 +135,7 @@ contract VaultMinterTest is DssTest {
     function testDrawWipeByKeeper() public {
         minter.setConfig(int64(10), uint32(1 hours), uint128(1_000 * WAD));
 
-        assertEq(nst.balanceOf(address(buffer)), 0);
+        assertEq(usds.balanceOf(address(buffer)), 0);
         (int64 num, uint32 hop, uint32 zzz, uint128 lot) = minter.config();
         assertEq(num, 10);
         assertEq(hop, 1 hours);
@@ -146,7 +146,7 @@ contract VaultMinterTest is DssTest {
         emit Draw(uint128(1_000 * WAD));
         vm.prank(KEEPER); minter.draw();
 
-        assertEq(nst.balanceOf(address(buffer)), 1_000 * WAD);
+        assertEq(usds.balanceOf(address(buffer)), 1_000 * WAD);
         (num, hop, zzz, lot) = minter.config();
         assertEq(num, 9);
         assertEq(hop, 1 hours);
@@ -160,7 +160,7 @@ contract VaultMinterTest is DssTest {
         vm.warp(block.timestamp + 1);
         vm.prank(KEEPER); minter.draw();
 
-        assertEq(nst.balanceOf(address(buffer)), 2_000 * WAD);
+        assertEq(usds.balanceOf(address(buffer)), 2_000 * WAD);
         (num, hop, zzz, lot) = minter.config();
         assertEq(num, 8);
         assertEq(hop, 1 hours);
@@ -179,7 +179,7 @@ contract VaultMinterTest is DssTest {
         emit Wipe(uint128(100 * WAD));
         vm.prank(KEEPER); minter.wipe();
 
-        assertEq(nst.balanceOf(address(buffer)), 1_900 * WAD);
+        assertEq(usds.balanceOf(address(buffer)), 1_900 * WAD);
         (num, hop, zzz, lot) = minter.config();
         assertEq(num, -9);
         assertEq(hop, 1 hours);
@@ -193,7 +193,7 @@ contract VaultMinterTest is DssTest {
         vm.warp(block.timestamp + 1);
         vm.prank(KEEPER); minter.wipe();
 
-        assertEq(nst.balanceOf(address(buffer)), 1_800 * WAD);
+        assertEq(usds.balanceOf(address(buffer)), 1_800 * WAD);
         (num, hop, zzz, lot) = minter.config();
         assertEq(num, -8);
         assertEq(hop, 1 hours);

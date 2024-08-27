@@ -47,7 +47,7 @@ interface VaultLike {
     function roles() external view returns (address);
     function buffer() external view returns (address);
     function vat() external view returns (address);
-    function nst() external view returns (address);
+    function usds() external view returns (address);
     function file(bytes32, address) external;
 }
 
@@ -107,7 +107,7 @@ library AllocatorInit {
         require(VaultLike(ilkInstance.vault).roles()  == sharedInstance.roles, "AllocatorInit/vault-roles-mismatch");
         require(VaultLike(ilkInstance.vault).buffer() == ilkInstance.buffer,   "AllocatorInit/vault-buffer-mismatch");
         require(VaultLike(ilkInstance.vault).vat()    == address(dss.vat),     "AllocatorInit/vault-vat-mismatch");
-        // Once nstJoin is in the chainlog and adapted to dss-test should also check against it
+        // Once usdsJoin is in the chainlog and adapted to dss-test should also check against it
 
         // Onboard the ilk
         dss.vat.init(ilk);
@@ -134,7 +134,7 @@ library AllocatorInit {
         VaultLike(ilkInstance.vault).file("jug", address(dss.jug));
 
         // Allow vault to pull funds from the buffer
-        BufferLike(ilkInstance.buffer).approve(VaultLike(ilkInstance.vault).nst(), ilkInstance.vault, type(uint256).max);
+        BufferLike(ilkInstance.buffer).approve(VaultLike(ilkInstance.vault).usds(), ilkInstance.vault, type(uint256).max);
 
         // Set the allocator proxy as the ilk admin instead of the Pause Proxy
         RolesLike(sharedInstance.roles).setIlkAdmin(ilk, cfg.allocatorProxy);

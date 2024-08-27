@@ -20,7 +20,7 @@ The system is comprised of several layers:
 
 - Core Allocation System (*green above*):
     - Smart contracts that can be considered a part of the Maker Core Protocol, and are immutable and present in all Allocators.
-    - Their main role is to mint NST (New Stable Token) and hold it (possibly with other tokens) in the `AllocatorBuffer`.
+    - Their main role is to mint USDS (New Stable Token) and hold it (possibly with other tokens) in the `AllocatorBuffer`.
 - Deployment Funnels (*blue above*):
     - Contracts that pull funds from the `AllocatorBuffer`.
     - The funds can be swapped and/or deployed into AMM pools or specific conduits.
@@ -33,7 +33,7 @@ The allocation system includes several actor types:
 
 - Pause Proxy:
     - Performs actions through spells with governance delay.
-    - In charge of setting up the core components and the NST minting instant access modules (DC-IAMs).
+    - In charge of setting up the core components and the USDS minting instant access modules (DC-IAMs).
     - Ward of the singleton contracts (e.g RWA conduits, Coinbase Custody, `AllocatorRoles`).
 - AllocatorDAO Proxy:
     - Performs actions through a sub-spell with governance delay.
@@ -46,7 +46,7 @@ The allocation system includes several actor types:
     - An optional actor which is whitelisted through the `AllocatorRoles` contract to perform specified actions on the `AllocatorVault`, funnels and conduits.
     - Will typically be a facilitator multisig or an automation contract controlled by one (e.g `StableSwapper`, `StableDepositorUniV3`).
 - Keeper:
-    - An optional actor which can be set up to trigger the automation contracts in case repetitive actions are needed (such as swapping NST to USDC every time interval).
+    - An optional actor which can be set up to trigger the automation contracts in case repetitive actions are needed (such as swapping USDS to USDC every time interval).
 
 ![Untitled (1)](https://github.com/makerdao/dss-allocator/assets/130549691/c677928b-32f4-4000-b6ed-e3798caa9c5c)
 
@@ -61,15 +61,15 @@ Each AllocatorDAO has a unique `ilk` (collateral type) with one VAT vault set up
 
 Single contract per `ilk`, which operators can use to:
 
-- Mint (`draw`) NST from the vault to the AllocatorBuffer.
-- Repay (`wipe`) NST from the AllocatorBuffer.
+- Mint (`draw`) USDS from the vault to the AllocatorBuffer.
+- Repay (`wipe`) USDS from the AllocatorBuffer.
 
 ### AllocatorBuffer
 
 A simple contract for the AllocatorDAO to hold funds in.
 
 - Supports approving contracts to `transferFrom` it.
-- Note that although the `AllocatorVault` pushes and pulls NST to/from the `AllocatorBuffer`, it can manage other tokens as well.
+- Note that although the `AllocatorVault` pushes and pulls USDS to/from the `AllocatorBuffer`, it can manage other tokens as well.
 
 ### AllocatorRoles
 
@@ -112,7 +112,7 @@ An automation contract sample, which can be used by the AllocatorDAOs to `draw` 
 
 ### StableSwapper
 
-An automation contract, which can be used by the AllocatorDAOs to set up recurring swaps of stable tokens (e.g NST to USDC).
+An automation contract, which can be used by the AllocatorDAOs to set up recurring swaps of stable tokens (e.g USDS to USDC).
 
 - In order to use it, the AllocatorDAO should list it as an operator of its `Swapper` primitive in the `AllocatorRoles` contract.
 - The `Swapper` primitive will rate-limit the automation contract.

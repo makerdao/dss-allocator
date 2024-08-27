@@ -35,8 +35,8 @@ interface GemLike {
     function transferFrom(address, address, uint256) external;
 }
 
-interface NstJoinLike {
-    function nst() external view returns (GemLike);
+interface UsdsJoinLike {
+    function usds() external view returns (GemLike);
     function vat() external view returns (VatLike);
     function exit(address, uint256) external;
     function join(address, uint256) external;
@@ -55,12 +55,12 @@ contract AllocatorVault {
 
     // --- immutables ---
 
-    RolesLike   immutable public roles;
-    address     immutable public buffer;
-    VatLike     immutable public vat;
-    bytes32     immutable public ilk;
-    NstJoinLike immutable public nstJoin;
-    GemLike     immutable public nst;
+    RolesLike    immutable public roles;
+    address      immutable public buffer;
+    VatLike      immutable public vat;
+    bytes32      immutable public ilk;
+    UsdsJoinLike immutable public usdsJoin;
+    GemLike      immutable public usds;
 
     // --- events ---
 
@@ -80,18 +80,18 @@ contract AllocatorVault {
 
     // --- constructor ---
 
-    constructor(address roles_, address buffer_, bytes32 ilk_, address nstJoin_) {
+    constructor(address roles_, address buffer_, bytes32 ilk_, address usdsJoin_) {
         roles = RolesLike(roles_);
 
         buffer = buffer_;
         ilk = ilk_;
-        nstJoin = NstJoinLike(nstJoin_);
+        usdsJoin = UsdsJoinLike(usdsJoin_);
 
-        vat = nstJoin.vat();
-        nst = nstJoin.nst();
+        vat  = usdsJoin.vat();
+        usds = usdsJoin.usds();
 
-        vat.hope(nstJoin_);
-        nst.approve(nstJoin_, type(uint256).max);
+        vat.hope(usdsJoin_);
+        usds.approve(usdsJoin_, type(uint256).max);
 
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
@@ -132,13 +132,13 @@ contract AllocatorVault {
         uint256 dart = _divup(wad * RAY, rate);
         require(dart <= uint256(type(int256).max), "AllocatorVault/overflow");
         vat.frob(ilk, address(this), address(0), address(this), 0, int256(dart));
-        nstJoin.exit(buffer, wad);
+        usdsJoin.exit(buffer, wad);
         emit Draw(msg.sender, wad);
     }
 
     function wipe(uint256 wad) external auth {
-        nst.transferFrom(buffer, address(this), wad);
-        nstJoin.join(address(this), wad);
+        usds.transferFrom(buffer, address(this), wad);
+        usdsJoin.join(address(this), wad);
         uint256 rate = jug.drip(ilk);
         uint256 dart = wad * RAY / rate;
         require(dart <= uint256(type(int256).max), "AllocatorVault/overflow");

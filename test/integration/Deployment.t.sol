@@ -28,7 +28,7 @@ import { AllocatorFunnelInit, AllocatorIlkFunnelConfig } from "deploy/funnels/Al
 import { SwapperCalleeUniV3 } from "src/funnels/callees/SwapperCalleeUniV3.sol";
 
 import { GemMock } from "test/mocks/GemMock.sol";
-import { NstJoinMock } from "test/mocks/NstJoinMock.sol";
+import { UsdsJoinMock } from "test/mocks/UsdsJoinMock.sol";
 import { VatMock } from "test/mocks/VatMock.sol";
 import { AllocatorConduitMock } from "test/mocks/AllocatorConduitMock.sol";
 
@@ -105,8 +105,8 @@ contract DeploymentTest is DssTest {
     uint8 constant automationRole  = uint8(2);
 
     // contracts to be deployed
-    address nst;
-    address nstJoin;
+    address usds;
+    address usdsJoin;
     address uniV3Callee;
     address conduit1;
     address conduit2;
@@ -130,8 +130,8 @@ contract DeploymentTest is DssTest {
         ILK_REGISTRY = ChainlogLike(LOG).getAddress("ILK_REGISTRY");
         USDC         = ChainlogLike(LOG).getAddress("USDC");
 
-        nst         = address(new GemMock(0));
-        nstJoin     = address(new NstJoinMock(VatMock(address(dss.vat)), GemMock(nst)));
+        usds        = address(new GemMock(0));
+        usdsJoin    = address(new UsdsJoinMock(VatMock(address(dss.vat)), GemMock(usds)));
         uniV3Callee = address(new SwapperCalleeUniV3(UNIV3_ROUTER));
 
         usdcDaiPath = abi.encodePacked(USDC, uint24(100), address(dss.dai));
@@ -143,7 +143,7 @@ contract DeploymentTest is DssTest {
             owner        : PAUSE_PROXY,
             roles        : sharedInst.roles,
             ilk          : ILK,
-            nstJoin      : nstJoin
+            usdsJoin     : usdsJoin
         });
         ilkFunnelInst = AllocatorFunnelDeploy.deployIlkFunnel({
             deployer     : address(this),
@@ -279,7 +279,7 @@ contract DeploymentTest is DssTest {
         assertEq(AllocatorRegistry(sharedInst.registry).buffers(ILK), ilkInst.buffer);
         assertEq(address(AllocatorVault(ilkInst.vault).jug()), address(dss.jug));
 
-        assertEq(GemLike(nst).allowance(ilkInst.buffer, ilkInst.vault),                             type(uint256).max);
+        assertEq(GemLike(usds).allowance(ilkInst.buffer, ilkInst.vault),                            type(uint256).max);
         assertEq(GemLike(address(dss.dai)).allowance(ilkInst.buffer, ilkFunnelInst.swapper),        type(uint256).max);
         assertEq(GemLike(address(dss.dai)).allowance(ilkInst.buffer, ilkFunnelInst.depositorUniV3), type(uint256).max);
         assertEq(GemLike(USDC).allowance(ilkInst.buffer, ilkFunnelInst.depositorUniV3),             type(uint256).max);
